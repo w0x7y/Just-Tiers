@@ -13,7 +13,7 @@
 - Minecraft version is exactly `26.2`. Mod is **client-side only** (`"environment": "client"`).
 - Java toolchain **25**, `options.release = 25`. Gradle wrapper **9.5.1**. Loom **1.17-SNAPSHOT**.
 - Mappings are **official Mojang mappings**. Yarn is not published for 26.2 — do not attempt to use it. Class names in this plan are Mojmap (`Player`, `Component`, `ChatFormatting`, `Identifier`).
-- Mod id is `justtiers`. Root package is `com.idangilboa.justtiers`. Resource namespace is `justtiers`.
+- Mod id is `justtiers`. Root package is `com.w0x7y.justtiers`. Resource namespace is `justtiers`.
 - Packages `tier`, `api`, `cache`, `resolve` and `render.model` **must not import any `net.minecraft.*` class.** This is what keeps them unit-testable. Only `render.NametagRenderer`, `mixin`, `command` and `JustTiersClient` may import Minecraft.
 - Tier ordering, lowest to highest: `LT5 < HT5 < LT4 < HT4 < LT3 < HT3 < LT2 < HT2 < LT1 < HT1`.
 - Site colours: MCTiers `0xFFFF55` (yellow), SubTiers `0x55FFFF` (cyan), NovaTiers `0xAA55FF` (purple).
@@ -69,7 +69,7 @@ gradle.properties                versions in one place
 gradle/wrapper/…                 Gradle 9.5.1
 NOTICE                           MPL-2.0 attribution for reused icon art
 tools/gen_nova_icons.py          generates the 12 NovaTiers icon PNGs
-src/main/java/com/idangilboa/justtiers/
+src/main/java/com/w0x7y/justtiers/
   JustTiers.java                 mod id, logger, HttpClient, wiring
   JustTiersClient.java           ClientModInitializer entrypoint
   tier/Tier.java                 tier value type + ordering + parsing
@@ -93,7 +93,7 @@ src/main/resources/
   justtiers.mixins.json
   assets/minecraft/font/default.json    font providers for 32 glyphs
   assets/justtiers/textures/{mctiers,subtiers,novatiers}/*.png
-src/test/java/com/idangilboa/justtiers/…   JUnit 5 tests
+src/test/java/com/w0x7y/justtiers/…   JUnit 5 tests
 ```
 
 **Icon codepoints.** MCTiers `U+E101`-`U+E108`, SubTiers `U+E201`-`U+E20C`, NovaTiers `U+E301`-`U+E30C`. Assigned per gamemode in alphabetical order of slug within each site (exact assignments in Task 3). Write them in Java as `\uE101` etc.
@@ -106,8 +106,8 @@ src/test/java/com/idangilboa/justtiers/…   JUnit 5 tests
 - Create: `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties`, `.gitignore`
 - Create: `gradle/wrapper/gradle-wrapper.properties`
 - Create: `src/main/resources/fabric.mod.json`
-- Create: `src/main/java/com/idangilboa/justtiers/JustTiers.java`
-- Create: `src/main/java/com/idangilboa/justtiers/JustTiersClient.java`
+- Create: `src/main/java/com/w0x7y/justtiers/JustTiers.java`
+- Create: `src/main/java/com/w0x7y/justtiers/JustTiersClient.java`
 
 **Interfaces:**
 - Consumes: nothing.
@@ -167,7 +167,7 @@ minecraft_version=26.2
 loader_version=0.19.3
 fabric_api_version=0.157.0+26.2
 mod_version=1.0.0
-maven_group=com.idangilboa
+maven_group=com.w0x7y
 archives_base_name=just-tiers
 ```
 
@@ -234,7 +234,7 @@ tasks.processResources {
   "license": "MIT",
   "environment": "client",
   "entrypoints": {
-    "client": ["com.idangilboa.justtiers.JustTiersClient"]
+    "client": ["com.w0x7y.justtiers.JustTiersClient"]
   },
   "mixins": ["justtiers.mixins.json"],
   "depends": {
@@ -249,7 +249,7 @@ tasks.processResources {
 - [ ] **Step 6: Write `JustTiers.java`**
 
 ```java
-package com.idangilboa.justtiers;
+package com.w0x7y.justtiers;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -284,7 +284,7 @@ public final class JustTiers {
 - [ ] **Step 7: Write `JustTiersClient.java` (stub for now)**
 
 ```java
-package com.idangilboa.justtiers;
+package com.w0x7y.justtiers;
 
 import net.fabricmc.api.ClientModInitializer;
 
@@ -304,7 +304,7 @@ An empty mixin list is valid and keeps `fabric.mod.json` honest until Task 11 ad
 {
   "required": true,
   "minVersion": "0.8",
-  "package": "com.idangilboa.justtiers.mixin",
+  "package": "com.w0x7y.justtiers.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [],
   "client": [],
@@ -344,8 +344,8 @@ git commit -m "feat: Fabric 26.2 project skeleton"
 This is the heart of the ranking system. Everything else orders and formats through it.
 
 **Files:**
-- Create: `src/main/java/com/idangilboa/justtiers/tier/Tier.java`
-- Test: `src/test/java/com/idangilboa/justtiers/tier/TierTest.java`
+- Create: `src/main/java/com/w0x7y/justtiers/tier/Tier.java`
+- Test: `src/test/java/com/w0x7y/justtiers/tier/TierTest.java`
 
 **Interfaces:**
 - Consumes: nothing.
@@ -354,7 +354,7 @@ This is the heart of the ranking system. Everything else orders and formats thro
 - [ ] **Step 1: Write the failing test**
 
 ```java
-package com.idangilboa.justtiers.tier;
+package com.w0x7y.justtiers.tier;
 
 import org.junit.jupiter.api.Test;
 
@@ -431,7 +431,7 @@ Expected: FAIL — compilation error, `Tier` does not exist.
 - [ ] **Step 3: Write `Tier.java`**
 
 ```java
-package com.idangilboa.justtiers.tier;
+package com.w0x7y.justtiers.tier;
 
 import java.util.Locale;
 import java.util.Optional;
@@ -506,7 +506,7 @@ Expected: PASS, 7 tests.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/main/java/com/idangilboa/justtiers/tier/Tier.java src/test/java/com/idangilboa/justtiers/tier/TierTest.java
+git add src/main/java/com/w0x7y/justtiers/tier/Tier.java src/test/java/com/w0x7y/justtiers/tier/TierTest.java
 git commit -m "feat: add Tier value type with LT5..HT1 ordering"
 ```
 
@@ -515,10 +515,10 @@ git commit -m "feat: add Tier value type with LT5..HT1 ordering"
 ### Task 3: Source and Gamemode registry
 
 **Files:**
-- Create: `src/main/java/com/idangilboa/justtiers/tier/Source.java`
-- Create: `src/main/java/com/idangilboa/justtiers/tier/Gamemode.java`
-- Create: `src/main/java/com/idangilboa/justtiers/tier/Gamemodes.java`
-- Test: `src/test/java/com/idangilboa/justtiers/tier/GamemodesTest.java`
+- Create: `src/main/java/com/w0x7y/justtiers/tier/Source.java`
+- Create: `src/main/java/com/w0x7y/justtiers/tier/Gamemode.java`
+- Create: `src/main/java/com/w0x7y/justtiers/tier/Gamemodes.java`
+- Test: `src/test/java/com/w0x7y/justtiers/tier/GamemodesTest.java`
 
 **Interfaces:**
 - Consumes: nothing.
@@ -530,7 +530,7 @@ git commit -m "feat: add Tier value type with LT5..HT1 ordering"
 - [ ] **Step 1: Write the failing test**
 
 ```java
-package com.idangilboa.justtiers.tier;
+package com.w0x7y.justtiers.tier;
 
 import org.junit.jupiter.api.Test;
 
@@ -631,7 +631,7 @@ Expected: FAIL — `Source`, `Gamemode`, `Gamemodes` do not exist.
 - [ ] **Step 3: Write `Source.java`**
 
 ```java
-package com.idangilboa.justtiers.tier;
+package com.w0x7y.justtiers.tier;
 
 public enum Source {
     MCTIERS("MCTiers", "https://mctiers.com/api", 0xFFFF55),
@@ -666,7 +666,7 @@ public enum Source {
 - [ ] **Step 4: Write `Gamemode.java`**
 
 ```java
-package com.idangilboa.justtiers.tier;
+package com.w0x7y.justtiers.tier;
 
 /**
  * One gamemode on one site. {@code slug} is the identifier used by that site's API
@@ -682,7 +682,7 @@ public record Gamemode(Source source, String slug, String displayName, char icon
 Icon codepoints are assigned in alphabetical slug order within each site. Keep this file and `assets/minecraft/font/default.json` (Task 10) in lockstep.
 
 ```java
-package com.idangilboa.justtiers.tier;
+package com.w0x7y.justtiers.tier;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -800,7 +800,7 @@ Expected: PASS, 9 tests.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/main/java/com/idangilboa/justtiers/tier/ src/test/java/com/idangilboa/justtiers/tier/GamemodesTest.java
+git add src/main/java/com/w0x7y/justtiers/tier/ src/test/java/com/w0x7y/justtiers/tier/GamemodesTest.java
 git commit -m "feat: add Source and Gamemode registry for all 32 gamemodes"
 ```
 
@@ -811,8 +811,8 @@ git commit -m "feat: add Source and Gamemode registry for all 32 gamemodes"
 MCTiers and SubTiers serve byte-identical schemas, so one parser covers both.
 
 **Files:**
-- Create: `src/main/java/com/idangilboa/justtiers/api/MctiersParser.java`
-- Test: `src/test/java/com/idangilboa/justtiers/api/MctiersParserTest.java`
+- Create: `src/main/java/com/w0x7y/justtiers/api/MctiersParser.java`
+- Test: `src/test/java/com/w0x7y/justtiers/api/MctiersParserTest.java`
 
 **Interfaces:**
 - Consumes: `Tier.fromMctiers(int, int, boolean)` from Task 2.
@@ -824,9 +824,9 @@ The `marlowwwJson` fixture below is a verbatim capture of
 `GET https://mctiers.com/api/v2/profile/d219c8ee-d32e-4da2-b22e-0aa69d36c88a/rankings`.
 
 ```java
-package com.idangilboa.justtiers.api;
+package com.w0x7y.justtiers.api;
 
-import com.idangilboa.justtiers.tier.Tier;
+import com.w0x7y.justtiers.tier.Tier;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -913,13 +913,13 @@ Expected: FAIL — `MctiersParser` does not exist.
 - [ ] **Step 3: Write `MctiersParser.java`**
 
 ```java
-package com.idangilboa.justtiers.api;
+package com.w0x7y.justtiers.api;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.idangilboa.justtiers.JustTiers;
-import com.idangilboa.justtiers.tier.Tier;
+import com.w0x7y.justtiers.JustTiers;
+import com.w0x7y.justtiers.tier.Tier;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -987,7 +987,7 @@ Expected: PASS, 8 tests.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/main/java/com/idangilboa/justtiers/api/MctiersParser.java src/test/java/com/idangilboa/justtiers/api/MctiersParserTest.java
+git add src/main/java/com/w0x7y/justtiers/api/MctiersParser.java src/test/java/com/w0x7y/justtiers/api/MctiersParserTest.java
 git commit -m "feat: parse MCTiers/SubTiers v2 rankings payload"
 ```
 
@@ -998,8 +998,8 @@ git commit -m "feat: parse MCTiers/SubTiers v2 rankings payload"
 NovaTiers has no per-player endpoint, so this parses the entire `/users` array into a UUID-keyed index once.
 
 **Files:**
-- Create: `src/main/java/com/idangilboa/justtiers/api/NovaParser.java`
-- Test: `src/test/java/com/idangilboa/justtiers/api/NovaParserTest.java`
+- Create: `src/main/java/com/w0x7y/justtiers/api/NovaParser.java`
+- Test: `src/test/java/com/w0x7y/justtiers/api/NovaParserTest.java`
 
 **Interfaces:**
 - Consumes: `Tier.parse(String)` (Task 2), `Gamemodes.normaliseNovaKey(String)` (Task 3).
@@ -1010,9 +1010,9 @@ NovaTiers has no per-player endpoint, so this parses the entire `/users` array i
 The fixture mirrors the real payload shape, including the spaced display-name keys and the separate `retiredTiers` boolean map.
 
 ```java
-package com.idangilboa.justtiers.api;
+package com.w0x7y.justtiers.api;
 
-import com.idangilboa.justtiers.tier.Tier;
+import com.w0x7y.justtiers.tier.Tier;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -1142,15 +1142,15 @@ Expected: FAIL — `NovaParser` does not exist.
 - [ ] **Step 3: Write `NovaParser.java`**
 
 ```java
-package com.idangilboa.justtiers.api;
+package com.w0x7y.justtiers.api;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.idangilboa.justtiers.JustTiers;
-import com.idangilboa.justtiers.tier.Gamemodes;
-import com.idangilboa.justtiers.tier.Tier;
+import com.w0x7y.justtiers.JustTiers;
+import com.w0x7y.justtiers.tier.Gamemodes;
+import com.w0x7y.justtiers.tier.Tier;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -1269,7 +1269,7 @@ Expected: PASS, 12 tests.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/main/java/com/idangilboa/justtiers/api/NovaParser.java src/test/java/com/idangilboa/justtiers/api/NovaParserTest.java
+git add src/main/java/com/w0x7y/justtiers/api/NovaParser.java src/test/java/com/w0x7y/justtiers/api/NovaParserTest.java
 git commit -m "feat: parse NovaTiers bulk user list into a UUID index"
 ```
 
@@ -1280,10 +1280,10 @@ git commit -m "feat: parse NovaTiers bulk user list into a UUID index"
 Three sites, two fetch strategies. The critical behaviour is that **HTTP 404 means "unranked", not "error"** — that is the single most common response you will get.
 
 **Files:**
-- Create: `src/main/java/com/idangilboa/justtiers/api/TierSource.java`
-- Create: `src/main/java/com/idangilboa/justtiers/api/MctiersLikeSource.java`
-- Create: `src/main/java/com/idangilboa/justtiers/api/NovaTiersSource.java`
-- Test: `src/test/java/com/idangilboa/justtiers/api/TierSourceTest.java`
+- Create: `src/main/java/com/w0x7y/justtiers/api/TierSource.java`
+- Create: `src/main/java/com/w0x7y/justtiers/api/MctiersLikeSource.java`
+- Create: `src/main/java/com/w0x7y/justtiers/api/NovaTiersSource.java`
+- Test: `src/test/java/com/w0x7y/justtiers/api/TierSourceTest.java`
 
 **Interfaces:**
 - Consumes: `MctiersParser.parseRankings` (Task 4), `NovaParser.parseUsers` (Task 5), `Source` (Task 3).
@@ -1298,10 +1298,10 @@ Three sites, two fetch strategies. The critical behaviour is that **HTTP 404 mea
 `com.sun.net.httpserver.HttpServer` ships with the JDK, so no new dependency is needed.
 
 ```java
-package com.idangilboa.justtiers.api;
+package com.w0x7y.justtiers.api;
 
-import com.idangilboa.justtiers.tier.Source;
-import com.idangilboa.justtiers.tier.Tier;
+import com.w0x7y.justtiers.tier.Source;
+import com.w0x7y.justtiers.tier.Tier;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -1451,10 +1451,10 @@ Expected: FAIL — `TierSource`, `MctiersLikeSource`, `NovaTiersSource` do not e
 - [ ] **Step 3: Write `TierSource.java`**
 
 ```java
-package com.idangilboa.justtiers.api;
+package com.w0x7y.justtiers.api;
 
-import com.idangilboa.justtiers.tier.Source;
-import com.idangilboa.justtiers.tier.Tier;
+import com.w0x7y.justtiers.tier.Source;
+import com.w0x7y.justtiers.tier.Tier;
 
 import java.util.Map;
 import java.util.UUID;
@@ -1475,11 +1475,11 @@ public interface TierSource {
 - [ ] **Step 4: Write `MctiersLikeSource.java`**
 
 ```java
-package com.idangilboa.justtiers.api;
+package com.w0x7y.justtiers.api;
 
-import com.idangilboa.justtiers.JustTiers;
-import com.idangilboa.justtiers.tier.Source;
-import com.idangilboa.justtiers.tier.Tier;
+import com.w0x7y.justtiers.JustTiers;
+import com.w0x7y.justtiers.tier.Source;
+import com.w0x7y.justtiers.tier.Tier;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -1545,11 +1545,11 @@ public final class MctiersLikeSource implements TierSource {
 NovaTiers has no per-player route, so the whole list is downloaded once and indexed. Concurrent callers share a single in-flight download.
 
 ```java
-package com.idangilboa.justtiers.api;
+package com.w0x7y.justtiers.api;
 
-import com.idangilboa.justtiers.JustTiers;
-import com.idangilboa.justtiers.tier.Source;
-import com.idangilboa.justtiers.tier.Tier;
+import com.w0x7y.justtiers.JustTiers;
+import com.w0x7y.justtiers.tier.Source;
+import com.w0x7y.justtiers.tier.Tier;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -1644,7 +1644,7 @@ Expected: PASS, 9 tests.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/main/java/com/idangilboa/justtiers/api/ src/test/java/com/idangilboa/justtiers/api/TierSourceTest.java
+git add src/main/java/com/w0x7y/justtiers/api/ src/test/java/com/w0x7y/justtiers/api/TierSourceTest.java
 git commit -m "feat: add HTTP tier sources with 404-as-unranked handling"
 ```
 
@@ -1655,8 +1655,8 @@ git commit -m "feat: add HTTP tier sources with 404-as-unranked handling"
 The nametag renderer runs on the render thread and must never block. This cache answers instantly, and schedules fetches in the background.
 
 **Files:**
-- Create: `src/main/java/com/idangilboa/justtiers/cache/TierCache.java`
-- Test: `src/test/java/com/idangilboa/justtiers/cache/TierCacheTest.java`
+- Create: `src/main/java/com/w0x7y/justtiers/cache/TierCache.java`
+- Test: `src/test/java/com/w0x7y/justtiers/cache/TierCacheTest.java`
 
 **Interfaces:**
 - Consumes: `TierSource` (Task 6).
@@ -1669,11 +1669,11 @@ The nametag renderer runs on the render thread and must never block. This cache 
 - [ ] **Step 1: Write the failing test**
 
 ```java
-package com.idangilboa.justtiers.cache;
+package com.w0x7y.justtiers.cache;
 
-import com.idangilboa.justtiers.api.TierSource;
-import com.idangilboa.justtiers.tier.Source;
-import com.idangilboa.justtiers.tier.Tier;
+import com.w0x7y.justtiers.api.TierSource;
+import com.w0x7y.justtiers.tier.Source;
+import com.w0x7y.justtiers.tier.Tier;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -1822,11 +1822,11 @@ Expected: FAIL — `TierCache` does not exist.
 - [ ] **Step 3: Write `TierCache.java`**
 
 ```java
-package com.idangilboa.justtiers.cache;
+package com.w0x7y.justtiers.cache;
 
-import com.idangilboa.justtiers.api.TierSource;
-import com.idangilboa.justtiers.tier.Source;
-import com.idangilboa.justtiers.tier.Tier;
+import com.w0x7y.justtiers.api.TierSource;
+import com.w0x7y.justtiers.tier.Source;
+import com.w0x7y.justtiers.tier.Tier;
 
 import java.util.EnumMap;
 import java.util.List;
@@ -1900,7 +1900,7 @@ Expected: PASS, 8 tests.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/main/java/com/idangilboa/justtiers/cache/ src/test/java/com/idangilboa/justtiers/cache/TierCacheTest.java
+git add src/main/java/com/w0x7y/justtiers/cache/ src/test/java/com/w0x7y/justtiers/cache/TierCacheTest.java
 git commit -m "feat: add non-blocking tier cache with request coalescing"
 ```
 
@@ -1916,10 +1916,10 @@ This is where your four options become behaviour. Read the rules carefully — t
 - "Highest" = lowest `Tier.rank()`. Retired tiers compete normally; on an exact rank tie an active tier wins, then the site's declared gamemode order breaks any remainder.
 
 **Files:**
-- Create: `src/main/java/com/idangilboa/justtiers/resolve/DisplayMode.java`
-- Create: `src/main/java/com/idangilboa/justtiers/resolve/ResolvedTier.java`
-- Create: `src/main/java/com/idangilboa/justtiers/resolve/TierResolver.java`
-- Test: `src/test/java/com/idangilboa/justtiers/resolve/TierResolverTest.java`
+- Create: `src/main/java/com/w0x7y/justtiers/resolve/DisplayMode.java`
+- Create: `src/main/java/com/w0x7y/justtiers/resolve/ResolvedTier.java`
+- Create: `src/main/java/com/w0x7y/justtiers/resolve/TierResolver.java`
+- Test: `src/test/java/com/w0x7y/justtiers/resolve/TierResolverTest.java`
 
 **Interfaces:**
 - Consumes: `Tier`, `Source`, `Gamemode`, `Gamemodes` (Tasks 2-3).
@@ -1932,10 +1932,10 @@ This is where your four options become behaviour. Read the rules carefully — t
 - [ ] **Step 1: Write the failing test**
 
 ```java
-package com.idangilboa.justtiers.resolve;
+package com.w0x7y.justtiers.resolve;
 
-import com.idangilboa.justtiers.tier.Source;
-import com.idangilboa.justtiers.tier.Tier;
+import com.w0x7y.justtiers.tier.Source;
+import com.w0x7y.justtiers.tier.Tier;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -2142,9 +2142,9 @@ Expected: FAIL — `DisplayMode`, `ResolvedTier`, `TierResolver` do not exist.
 - [ ] **Step 3: Write `DisplayMode.java`**
 
 ```java
-package com.idangilboa.justtiers.resolve;
+package com.w0x7y.justtiers.resolve;
 
-import com.idangilboa.justtiers.tier.Source;
+import com.w0x7y.justtiers.tier.Source;
 
 import java.util.Locale;
 import java.util.Optional;
@@ -2177,10 +2177,10 @@ public enum DisplayMode {
 - [ ] **Step 4: Write `ResolvedTier.java`**
 
 ```java
-package com.idangilboa.justtiers.resolve;
+package com.w0x7y.justtiers.resolve;
 
-import com.idangilboa.justtiers.tier.Gamemode;
-import com.idangilboa.justtiers.tier.Tier;
+import com.w0x7y.justtiers.tier.Gamemode;
+import com.w0x7y.justtiers.tier.Tier;
 
 /** One tier to display, together with the gamemode that earned it. */
 public record ResolvedTier(Gamemode gamemode, Tier tier) {
@@ -2190,12 +2190,12 @@ public record ResolvedTier(Gamemode gamemode, Tier tier) {
 - [ ] **Step 5: Write `TierResolver.java`**
 
 ```java
-package com.idangilboa.justtiers.resolve;
+package com.w0x7y.justtiers.resolve;
 
-import com.idangilboa.justtiers.tier.Gamemode;
-import com.idangilboa.justtiers.tier.Gamemodes;
-import com.idangilboa.justtiers.tier.Source;
-import com.idangilboa.justtiers.tier.Tier;
+import com.w0x7y.justtiers.tier.Gamemode;
+import com.w0x7y.justtiers.tier.Gamemodes;
+import com.w0x7y.justtiers.tier.Source;
+import com.w0x7y.justtiers.tier.Tier;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -2286,7 +2286,7 @@ Expected: PASS, 15 tests.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/main/java/com/idangilboa/justtiers/resolve/ src/test/java/com/idangilboa/justtiers/resolve/TierResolverTest.java
+git add src/main/java/com/w0x7y/justtiers/resolve/ src/test/java/com/w0x7y/justtiers/resolve/TierResolverTest.java
 git commit -m "feat: add tier resolver implementing the four display modes"
 ```
 
@@ -2299,9 +2299,9 @@ The text layout lives here, deliberately free of Minecraft types so it can be as
 **Important:** Minecraft multiplies bitmap font glyphs by the text colour, so **icon segments must be pure white** (`0xFFFFFF`) or the artwork will be tinted.
 
 **Files:**
-- Create: `src/main/java/com/idangilboa/justtiers/render/model/Segment.java`
-- Create: `src/main/java/com/idangilboa/justtiers/render/model/NametagModel.java`
-- Test: `src/test/java/com/idangilboa/justtiers/render/model/NametagModelTest.java`
+- Create: `src/main/java/com/w0x7y/justtiers/render/model/Segment.java`
+- Create: `src/main/java/com/w0x7y/justtiers/render/model/NametagModel.java`
+- Test: `src/test/java/com/w0x7y/justtiers/render/model/NametagModelTest.java`
 
 **Interfaces:**
 - Consumes: `ResolvedTier` (Task 8), `Source` (Task 3).
@@ -2314,13 +2314,13 @@ The text layout lives here, deliberately free of Minecraft types so it can be as
 - [ ] **Step 1: Write the failing test**
 
 ```java
-package com.idangilboa.justtiers.render.model;
+package com.w0x7y.justtiers.render.model;
 
-import com.idangilboa.justtiers.resolve.ResolvedTier;
-import com.idangilboa.justtiers.tier.Gamemode;
-import com.idangilboa.justtiers.tier.Gamemodes;
-import com.idangilboa.justtiers.tier.Source;
-import com.idangilboa.justtiers.tier.Tier;
+import com.w0x7y.justtiers.resolve.ResolvedTier;
+import com.w0x7y.justtiers.tier.Gamemode;
+import com.w0x7y.justtiers.tier.Gamemodes;
+import com.w0x7y.justtiers.tier.Source;
+import com.w0x7y.justtiers.tier.Tier;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -2436,7 +2436,7 @@ Expected: FAIL — `Segment` and `NametagModel` do not exist.
 - [ ] **Step 3: Write `Segment.java`**
 
 ```java
-package com.idangilboa.justtiers.render.model;
+package com.w0x7y.justtiers.render.model;
 
 /** A run of nametag text with a single colour. Deliberately Minecraft-free. */
 public record Segment(String text, int color) {
@@ -2446,9 +2446,9 @@ public record Segment(String text, int color) {
 - [ ] **Step 4: Write `NametagModel.java`**
 
 ```java
-package com.idangilboa.justtiers.render.model;
+package com.w0x7y.justtiers.render.model;
 
-import com.idangilboa.justtiers.resolve.ResolvedTier;
+import com.w0x7y.justtiers.resolve.ResolvedTier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -2511,7 +2511,7 @@ Expected: PASS, 9 tests.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/main/java/com/idangilboa/justtiers/render/model/ src/test/java/com/idangilboa/justtiers/render/model/NametagModelTest.java
+git add src/main/java/com/w0x7y/justtiers/render/model/ src/test/java/com/w0x7y/justtiers/render/model/NametagModelTest.java
 git commit -m "feat: add Minecraft-free nametag layout model"
 ```
 
@@ -2520,8 +2520,8 @@ git commit -m "feat: add Minecraft-free nametag layout model"
 ### Task 10: Configuration
 
 **Files:**
-- Create: `src/main/java/com/idangilboa/justtiers/config/JustTiersConfig.java`
-- Test: `src/test/java/com/idangilboa/justtiers/config/JustTiersConfigTest.java`
+- Create: `src/main/java/com/w0x7y/justtiers/config/JustTiersConfig.java`
+- Test: `src/test/java/com/w0x7y/justtiers/config/JustTiersConfigTest.java`
 
 **Interfaces:**
 - Consumes: `DisplayMode` (Task 8), `Source`, `Gamemodes` (Task 3).
@@ -2531,10 +2531,10 @@ git commit -m "feat: add Minecraft-free nametag layout model"
 - [ ] **Step 1: Write the failing test**
 
 ```java
-package com.idangilboa.justtiers.config;
+package com.w0x7y.justtiers.config;
 
-import com.idangilboa.justtiers.resolve.DisplayMode;
-import com.idangilboa.justtiers.tier.Source;
+import com.w0x7y.justtiers.resolve.DisplayMode;
+import com.w0x7y.justtiers.tier.Source;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -2622,14 +2622,14 @@ Expected: FAIL — `JustTiersConfig` does not exist.
 - [ ] **Step 3: Write `JustTiersConfig.java`**
 
 ```java
-package com.idangilboa.justtiers.config;
+package com.w0x7y.justtiers.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.idangilboa.justtiers.JustTiers;
-import com.idangilboa.justtiers.resolve.DisplayMode;
-import com.idangilboa.justtiers.tier.Gamemodes;
-import com.idangilboa.justtiers.tier.Source;
+import com.w0x7y.justtiers.JustTiers;
+import com.w0x7y.justtiers.resolve.DisplayMode;
+import com.w0x7y.justtiers.tier.Gamemodes;
+import com.w0x7y.justtiers.tier.Source;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -2742,7 +2742,7 @@ Expected: PASS, 7 tests.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/main/java/com/idangilboa/justtiers/config/ src/test/java/com/idangilboa/justtiers/config/JustTiersConfigTest.java
+git add src/main/java/com/w0x7y/justtiers/config/ src/test/java/com/w0x7y/justtiers/config/JustTiersConfigTest.java
 git commit -m "feat: add persisted configuration"
 ```
 
@@ -2986,9 +2986,9 @@ git commit -m "feat: add gamemode icon textures and font provider"
 The moment the mod does something visible. `JustTiersClient` wires the object graph, `NametagRenderer` converts segments to a `Component`, and `PlayerMixin` prepends it.
 
 **Files:**
-- Create: `src/main/java/com/idangilboa/justtiers/render/NametagRenderer.java`
-- Create: `src/main/java/com/idangilboa/justtiers/mixin/PlayerMixin.java`
-- Modify: `src/main/java/com/idangilboa/justtiers/JustTiersClient.java`
+- Create: `src/main/java/com/w0x7y/justtiers/render/NametagRenderer.java`
+- Create: `src/main/java/com/w0x7y/justtiers/mixin/PlayerMixin.java`
+- Modify: `src/main/java/com/w0x7y/justtiers/JustTiersClient.java`
 - Modify: `src/main/resources/justtiers.mixins.json`
 - Modify: `build.gradle.kts` (add MixinExtras)
 
@@ -3016,7 +3016,7 @@ dependencies {
 {
   "required": true,
   "minVersion": "0.8",
-  "package": "com.idangilboa.justtiers.mixin",
+  "package": "com.w0x7y.justtiers.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [],
   "client": ["PlayerMixin"],
@@ -3027,16 +3027,16 @@ dependencies {
 - [ ] **Step 3: Write `NametagRenderer.java`**
 
 ```java
-package com.idangilboa.justtiers.render;
+package com.w0x7y.justtiers.render;
 
-import com.idangilboa.justtiers.JustTiersClient;
-import com.idangilboa.justtiers.render.model.NametagModel;
-import com.idangilboa.justtiers.render.model.Segment;
-import com.idangilboa.justtiers.resolve.DisplayMode;
-import com.idangilboa.justtiers.resolve.ResolvedTier;
-import com.idangilboa.justtiers.resolve.TierResolver;
-import com.idangilboa.justtiers.tier.Source;
-import com.idangilboa.justtiers.tier.Tier;
+import com.w0x7y.justtiers.JustTiersClient;
+import com.w0x7y.justtiers.render.model.NametagModel;
+import com.w0x7y.justtiers.render.model.Segment;
+import com.w0x7y.justtiers.resolve.DisplayMode;
+import com.w0x7y.justtiers.resolve.ResolvedTier;
+import com.w0x7y.justtiers.resolve.TierResolver;
+import com.w0x7y.justtiers.tier.Source;
+import com.w0x7y.justtiers.tier.Tier;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 
@@ -3100,9 +3100,9 @@ public final class NametagRenderer {
 `Player#getDisplayName` is the same hook TierTagger uses on 26.2, so it is known to work on this version. Class names are Mojmap.
 
 ```java
-package com.idangilboa.justtiers.mixin;
+package com.w0x7y.justtiers.mixin;
 
-import com.idangilboa.justtiers.render.NametagRenderer;
+import com.w0x7y.justtiers.render.NametagRenderer;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
@@ -3123,13 +3123,13 @@ public class PlayerMixin {
 - [ ] **Step 5: Rewrite `JustTiersClient.java` to wire everything together**
 
 ```java
-package com.idangilboa.justtiers;
+package com.w0x7y.justtiers;
 
-import com.idangilboa.justtiers.api.MctiersLikeSource;
-import com.idangilboa.justtiers.api.NovaTiersSource;
-import com.idangilboa.justtiers.cache.TierCache;
-import com.idangilboa.justtiers.config.JustTiersConfig;
-import com.idangilboa.justtiers.tier.Source;
+import com.w0x7y.justtiers.api.MctiersLikeSource;
+import com.w0x7y.justtiers.api.NovaTiersSource;
+import com.w0x7y.justtiers.cache.TierCache;
+import com.w0x7y.justtiers.config.JustTiersConfig;
+import com.w0x7y.justtiers.tier.Source;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 
@@ -3224,8 +3224,8 @@ git commit -m "feat: render tiers in player nametags"
 Commands rather than a settings GUI: 26.2 moved screen management off `Minecraft` and onto `Gui`, so a custom `Screen` is the most churn-prone surface in this whole mod. Commands are stable, scriptable and need no extra dependency.
 
 **Files:**
-- Create: `src/main/java/com/idangilboa/justtiers/command/JustTiersCommands.java`
-- Modify: `src/main/java/com/idangilboa/justtiers/JustTiersClient.java` (register the commands)
+- Create: `src/main/java/com/w0x7y/justtiers/command/JustTiersCommands.java`
+- Modify: `src/main/java/com/w0x7y/justtiers/JustTiersClient.java` (register the commands)
 
 **Interfaces:**
 - Consumes: `JustTiersClient.config()`, `JustTiersClient.cache()`, `JustTiersClient.novaSource()`, `JustTiersClient.saveConfig()` (Task 12); `Gamemodes`, `Source` (Task 3); `DisplayMode` (Task 8).
@@ -3244,13 +3244,13 @@ Command surface:
 - [ ] **Step 1: Write `JustTiersCommands.java`**
 
 ```java
-package com.idangilboa.justtiers.command;
+package com.w0x7y.justtiers.command;
 
-import com.idangilboa.justtiers.JustTiersClient;
-import com.idangilboa.justtiers.resolve.DisplayMode;
-import com.idangilboa.justtiers.tier.Gamemode;
-import com.idangilboa.justtiers.tier.Gamemodes;
-import com.idangilboa.justtiers.tier.Source;
+import com.w0x7y.justtiers.JustTiersClient;
+import com.w0x7y.justtiers.resolve.DisplayMode;
+import com.w0x7y.justtiers.tier.Gamemode;
+import com.w0x7y.justtiers.tier.Gamemodes;
+import com.w0x7y.justtiers.tier.Source;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
@@ -3385,7 +3385,7 @@ public final class JustTiersCommands {
 Add the import and one call at the end of the method, immediately before the closing log line:
 
 ```java
-import com.idangilboa.justtiers.command.JustTiersCommands;
+import com.w0x7y.justtiers.command.JustTiersCommands;
 ```
 
 ```java
