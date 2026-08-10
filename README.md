@@ -1,2 +1,260 @@
 # Just-Tiers
-A Minecraft mod that displayes a player's tier in a selected gamemode, with support for: MCTiers, SubTiers and NovaTiers.
+
+A Minecraft **Fabric** client mod that shows a player's competitive PvP tier directly in their nametag, using all three major tier leaderboards at once: **MCTiers**, **SubTiers** and **NovaTiers**.
+
+---
+
+## Status
+
+> **In development — not yet released.**
+> The full implementation plan is written and the leaderboard APIs have been verified against the live services, but the mod is not yet built. There is no downloadable jar yet.
+>
+> Plan: [`docs/superpowers/plans/2026-08-11-just-tiers.md`](docs/superpowers/plans/2026-08-11-just-tiers.md)
+
+---
+
+## Why this exists
+
+[TierTagger](https://github.com/mctiers-dev/TierTagger) is the established mod in this space and it is good, but it has two limitations that Just-Tiers is built to fix:
+
+1. **No NovaTiers support.** Only MCTiers and SubTiers are available.
+2. **One leaderboard at a time.** You must pick MCTiers *or* SubTiers; you cannot see both at once.
+
+Just-Tiers supports all three leaderboards, and adds an **All** mode that shows each site's best tier side by side in a single nametag.
+
+---
+
+## Features
+
+- **All three leaderboards** — MCTiers, SubTiers and NovaTiers.
+- **Four display modes** — focus on one site, or show all three at once.
+- **Per-site gamemode selection** — pick the gamemode you care about on each site.
+- **Automatic fallback** — not ranked in your chosen gamemode? It shows that player's highest tier on that same site instead.
+- **Gamemode icons** — a small icon shows *which* gamemode earned the tier.
+- **Colour-coded by site** — you can always tell where a tier came from.
+- **Retired tiers handled properly** — shown with an `R` prefix in light red, and still counted when finding a player's highest tier.
+- **Non-blocking** — all lookups are asynchronous and cached; the mod never stalls your frame rate waiting on a web request.
+- **Client-side only** — works on any server, nothing to install server-side.
+
+---
+
+## The tier system
+
+Tiers run from **LT5** (lowest) to **HT1** (highest). `HT` means "high tier", `LT` means "low tier":
+
+```
+LT5 → HT5 → LT4 → HT4 → LT3 → HT3 → LT2 → HT2 → LT1 → HT1
+lowest                                                highest
+```
+
+A **retired** tier is one a player earned but is no longer actively defending. Just-Tiers displays these with an `R` prefix in light red (for example `RHT1`) and still counts them when working out a player's highest tier — otherwise many well-known players, whose placements are entirely retired, would show nothing at all.
+
+**Peak tiers are ignored.** Only a player's current tier is ever displayed.
+
+---
+
+## Display modes
+
+| Mode | What it shows |
+|---|---|
+| `mctiers_only` | Your selected MCTiers gamemode; falls back to their highest MCTiers tier; shows nothing if untested on MCTiers |
+| `subtiers_only` | Same, for SubTiers |
+| `novatiers_only` | Same, for NovaTiers |
+| `all` *(default)* | The highest tier from **each** site, side by side. Sites where the player is untested are omitted |
+
+Example nametag in `all` mode, where a player is HT2 on MCTiers, LT3 on SubTiers and HT4 on NovaTiers:
+
+```
+[⛏HT2 🏹LT3 ⚔HT4] PlayerName
+  │      │      └── purple = NovaTiers
+  │      └───────── cyan   = SubTiers
+  └──────────────── yellow = MCTiers
+```
+
+Each icon shows the gamemode that earned the tier, so you know a tier came from Axe rather than Vanilla.
+
+### Colours
+
+| Source | Colour | Hex |
+|---|---|---|
+| MCTiers | Yellow | `#FFFF55` |
+| SubTiers | Cyan | `#55FFFF` |
+| NovaTiers | Purple | `#AA55FF` |
+| Retired tier (any site) | Light red | `#FF5555` |
+
+---
+
+## Supported gamemodes
+
+Each leaderboard tests its own gamemodes. They are kept separate and never merged — `Vanilla` on MCTiers and `Vanilla` on NovaTiers are different competitions with different testers.
+
+| Leaderboard | Gamemodes |
+|---|---|
+| **MCTiers** (8) | Axe, Mace, Netherite OP, Pot, SMP, Sword, UHC, Vanilla |
+| **SubTiers** (12) | Bed, Bow, Creeper, DeBuff, Diamond SMP, Diamond Vanilla, Elytra, Manhunt, Minecart, OG Vanilla, Speed, Trident |
+| **NovaTiers** (12) | Axe, Diamond Cart, Diamond OP, Elytra, Elytra Spear, Modern SMP, Pufferfish, SMP, Spear Mace, Spleef, UHC, Vanilla |
+
+---
+
+## Requirements
+
+| | |
+|---|---|
+| Minecraft | 26.2 |
+| Mod loader | Fabric Loader 0.19.3 or newer |
+| Dependency | Fabric API 0.157.0+26.2 or newer |
+| Java | 25 or newer |
+
+---
+
+## Installation
+
+1. Install [Fabric Loader](https://fabricmc.net/use/) for Minecraft 26.2.
+2. Download [Fabric API](https://modrinth.com/mod/fabric-api) for 26.2 and put it in your `mods` folder.
+3. Put the Just-Tiers jar in your `mods` folder.
+4. Launch the game.
+
+---
+
+## Commands
+
+All commands are client-side and start with `/justtiers`.
+
+| Command | Description |
+|---|---|
+| `/justtiers` | Show current settings and cache status |
+| `/justtiers toggle` | Turn the nametag display on or off |
+| `/justtiers mode <mode>` | Set display mode: `mctiers_only`, `subtiers_only`, `novatiers_only`, `all` |
+| `/justtiers gamemode <gamemode>` | Set the selected gamemode for the current single-site mode |
+| `/justtiers refresh` | Re-download tier data and clear the cache |
+
+`/justtiers gamemode` offers tab-completion limited to the gamemodes that actually exist on the site you are currently viewing.
+
+---
+
+## Configuration
+
+Settings are stored in `config/justtiers.json` and are written automatically whenever you change them with a command.
+
+```json
+{
+  "enabled": true,
+  "displayMode": "ALL",
+  "selectedGamemodes": {
+    "MCTIERS": "vanilla",
+    "SUBTIERS": "elytra",
+    "NOVATIERS": "vanilla"
+  },
+  "novaRefreshMinutes": 30
+}
+```
+
+| Key | Meaning |
+|---|---|
+| `enabled` | Master on/off switch for the nametag display |
+| `displayMode` | `MCTIERS_ONLY`, `SUBTIERS_ONLY`, `NOVATIERS_ONLY` or `ALL` |
+| `selectedGamemodes` | The chosen gamemode slug per site |
+| `novaRefreshMinutes` | How often to re-download the NovaTiers list (clamped to 5–1440) |
+
+---
+
+## How it works
+
+Just-Tiers reads three public leaderboard APIs and normalises them into one internal model.
+
+| Leaderboard | Endpoint | Lookup style |
+|---|---|---|
+| MCTiers | `mctiers.com/api/v2/…` | Per player, by UUID |
+| SubTiers | `subtiers.net/api/v2/…` | Per player, by UUID (same schema as MCTiers) |
+| NovaTiers | `novatiers.com/users` | Bulk only — the entire ranked player list in one request |
+
+NovaTiers offers no per-player route, so its full list (several thousand players) is downloaded once, indexed by UUID in memory, and refreshed on a timer. MCTiers and SubTiers are queried per player, with results cached for the session and concurrent requests for the same player coalesced into one.
+
+Every lookup is asynchronous. A player whose data has not arrived yet simply renders with their normal nametag until it does.
+
+**No data is redistributed.** Tier information is fetched from the public APIs at runtime, on your own machine, and is never bundled with the mod or forwarded anywhere.
+
+---
+
+## Building from source
+
+```bash
+git clone https://github.com/w0x7y/Just-Tiers.git
+cd Just-Tiers
+./gradlew build
+```
+
+The jar is written to `build/libs/`.
+
+To run a development client:
+
+```bash
+./gradlew runClient
+```
+
+Requires a JDK 25 toolchain. The Gradle build can provision one automatically.
+
+---
+
+## Licensing
+
+### This project
+
+Just-Tiers is released under the **MIT License**. See [`LICENSE`](LICENSE).
+
+```
+Copyright (c) 2026 Idan Gilboa
+```
+
+### Bundled third-party assets
+
+Some gamemode icon textures are taken from [TierTagger](https://github.com/mctiers-dev/TierTagger), which is licensed under the **Mozilla Public License 2.0**, Copyright © 2025 MCTiers, mctiers.com.
+
+MPL-2.0 is a file-level copyleft licence, so these files remain under MPL-2.0 even though the rest of the project is MIT. They are not relicensed, and they are attributed in the `NOTICE` file shipped with the source.
+
+| Asset | Licence | Origin |
+|---|---|---|
+| MCTiers gamemode icons (8) | MPL-2.0 | TierTagger, © MCTiers |
+| SubTiers gamemode icons (12) | MPL-2.0 | TierTagger, © MCTiers |
+| NovaTiers gamemode icons (12) | MIT | Original work, part of this project |
+| All source code | MIT | This project |
+
+A full copy of the MPL 2.0 is available at <https://mozilla.org/MPL/2.0/>.
+
+### Dependencies
+
+Just-Tiers does not redistribute any of these; they are resolved at build time or provided at runtime by the mod loader.
+
+| Dependency | Licence |
+|---|---|
+| Fabric Loader | Apache-2.0 |
+| Fabric API | Apache-2.0 |
+| Fabric Loom (build only) | MIT |
+| Mixin / MixinExtras | MIT |
+| Gson | Apache-2.0 |
+| JUnit 5 (tests only) | EPL-2.0 |
+
+Minecraft itself is **not** redistributed. You must own a legitimate copy. Minecraft is © Mojang Studios / Microsoft and is governed by the [Minecraft End User Licence Agreement](https://www.minecraft.net/eula). The build uses Mojang's official obfuscation mappings, which are used under the terms Mojang publishes them with and are never redistributed by this project.
+
+### Trademarks and affiliation
+
+Just-Tiers is an **unofficial**, community-made client mod.
+
+It is not affiliated with, endorsed by, sponsored by, or approved by MCTiers, SubTiers, NovaTiers, Mojang Studios, or Microsoft. All product names, logos, trademarks and leaderboard data are the property of their respective owners and are used here only to identify those services.
+
+If you represent one of these leaderboards and want a change to how your data, name or artwork is used, please open an issue.
+
+---
+
+## Credits
+
+- **[TierTagger](https://github.com/mctiers-dev/TierTagger)** by uku and netiyiy — the mod that inspired this one, and the source of the MCTiers and SubTiers gamemode icons.
+- **[MCTiers](https://mctiers.com)**, **[SubTiers](https://subtiers.net)** and **[NovaTiers](https://novatiers.com)** — for running the leaderboards and exposing public APIs.
+
+---
+
+## Contributing
+
+Issues and pull requests are welcome.
+
+When adding a gamemode, three things must stay in sync: the registry in `Gamemodes.java`, the icon codepoint list in `tools/gen_font_provider.py`, and the icon texture itself. The plan document explains the layout in detail.

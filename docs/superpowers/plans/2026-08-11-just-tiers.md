@@ -21,7 +21,7 @@
 - **Peak tiers are parsed but never displayed.** Ignore `peak_tier`/`peak_pos`/`peakTiers` in all resolution and rendering.
 - Nametag format: `[` + entries joined by a single space + `] ` + original name. Brackets are dark grey `0x555555`. Each entry is the gamemode icon glyph followed immediately by the tier label.
 - Never block the render thread on HTTP. A cache miss returns "no tier" and schedules an async fetch.
-- All outbound HTTP must send `User-Agent: Just-Tiers/<modversion> (+https://github.com/idangilboa/Just-Tiers)`.
+- All outbound HTTP must send `User-Agent: Just-Tiers/<modversion> (+https://github.com/w0x7y/Just-Tiers)`.
 
 ## Verified API Reference
 
@@ -230,7 +230,7 @@ tasks.processResources {
   "name": "Just-Tiers",
   "description": "Displays a player's PvP tier in their nametag, from MCTiers, SubTiers and NovaTiers.",
   "authors": ["Idan Gilboa"],
-  "contact": { "sources": "https://github.com/idangilboa/Just-Tiers" },
+  "contact": { "sources": "https://github.com/w0x7y/Just-Tiers" },
   "license": "MIT",
   "environment": "client",
   "entrypoints": {
@@ -262,7 +262,7 @@ public final class JustTiers {
     public static final String MOD_ID = "justtiers";
     public static final String VERSION = "1.0.0";
     public static final String USER_AGENT =
-            "Just-Tiers/" + VERSION + " (+https://github.com/idangilboa/Just-Tiers)";
+            "Just-Tiers/" + VERSION + " (+https://github.com/w0x7y/Just-Tiers)";
 
     public static final Logger LOGGER = LoggerFactory.getLogger("Just-Tiers");
 
