@@ -3,6 +3,7 @@ package com.w0x7y.justtiers;
 import com.w0x7y.justtiers.api.MctiersLikeSource;
 import com.w0x7y.justtiers.api.NovaTiersSource;
 import com.w0x7y.justtiers.cache.TierCache;
+import com.w0x7y.justtiers.command.JustTiersCommands;
 import com.w0x7y.justtiers.config.JustTiersConfig;
 import com.w0x7y.justtiers.tier.Source;
 import net.fabricmc.api.ClientModInitializer;
@@ -46,6 +47,8 @@ public class JustTiersClient implements ClientModInitializer {
                     cache.invalidateAll();
                 },
                 config.getNovaRefreshMinutes(), config.getNovaRefreshMinutes(), TimeUnit.MINUTES);
+
+        JustTiersCommands.register();
 
         JustTiers.LOGGER.info("Just-Tiers {} ready (mode {})",
                 JustTiers.VERSION, config.getDisplayMode());
