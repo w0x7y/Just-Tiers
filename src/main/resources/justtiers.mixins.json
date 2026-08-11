@@ -4,6 +4,6 @@
   "package": "com.w0x7y.justtiers.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [],
-  "client": [],
+  "client": ["PlayerMixin"],
   "injectors": { "defaultRequire": 1 }
 }
