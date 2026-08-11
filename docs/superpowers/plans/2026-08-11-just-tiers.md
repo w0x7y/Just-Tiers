@@ -2633,6 +2633,50 @@ class JustTiersConfigTest {
         config.setNovaRefreshMinutes(100_000);
         assertEquals(1440, config.getNovaRefreshMinutes());
     }
+
+    @Test
+    void loadClampsAnOutOfRangeNovaRefreshMinutes(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("unclamped.json");
+        Files.writeString(file, """
+                {"enabled":true,"displayMode":"ALL",
+                 "selectedGamemodes":{},
+                 "novaRefreshMinutes":999999}
+                """);
+        assertEquals(1440, JustTiersConfig.load(file).getNovaRefreshMinutes());
+    }
+
+    @Test
+    void saveWritesDisplayModeAsLowerCaseId(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("lowercase.json");
+        JustTiersConfig config = new JustTiersConfig();
+        config.setDisplayMode(DisplayMode.MCTIERS_ONLY);
+        config.save(file);
+        String written = Files.readString(file);
+        assertTrue(written.contains("\"mctiers_only\""));
+        assertFalse(written.contains("\"MCTIERS_ONLY\""));
+    }
+
+    @Test
+    void loadingLegacyUppercaseDisplayModeStillResolves(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("legacy.json");
+        Files.writeString(file, """
+                {"enabled":true,"displayMode":"MCTIERS_ONLY",
+                 "selectedGamemodes":{},
+                 "novaRefreshMinutes":30}
+                """);
+        assertEquals(DisplayMode.MCTIERS_ONLY, JustTiersConfig.load(file).getDisplayMode());
+    }
+
+    @Test
+    void loadingAnUnrecognisedDisplayModeFallsBackToAll(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("unrecognised.json");
+        Files.writeString(file, """
+                {"enabled":true,"displayMode":"not_a_real_mode",
+                 "selectedGamemodes":{},
+                 "novaRefreshMinutes":30}
+                """);
+        assertEquals(DisplayMode.ALL, JustTiersConfig.load(file).getDisplayMode());
+    }
 }
 ```
 
@@ -2648,6 +2692,10 @@ package com.w0x7y.justtiers.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
+import com.google.gson.stream.JsonWriter;
 import com.w0x7y.justtiers.JustTiers;
 import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Gamemodes;
@@ -2664,7 +2712,42 @@ import java.util.Map;
 
 public class JustTiersConfig {
 
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final Gson GSON = new GsonBuilder()
+            .setPrettyPrinting()
+            .registerTypeAdapter(DisplayMode.class, new DisplayModeAdapter())
+            .create();
+
+    /**
+     * Persists {@link DisplayMode} as its lower-case {@link DisplayMode#id()} (the
+     * documented on-disk/command-argument format), while still reading back the legacy
+     * upper-case {@code name()} form that earlier builds wrote. An absent field keeps
+     * whatever default the containing object already had; an explicit {@code null} or an
+     * unrecognised string both fall back to {@link DisplayMode#ALL} with a warning naming
+     * the offending value, rather than failing silently.
+     */
+    private static final class DisplayModeAdapter extends TypeAdapter<DisplayMode> {
+        @Override
+        public void write(JsonWriter out, DisplayMode value) throws IOException {
+            out.value((value == null ? DisplayMode.ALL : value).id());
+        }
+
+        @Override
+        public DisplayMode read(JsonReader in) throws IOException {
+            if (in.peek() == JsonToken.NULL) {
+                in.nextNull();
+                JustTiers.LOGGER.warn("Config displayMode was null, using default {}", DisplayMode.ALL);
+                return DisplayMode.ALL;
+            }
+            String raw = in.nextString();
+            for (DisplayMode mode : DisplayMode.values()) {
+                if (mode.id().equalsIgnoreCase(raw)) {
+                    return mode;
+                }
+            }
+            JustTiers.LOGGER.warn("Unrecognised config displayMode '{}', using default {}", raw, DisplayMode.ALL);
+            return DisplayMode.ALL;
+        }
+    }
 
     private static final Map<Source, String> DEFAULT_GAMEMODES = Map.of(
             Source.MCTIERS, "vanilla",
@@ -2733,7 +2816,12 @@ public class JustTiersConfig {
         }
         try (Reader reader = Files.newBufferedReader(path)) {
             JustTiersConfig config = GSON.fromJson(reader, JustTiersConfig.class);
-            return config == null ? new JustTiersConfig() : config;
+            if (config == null) {
+                return new JustTiersConfig();
+            }
+            // clamp bypassed by reflection during deserialization
+            config.setNovaRefreshMinutes(config.getNovaRefreshMinutes());
+            return config;
         } catch (IOException | RuntimeException e) {
             JustTiers.LOGGER.warn("Could not read config at {}, using defaults", path, e);
             return new JustTiersConfig();
@@ -2759,7 +2847,7 @@ public class JustTiersConfig {
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `./gradlew test --tests '*JustTiersConfigTest*'`
-Expected: PASS, 7 tests.
+Expected: PASS, 11 tests.
 
 - [ ] **Step 5: Commit**
 
@@ -3447,7 +3535,7 @@ git commit -m "feat: add /justtiers client commands"
 
 Run before calling the mod done:
 
-- [ ] `./gradlew build` succeeds with all tests green: 9 test classes, 85 tests (Tier 7, Gamemodes 9, MctiersParser 8, NovaParser 13, TierSource 9, TierCache 8, TierResolver 15, NametagModel 9, JustTiersConfig 7).
+- [ ] `./gradlew build` succeeds with all tests green: 9 test classes, 89 tests (Tier 7, Gamemodes 9, MctiersParser 8, NovaParser 13, TierSource 9, TierCache 8, TierResolver 15, NametagModel 9, JustTiersConfig 11).
 - [ ] `python3 tools/gen_font_provider.py` reports 32 providers and the texture-existence check in Task 11 Step 6 reports 0 missing.
 - [ ] Every codepoint in `Gamemodes.java` has a matching provider in `assets/minecraft/font/default.json`. These files are generated from the same ordering but are not mechanically linked, so eyeball them together after any gamemode change.
 - [ ] In game with `mode=all`, a player ranked on two sites shows exactly two entries, coloured yellow/cyan/purple by site.

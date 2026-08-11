@@ -2,6 +2,10 @@ package com.w0x7y.justtiers.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
+import com.google.gson.stream.JsonWriter;
 import com.w0x7y.justtiers.JustTiers;
 import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Gamemodes;
@@ -18,7 +22,42 @@ import java.util.Map;
 
 public class JustTiersConfig {
 
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final Gson GSON = new GsonBuilder()
+            .setPrettyPrinting()
+            .registerTypeAdapter(DisplayMode.class, new DisplayModeAdapter())
+            .create();
+
+    /**
+     * Persists {@link DisplayMode} as its lower-case {@link DisplayMode#id()} (the
+     * documented on-disk/command-argument format), while still reading back the legacy
+     * upper-case {@code name()} form that earlier builds wrote. An absent field keeps
+     * whatever default the containing object already had; an explicit {@code null} or an
+     * unrecognised string both fall back to {@link DisplayMode#ALL} with a warning naming
+     * the offending value, rather than failing silently.
+     */
+    private static final class DisplayModeAdapter extends TypeAdapter<DisplayMode> {
+        @Override
+        public void write(JsonWriter out, DisplayMode value) throws IOException {
+            out.value((value == null ? DisplayMode.ALL : value).id());
+        }
+
+        @Override
+        public DisplayMode read(JsonReader in) throws IOException {
+            if (in.peek() == JsonToken.NULL) {
+                in.nextNull();
+                JustTiers.LOGGER.warn("Config displayMode was null, using default {}", DisplayMode.ALL);
+                return DisplayMode.ALL;
+            }
+            String raw = in.nextString();
+            for (DisplayMode mode : DisplayMode.values()) {
+                if (mode.id().equalsIgnoreCase(raw)) {
+                    return mode;
+                }
+            }
+            JustTiers.LOGGER.warn("Unrecognised config displayMode '{}', using default {}", raw, DisplayMode.ALL);
+            return DisplayMode.ALL;
+        }
+    }
 
     private static final Map<Source, String> DEFAULT_GAMEMODES = Map.of(
             Source.MCTIERS, "vanilla",
@@ -87,7 +126,12 @@ public class JustTiersConfig {
         }
         try (Reader reader = Files.newBufferedReader(path)) {
             JustTiersConfig config = GSON.fromJson(reader, JustTiersConfig.class);
-            return config == null ? new JustTiersConfig() : config;
+            if (config == null) {
+                return new JustTiersConfig();
+            }
+            // clamp bypassed by reflection during deserialization
+            config.setNovaRefreshMinutes(config.getNovaRefreshMinutes());
+            return config;
         } catch (IOException | RuntimeException e) {
             JustTiers.LOGGER.warn("Could not read config at {}, using defaults", path, e);
             return new JustTiersConfig();
