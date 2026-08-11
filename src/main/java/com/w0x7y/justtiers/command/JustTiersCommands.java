@@ -25,6 +25,7 @@ public final class JustTiersCommands {
                 dispatcher.register(literal("justtiers")
                         .executes(JustTiersCommands::status)
                         .then(literal("toggle").executes(JustTiersCommands::toggle))
+                        .then(literal("retired").executes(JustTiersCommands::toggleRetired))
                         .then(literal("refresh").executes(JustTiersCommands::refresh))
                         .then(literal("mode")
                                 .then(argument("mode", StringArgumentType.word())
@@ -63,6 +64,8 @@ public final class JustTiersCommands {
         var config = JustTiersClient.config();
         reply(context, "Enabled: " + config.isEnabled(), ChatFormatting.WHITE);
         reply(context, "Mode: " + config.getDisplayMode().id(), ChatFormatting.WHITE);
+        reply(context, "Retired tiers: " + (config.isShowRetired() ? "shown" : "hidden"),
+                ChatFormatting.WHITE);
         for (Source source : Source.values()) {
             String slug = config.selectedGamemode(source);
             String title = Gamemodes.find(source, slug).map(Gamemode::displayName).orElse(slug);
@@ -80,6 +83,17 @@ public final class JustTiersCommands {
         JustTiersClient.saveConfig();
         reply(context, config.isEnabled() ? "Enabled" : "Disabled",
                 config.isEnabled() ? ChatFormatting.GREEN : ChatFormatting.RED);
+        return 1;
+    }
+
+    private static int toggleRetired(CommandContext<FabricClientCommandSource> context) {
+        var config = JustTiersClient.config();
+        config.setShowRetired(!config.isShowRetired());
+        JustTiersClient.saveConfig();
+        reply(context, config.isShowRetired()
+                        ? "Showing retired tiers"
+                        : "Hiding retired tiers",
+                config.isShowRetired() ? ChatFormatting.GREEN : ChatFormatting.YELLOW);
         return 1;
     }
 

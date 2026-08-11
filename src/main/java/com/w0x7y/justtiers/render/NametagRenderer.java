@@ -14,7 +14,6 @@ import net.minecraft.network.chat.MutableComponent;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 /** Converts resolved tiers into the Component prefix shown in front of a player's name. */
@@ -33,17 +32,19 @@ public final class NametagRenderer {
         DisplayMode mode = config.getDisplayMode();
         Map<Source, Map<String, Tier>> tiersBySource = new EnumMap<>(Source.class);
 
+        // Sources still in flight are simply left out, so a badge appears as soon as the
+        // first site answers instead of waiting on the slowest one. It fills in over the
+        // next few frames as the others land.
         for (Source source : sourcesFor(mode)) {
-            Optional<Map<String, Tier>> tiers = JustTiersClient.cache().peek(source, uuid);
-            if (tiers.isEmpty()) {
-                // Still loading. Render the plain name now; the nametag refreshes next frame.
-                return original;
-            }
-            tiersBySource.put(source, tiers.get());
+            JustTiersClient.cache().peek(source, uuid)
+                    .ifPresent(tiers -> tiersBySource.put(source, tiers));
+        }
+        if (tiersBySource.isEmpty()) {
+            return original;
         }
 
-        List<ResolvedTier> resolved =
-                TierResolver.resolve(mode, tiersBySource, config.selectedGamemodesBySource());
+        List<ResolvedTier> resolved = TierResolver.resolve(
+                mode, tiersBySource, config.selectedGamemodesBySource(), config.isShowRetired());
         List<Segment> segments = NametagModel.build(resolved);
         if (segments.isEmpty()) {
             return original;

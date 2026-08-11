@@ -197,4 +197,68 @@ class TierResolverTest {
         assertEquals(java.util.Optional.of(Source.NOVATIERS), DisplayMode.NOVATIERS_ONLY.singleSource());
         assertEquals(java.util.Optional.empty(), DisplayMode.ALL.singleSource());
     }
+
+    // --- hiding retired tiers (showRetired = false) ---
+
+    @Test
+    void hidingRetiredFallsBackToTheBestActiveTierInAllMode() {
+        List<ResolvedTier> result = TierResolver.resolve(
+                DisplayMode.ALL,
+                Map.of(Source.MCTIERS, Map.of("vanilla", retiredHt(1), "axe", lt(3))),
+                SELECTED,
+                false);
+
+        assertEquals(1, result.size());
+        assertEquals("axe", result.get(0).gamemode().slug());
+        assertEquals("LT3", result.get(0).tier().label());
+    }
+
+    @Test
+    void hidingRetiredDropsTheSiteEntirelyWhenEveryTierIsRetired() {
+        List<ResolvedTier> result = TierResolver.resolve(
+                DisplayMode.ALL,
+                Map.of(Source.MCTIERS, Map.of("vanilla", retiredHt(1), "axe", retiredHt(4))),
+                SELECTED,
+                false);
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void hidingRetiredAlsoAppliesToSingleSiteModes() {
+        List<ResolvedTier> result = TierResolver.resolve(
+                DisplayMode.MCTIERS_ONLY,
+                Map.of(Source.MCTIERS, Map.of("vanilla", retiredHt(1), "axe", ht(5))),
+                SELECTED,
+                false);
+
+        assertEquals(1, result.size());
+        assertEquals("axe", result.get(0).gamemode().slug());
+        assertEquals("HT5", result.get(0).tier().label());
+    }
+
+    @Test
+    void hidingRetiredLeavesOtherSitesUntouched() {
+        List<ResolvedTier> result = TierResolver.resolve(
+                DisplayMode.ALL,
+                Map.of(Source.MCTIERS, Map.of("vanilla", retiredHt(1)),
+                       Source.NOVATIERS, Map.of("uhc", ht(2))),
+                SELECTED,
+                false);
+
+        assertEquals(1, result.size());
+        assertEquals(Source.NOVATIERS, result.get(0).gamemode().source());
+        assertEquals("HT2", result.get(0).tier().label());
+    }
+
+    @Test
+    void theThreeArgOverloadStillShowsRetiredTiers() {
+        List<ResolvedTier> result = TierResolver.resolve(
+                DisplayMode.ALL,
+                Map.of(Source.MCTIERS, Map.of("vanilla", retiredHt(1), "axe", lt(3))),
+                SELECTED);
+
+        assertEquals(1, result.size());
+        assertEquals("RHT1", result.get(0).tier().label());
+    }
 }

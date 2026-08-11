@@ -57,12 +57,12 @@ class NametagModelTest {
     }
 
     @Test
-    void retiredTiersOverrideTheSiteColourWithLightRed() {
+    void retiredTiersKeepTheirSiteColourAndAreMarkedOnlyByTheRPrefix() {
         List<Segment> segments = NametagModel.build(
                 List.of(resolved(Source.MCTIERS, "vanilla", new Tier(1, true, true))));
 
         Segment tier = segments.stream().filter(s -> s.text().equals("RHT1")).findFirst().orElseThrow();
-        assertEquals(NametagModel.RETIRED_COLOR, tier.color());
+        assertEquals(Source.MCTIERS.color(), tier.color());
         assertEquals("[\uE108RHT1] ", NametagModel.plainText(segments));
     }
 
@@ -98,7 +98,7 @@ class NametagModelTest {
     }
 
     @Test
-    void mixedActiveAndRetiredEntriesKeepIndependentColours() {
+    void retiredAndActiveEntriesAreEachColouredBySite() {
         List<Segment> segments = NametagModel.build(List.of(
                 resolved(Source.MCTIERS, "axe", new Tier(1, true, true)),
                 resolved(Source.NOVATIERS, "uhc", new Tier(4, true, false))));
@@ -106,7 +106,7 @@ class NametagModelTest {
         Segment retired = segments.stream().filter(s -> s.text().equals("RHT1")).findFirst().orElseThrow();
         Segment active = segments.stream().filter(s -> s.text().equals("HT4")).findFirst().orElseThrow();
 
-        assertEquals(NametagModel.RETIRED_COLOR, retired.color());
+        assertEquals(Source.MCTIERS.color(), retired.color());
         assertEquals(Source.NOVATIERS.color(), active.color());
     }
 }

@@ -7,6 +7,8 @@ import com.w0x7y.justtiers.tier.Tier;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -20,11 +22,41 @@ public final class TierResolver {
     public static List<ResolvedTier> resolve(DisplayMode mode,
                                              Map<Source, Map<String, Tier>> tiersBySource,
                                              Map<Source, String> selectedGamemodes) {
+        return resolve(mode, tiersBySource, selectedGamemodes, true);
+    }
+
+    /**
+     * When {@code showRetired} is false, retired tiers are discarded before anything else
+     * runs, in every mode. A player whose best tier is retired therefore falls back to
+     * their best active tier rather than disappearing, and one who is only ever retired
+     * shows nothing for that site.
+     */
+    public static List<ResolvedTier> resolve(DisplayMode mode,
+                                             Map<Source, Map<String, Tier>> tiersBySource,
+                                             Map<Source, String> selectedGamemodes,
+                                             boolean showRetired) {
+        Map<Source, Map<String, Tier>> effective =
+                showRetired ? tiersBySource : withoutRetired(tiersBySource);
         Optional<Source> single = mode.singleSource();
         if (single.isPresent()) {
-            return resolveSingleSite(single.get(), tiersBySource, selectedGamemodes);
+            return resolveSingleSite(single.get(), effective, selectedGamemodes);
         }
-        return resolveAll(tiersBySource);
+        return resolveAll(effective);
+    }
+
+    private static Map<Source, Map<String, Tier>> withoutRetired(
+            Map<Source, Map<String, Tier>> tiersBySource) {
+        Map<Source, Map<String, Tier>> filtered = new EnumMap<>(Source.class);
+        tiersBySource.forEach((source, tiers) -> {
+            Map<String, Tier> active = new LinkedHashMap<>();
+            tiers.forEach((slug, tier) -> {
+                if (!tier.retired()) {
+                    active.put(slug, tier);
+                }
+            });
+            filtered.put(source, active);
+        });
+        return filtered;
     }
 
     private static List<ResolvedTier> resolveSingleSite(Source source,
