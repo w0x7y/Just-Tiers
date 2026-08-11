@@ -1,0 +1,110 @@
+package com.w0x7y.justtiers.config;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.w0x7y.justtiers.JustTiers;
+import com.w0x7y.justtiers.resolve.DisplayMode;
+import com.w0x7y.justtiers.tier.Gamemodes;
+import com.w0x7y.justtiers.tier.Source;
+
+import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Map;
+
+public class JustTiersConfig {
+
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+
+    private static final Map<Source, String> DEFAULT_GAMEMODES = Map.of(
+            Source.MCTIERS, "vanilla",
+            Source.SUBTIERS, "elytra",
+            Source.NOVATIERS, "vanilla");
+
+    private boolean enabled = true;
+    private DisplayMode displayMode = DisplayMode.ALL;
+    private Map<String, String> selectedGamemodes = new HashMap<>();
+    private int novaRefreshMinutes = 30;
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public DisplayMode getDisplayMode() {
+        return displayMode == null ? DisplayMode.ALL : displayMode;
+    }
+
+    public void setDisplayMode(DisplayMode displayMode) {
+        this.displayMode = displayMode;
+    }
+
+    public int getNovaRefreshMinutes() {
+        return novaRefreshMinutes;
+    }
+
+    public void setNovaRefreshMinutes(int minutes) {
+        this.novaRefreshMinutes = Math.clamp(minutes, 5, 1440);
+    }
+
+    /** Falls back to the site default when the stored slug is absent or no longer valid. */
+    public String selectedGamemode(Source source) {
+        if (selectedGamemodes == null) {
+            selectedGamemodes = new HashMap<>();
+        }
+        String slug = selectedGamemodes.get(source.name());
+        if (slug != null && Gamemodes.find(source, slug).isPresent()) {
+            return slug;
+        }
+        return DEFAULT_GAMEMODES.get(source);
+    }
+
+    public void setSelectedGamemode(Source source, String slug) {
+        if (selectedGamemodes == null) {
+            selectedGamemodes = new HashMap<>();
+        }
+        selectedGamemodes.put(source.name(), slug);
+    }
+
+    public Map<Source, String> selectedGamemodesBySource() {
+        Map<Source, String> result = new EnumMap<>(Source.class);
+        for (Source source : Source.values()) {
+            result.put(source, selectedGamemode(source));
+        }
+        return result;
+    }
+
+    public static JustTiersConfig load(Path path) {
+        if (!Files.isRegularFile(path)) {
+            return new JustTiersConfig();
+        }
+        try (Reader reader = Files.newBufferedReader(path)) {
+            JustTiersConfig config = GSON.fromJson(reader, JustTiersConfig.class);
+            return config == null ? new JustTiersConfig() : config;
+        } catch (IOException | RuntimeException e) {
+            JustTiers.LOGGER.warn("Could not read config at {}, using defaults", path, e);
+            return new JustTiersConfig();
+        }
+    }
+
+    public void save(Path path) {
+        try {
+            Path parent = path.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+            try (Writer writer = Files.newBufferedWriter(path)) {
+                GSON.toJson(this, writer);
+            }
+        } catch (IOException e) {
+            JustTiers.LOGGER.warn("Could not save config to {}", path, e);
+        }
+    }
+}
