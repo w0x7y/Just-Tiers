@@ -14,6 +14,8 @@ import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -27,6 +29,9 @@ class TierSourceTest {
 
     private static final UUID PLAYER = UUID.fromString("4b25be24-97f5-4adf-967d-8d69ef54d504");
 
+    private final Map<String, int[]> routes = new ConcurrentHashMap<>();
+    private final Map<String, String> bodies = new ConcurrentHashMap<>();
+
     @BeforeEach
     void startServer() throws IOException {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -39,17 +44,28 @@ class TierSourceTest {
         server.stop(0);
     }
 
+    /**
+     * Registers (or replaces) the canned response for a path. Calling this twice for the
+     * same path swaps the answer, which is how the retry tests move a site from failing
+     * back to healthy mid-test.
+     */
     private void respond(String path, int status, String body) {
-        server.createContext(path, exchange -> {
-            requestCount.incrementAndGet();
-            byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
-            exchange.sendResponseHeaders(status, bytes.length == 0 ? -1 : bytes.length);
-            if (bytes.length > 0) {
-                try (OutputStream out = exchange.getResponseBody()) {
-                    out.write(bytes);
+        if (routes.put(path, new int[]{status}) == null) {
+            server.createContext(path, exchange -> {
+                requestCount.incrementAndGet();
+                byte[] bytes = bodies.get(path).getBytes(StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(
+                        routes.get(path)[0], bytes.length == 0 ? -1 : bytes.length);
+                if (bytes.length > 0) {
+                    try (OutputStream out = exchange.getResponseBody()) {
+                        out.write(bytes);
+                    }
                 }
-            }
-        });
+            });
+        } else {
+            routes.get(path)[0] = status;
+        }
+        bodies.put(path, body);
     }
 
     // --- MctiersLikeSource ---
@@ -73,18 +89,26 @@ class TierSourceTest {
     }
 
     @Test
-    void serverErrorsResolveToEmptyRatherThanThrowing() throws Exception {
+    void serverErrorsFailRatherThanLookingLikeAnUnrankedPlayer() {
         respond("/v2/profile/" + PLAYER + "/rankings", 500, "boom");
-        assertTrue(new MctiersLikeSource(Source.MCTIERS, client, baseUrl)
-                .fetch(PLAYER).get().isEmpty());
+        ExecutionException thrown = assertThrows(ExecutionException.class,
+                () -> new MctiersLikeSource(Source.MCTIERS, client, baseUrl).fetch(PLAYER).get());
+        assertInstanceOf(TierLookupException.class, thrown.getCause());
     }
 
     @Test
-    void connectionFailuresResolveToEmptyRatherThanThrowing() throws Exception {
-        // Nothing is listening on this port path; the future must still complete.
+    void connectionFailuresFailRatherThanLookingLikeAnUnrankedPlayer() {
+        // Nothing is listening here, so the transport error must reach the caller.
         MctiersLikeSource dead = new MctiersLikeSource(
                 Source.MCTIERS, client, "http://127.0.0.1:1");
-        assertTrue(dead.fetch(PLAYER).get().isEmpty());
+        assertThrows(ExecutionException.class, () -> dead.fetch(PLAYER).get());
+    }
+
+    @Test
+    void a404IsStillAGenuineUnrankedAnswer() throws Exception {
+        respond("/v2/profile/" + PLAYER + "/rankings", 404, "");
+        assertTrue(new MctiersLikeSource(Source.MCTIERS, client, baseUrl)
+                .fetch(PLAYER).get().isEmpty());
     }
 
     @Test
@@ -92,6 +116,11 @@ class TierSourceTest {
         assertEquals(Source.SUBTIERS,
                 new MctiersLikeSource(Source.SUBTIERS, client, baseUrl).source());
     }
+
+    private static final String ONE_USER = """
+            [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504",
+              "tiers":{"Axe":"HT3"},"retiredTiers":{}}]
+            """;
 
     // --- NovaTiersSource ---
 
@@ -134,10 +163,35 @@ class TierSourceTest {
     }
 
     @Test
-    void novaSurvivesAFailedFetch() throws Exception {
+    void novaReportsAFailedDownloadInsteadOfAnEmptyIndex() {
         respond("/users", 503, "");
         NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
-        assertTrue(nova.fetch(PLAYER).get().isEmpty());
+        assertThrows(ExecutionException.class, () -> nova.fetch(PLAYER).get());
         assertEquals(0, nova.indexedPlayerCount());
+    }
+
+    @Test
+    void novaRetriesAfterAFailedFirstDownloadRatherThanReplayingTheError() throws Exception {
+        respond("/users", 503, "");
+        NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
+        assertThrows(ExecutionException.class, () -> nova.fetch(PLAYER).get());
+
+        respond("/users", 200, ONE_USER);
+        assertFalse(nova.fetch(PLAYER).get().isEmpty());
+    }
+
+    @Test
+    void novaKeepsTheExistingIndexWhenARefreshFails() throws Exception {
+        respond("/users", 200, ONE_USER);
+        NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
+        assertFalse(nova.fetch(PLAYER).get().isEmpty());
+        int indexed = nova.indexedPlayerCount();
+        assertTrue(indexed > 0);
+
+        respond("/users", 503, "");
+        nova.refresh().get();
+
+        assertFalse(nova.fetch(PLAYER).get().isEmpty(), "stale index must survive a failed refresh");
+        assertEquals(indexed, nova.indexedPlayerCount());
     }
 }

@@ -47,17 +47,47 @@ public final class NovaTiersSource implements TierSource {
     }
 
     private synchronized CompletableFuture<Map<UUID, Map<String, Tier>>> ensureLoaded() {
-        if (index == null) {
-            index = download();
+        if (usableIndex() == null) {
+            index = loadIndex(null);
         }
         return index;
     }
 
-    /** Discards the cached index and downloads it again. */
-    public synchronized CompletableFuture<Void> refresh() {
-        index = download();
-        return index.thenAccept(idx -> { });
+    /**
+     * The cached index, or {@code null} when there is none worth keeping. A download still
+     * in flight counts as usable so that callers join it instead of starting a second one;
+     * one that already failed does not, so the next lookup retries rather than replaying
+     * the old error forever.
+     */
+    private CompletableFuture<Map<UUID, Map<String, Tier>>> usableIndex() {
+        return index == null || index.isCompletedExceptionally() ? null : index;
     }
+
+    /**
+     * Downloads the list again. A failed refresh keeps the index we already have rather
+     * than replacing it with nothing, so a site outage cannot blank every NovaTiers badge
+     * until the next successful refresh. The returned future never fails; it only signals
+     * that the attempt has finished.
+     */
+    public synchronized CompletableFuture<Void> refresh() {
+        index = loadIndex(usableIndex());
+        return index.handle((idx, error) -> null);
+    }
+
+    private CompletableFuture<Map<UUID, Map<String, Tier>>> loadIndex(
+            CompletableFuture<Map<UUID, Map<String, Tier>>> previous) {
+        CompletableFuture<Map<UUID, Map<String, Tier>>> fresh = download();
+        if (previous == null) {
+            // Nothing worth keeping yet, so let the failure surface to the caller.
+            return fresh;
+        }
+        return fresh.exceptionallyCompose(error -> {
+            JustTiers.LOGGER.warn("NovaTiers refresh failed, keeping {} indexed players: {}",
+                    indexedPlayerCount, error.toString());
+            return previous;
+        });
+    }
+
 
     private CompletableFuture<Map<UUID, Map<String, Tier>>> download() {
         HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl + "/users"))
@@ -70,8 +100,8 @@ public final class NovaTiersSource implements TierSource {
         return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenApply(response -> {
                     if (response.statusCode() != 200) {
-                        JustTiers.LOGGER.warn("NovaTiers returned HTTP {}", response.statusCode());
-                        return Map.<UUID, Map<String, Tier>>of();
+                        throw new TierLookupException(
+                                "NovaTiers returned HTTP " + response.statusCode());
                     }
                     Map<UUID, Map<String, Tier>> parsed = NovaParser.parseUsers(response.body());
                     if (parsed.isEmpty() && response.body() != null && response.body().length() > 2) {
@@ -80,15 +110,8 @@ public final class NovaTiersSource implements TierSource {
                                         + "the response schema may have changed");
                     }
                     JustTiers.LOGGER.info("Indexed {} NovaTiers players", parsed.size());
+                    indexedPlayerCount = parsed.size();
                     return parsed;
-                })
-                .exceptionally(throwable -> {
-                    JustTiers.LOGGER.warn("NovaTiers download failed: {}", throwable.toString());
-                    return Map.of();
-                })
-                .thenApply(idx -> {
-                    indexedPlayerCount = idx.size();
-                    return idx;
                 });
     }
 }

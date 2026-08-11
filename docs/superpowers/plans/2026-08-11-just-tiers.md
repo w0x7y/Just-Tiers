@@ -1483,8 +1483,10 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Fetches one player's tiers from one site. Implementations never fail the returned
- * future: unreachable services and unranked players both resolve to an empty map.
+ * Fetches one player's tiers from one site. An empty map means the site answered and
+ * the player is genuinely unranked. A lookup that could not be completed — a transport
+ * failure, or any HTTP status other than 200 and 404 — fails the returned future instead,
+ * so callers can retry rather than caching "unranked" for a site that was merely down.
  */
 public interface TierSource {
 
@@ -3549,4 +3551,4 @@ Deliberately out of scope, recorded so they are not mistaken for oversights:
 - **Gamemode lists are compiled in.** MCTiers and SubTiers publish `/v2/mode/list`, so new gamemodes could be discovered at runtime, but icons and codepoints still have to ship with the mod. Unknown slugs returned by the API are ignored rather than rendered without an icon. Adding a gamemode means editing `Gamemodes.java`, `tools/gen_font_provider.py` and adding a texture.
 - **No cross-site gamemode merging.** `Vanilla` on MCTiers and `Vanilla` on NovaTiers stay separate entries, per the agreed design. Only five gamemode names overlap between sites at all.
 - **Tab list is untouched.** Tiers appear in nametags only, as specified.
-- **Rate limiting is unmeasured.** MCTiers/SubTiers publish no documented limit. The cache issues at most one request per player per site per session, which should be modest, but if 429s appear, add backoff in `MctiersLikeSource`.
+- **Rate limiting is unmeasured.** MCTiers/SubTiers publish no documented limit. The cache issues at most one request per player per site per cache generation (the NovaTiers timer clears only its own source), which should be modest. A failed lookup is not cached as "unranked": `TierCache` retries it after a 60-second delay, which also bounds what a run of 429s can cost.

@@ -49,8 +49,9 @@ public final class MctiersLikeSource implements TierSource {
                         return Map.<String, Tier>of();
                     }
                     if (status != 200) {
-                        JustTiers.LOGGER.warn("{} returned HTTP {} for {}", source, status, uuid);
-                        return Map.<String, Tier>of();
+                        // Not "unranked" — the site failed to answer. Fail so the cache retries.
+                        throw new TierLookupException(
+                                source + " returned HTTP " + status + " for " + uuid);
                     }
                     Map<String, Tier> parsed = MctiersParser.parseRankings(response.body());
                     if (parsed.isEmpty() && response.body() != null && response.body().length() > 2) {
@@ -61,10 +62,11 @@ public final class MctiersLikeSource implements TierSource {
                     }
                     return parsed;
                 })
-                .exceptionally(throwable -> {
-                    JustTiers.LOGGER.warn("{} lookup failed for {}: {}",
-                            source, uuid, throwable.toString());
-                    return Map.of();
+                .whenComplete((tiers, throwable) -> {
+                    if (throwable != null) {
+                        JustTiers.LOGGER.warn("{} lookup failed for {}: {}",
+                                source, uuid, throwable.toString());
+                    }
                 });
     }
 }
