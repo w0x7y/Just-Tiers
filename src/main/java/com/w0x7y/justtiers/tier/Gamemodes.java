@@ -9,42 +9,42 @@ import java.util.Optional;
 public final class Gamemodes {
 
     private static final List<Gamemode> MCTIERS = List.of(
-            new Gamemode(Source.MCTIERS, "axe", "Axe", ''),
-            new Gamemode(Source.MCTIERS, "mace", "Mace", ''),
-            new Gamemode(Source.MCTIERS, "nethop", "Netherite OP", ''),
-            new Gamemode(Source.MCTIERS, "pot", "Pot", ''),
-            new Gamemode(Source.MCTIERS, "smp", "SMP", ''),
-            new Gamemode(Source.MCTIERS, "sword", "Sword", ''),
-            new Gamemode(Source.MCTIERS, "uhc", "UHC", ''),
-            new Gamemode(Source.MCTIERS, "vanilla", "Vanilla", ''));
+            new Gamemode(Source.MCTIERS, "axe", "Axe", '\uE101'),
+            new Gamemode(Source.MCTIERS, "mace", "Mace", '\uE102'),
+            new Gamemode(Source.MCTIERS, "nethop", "Netherite OP", '\uE103'),
+            new Gamemode(Source.MCTIERS, "pot", "Pot", '\uE104'),
+            new Gamemode(Source.MCTIERS, "smp", "SMP", '\uE105'),
+            new Gamemode(Source.MCTIERS, "sword", "Sword", '\uE106'),
+            new Gamemode(Source.MCTIERS, "uhc", "UHC", '\uE107'),
+            new Gamemode(Source.MCTIERS, "vanilla", "Vanilla", '\uE108'));
 
     private static final List<Gamemode> SUBTIERS = List.of(
-            new Gamemode(Source.SUBTIERS, "bed", "Bed", ''),
-            new Gamemode(Source.SUBTIERS, "bow", "Bow", ''),
-            new Gamemode(Source.SUBTIERS, "creeper", "Creeper", ''),
-            new Gamemode(Source.SUBTIERS, "debuff", "DeBuff", ''),
-            new Gamemode(Source.SUBTIERS, "dia_crystal", "Diamond Vanilla", ''),
-            new Gamemode(Source.SUBTIERS, "dia_smp", "Diamond SMP", ''),
-            new Gamemode(Source.SUBTIERS, "elytra", "Elytra", ''),
-            new Gamemode(Source.SUBTIERS, "manhunt", "Manhunt", ''),
-            new Gamemode(Source.SUBTIERS, "minecart", "Minecart", ''),
-            new Gamemode(Source.SUBTIERS, "og_vanilla", "OG Vanilla", ''),
-            new Gamemode(Source.SUBTIERS, "speed", "Speed", ''),
-            new Gamemode(Source.SUBTIERS, "trident", "Trident", ''));
+            new Gamemode(Source.SUBTIERS, "bed", "Bed", '\uE201'),
+            new Gamemode(Source.SUBTIERS, "bow", "Bow", '\uE202'),
+            new Gamemode(Source.SUBTIERS, "creeper", "Creeper", '\uE203'),
+            new Gamemode(Source.SUBTIERS, "debuff", "DeBuff", '\uE204'),
+            new Gamemode(Source.SUBTIERS, "dia_crystal", "Diamond Vanilla", '\uE205'),
+            new Gamemode(Source.SUBTIERS, "dia_smp", "Diamond SMP", '\uE206'),
+            new Gamemode(Source.SUBTIERS, "elytra", "Elytra", '\uE207'),
+            new Gamemode(Source.SUBTIERS, "manhunt", "Manhunt", '\uE208'),
+            new Gamemode(Source.SUBTIERS, "minecart", "Minecart", '\uE209'),
+            new Gamemode(Source.SUBTIERS, "og_vanilla", "OG Vanilla", '\uE20A'),
+            new Gamemode(Source.SUBTIERS, "speed", "Speed", '\uE20B'),
+            new Gamemode(Source.SUBTIERS, "trident", "Trident", '\uE20C'));
 
     private static final List<Gamemode> NOVATIERS = List.of(
-            new Gamemode(Source.NOVATIERS, "axe", "Axe", ''),
-            new Gamemode(Source.NOVATIERS, "diamondcart", "Diamond Cart", ''),
-            new Gamemode(Source.NOVATIERS, "diamondop", "Diamond OP", ''),
-            new Gamemode(Source.NOVATIERS, "elytra", "Elytra", ''),
-            new Gamemode(Source.NOVATIERS, "elytraspear", "Elytra Spear", ''),
-            new Gamemode(Source.NOVATIERS, "modernsmp", "Modern SMP", ''),
-            new Gamemode(Source.NOVATIERS, "pufferfish", "Pufferfish", ''),
-            new Gamemode(Source.NOVATIERS, "smp", "SMP", ''),
-            new Gamemode(Source.NOVATIERS, "spearmace", "Spear Mace", ''),
-            new Gamemode(Source.NOVATIERS, "spleef", "Spleef", ''),
-            new Gamemode(Source.NOVATIERS, "uhc", "UHC", ''),
-            new Gamemode(Source.NOVATIERS, "vanilla", "Vanilla", ''));
+            new Gamemode(Source.NOVATIERS, "axe", "Axe", '\uE301'),
+            new Gamemode(Source.NOVATIERS, "diamondcart", "Diamond Cart", '\uE302'),
+            new Gamemode(Source.NOVATIERS, "diamondop", "Diamond OP", '\uE303'),
+            new Gamemode(Source.NOVATIERS, "elytra", "Elytra", '\uE304'),
+            new Gamemode(Source.NOVATIERS, "elytraspear", "Elytra Spear", '\uE305'),
+            new Gamemode(Source.NOVATIERS, "modernsmp", "Modern SMP", '\uE306'),
+            new Gamemode(Source.NOVATIERS, "pufferfish", "Pufferfish", '\uE307'),
+            new Gamemode(Source.NOVATIERS, "smp", "SMP", '\uE308'),
+            new Gamemode(Source.NOVATIERS, "spearmace", "Spear Mace", '\uE309'),
+            new Gamemode(Source.NOVATIERS, "spleef", "Spleef", '\uE30A'),
+            new Gamemode(Source.NOVATIERS, "uhc", "UHC", '\uE30B'),
+            new Gamemode(Source.NOVATIERS, "vanilla", "Vanilla", '\uE30C'));
 
     public static final List<Gamemode> ALL =
             java.util.stream.Stream.of(MCTIERS, SUBTIERS, NOVATIERS)
@@ -99,7 +99,7 @@ public final class Gamemodes {
         if (apiKey == null || apiKey.isBlank()) {
             return Optional.empty();
         }
-        String squashed = apiKey.trim().toLowerCase(Locale.ROOT).replaceAll("[_\s-]+", "");
+        String squashed = apiKey.trim().toLowerCase(Locale.ROOT).replaceAll("[_\\s-]+", "");
         return Optional.ofNullable(NOVA_ALIASES.get(squashed));
     }
 
