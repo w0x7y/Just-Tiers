@@ -32,7 +32,7 @@ public final class MctiersParser {
             }
             root = parsed.getAsJsonObject();
         } catch (RuntimeException e) {
-            JustTiers.LOGGER.debug("Ignoring malformed rankings payload", e);
+            JustTiers.LOGGER.warn("Ignoring malformed rankings payload", e);
             return result;
         }
 
@@ -53,7 +53,7 @@ public final class MctiersParser {
                 result.put(entry.getKey(), Tier.fromMctiers(tier, pos, retired));
             } catch (RuntimeException e) {
                 // A single bad gamemode entry must never sink the whole profile.
-                JustTiers.LOGGER.debug("Skipping unparseable ranking '{}'", entry.getKey(), e);
+                JustTiers.LOGGER.warn("Skipping unparseable ranking '{}'", entry.getKey(), e);
             }
         }
         return result;

@@ -52,7 +52,14 @@ public final class MctiersLikeSource implements TierSource {
                         JustTiers.LOGGER.warn("{} returned HTTP {} for {}", source, status, uuid);
                         return Map.<String, Tier>of();
                     }
-                    return MctiersParser.parseRankings(response.body());
+                    Map<String, Tier> parsed = MctiersParser.parseRankings(response.body());
+                    if (parsed.isEmpty() && response.body() != null && response.body().length() > 2) {
+                        JustTiers.LOGGER.warn(
+                                "{} answered HTTP 200 but nothing was understood for {}; "
+                                        + "the response schema may have changed",
+                                source, uuid);
+                    }
+                    return parsed;
                 })
                 .exceptionally(throwable -> {
                     JustTiers.LOGGER.warn("{} lookup failed for {}: {}",

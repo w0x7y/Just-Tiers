@@ -74,6 +74,11 @@ public final class NovaTiersSource implements TierSource {
                         return Map.<UUID, Map<String, Tier>>of();
                     }
                     Map<UUID, Map<String, Tier>> parsed = NovaParser.parseUsers(response.body());
+                    if (parsed.isEmpty() && response.body() != null && response.body().length() > 2) {
+                        JustTiers.LOGGER.warn(
+                                "NovaTiers answered HTTP 200 but nothing was understood; "
+                                        + "the response schema may have changed");
+                    }
                     JustTiers.LOGGER.info("Indexed {} NovaTiers players", parsed.size());
                     return parsed;
                 })

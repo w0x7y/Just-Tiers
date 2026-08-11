@@ -43,8 +43,12 @@ public class JustTiersClient implements ClientModInitializer {
                 });
         scheduler.scheduleWithFixedDelay(
                 () -> {
-                    novaSource.refresh();
-                    cache.invalidateAll();
+                    try {
+                        novaSource.refresh();
+                        cache.invalidate(Source.NOVATIERS);
+                    } catch (Throwable t) {
+                        JustTiers.LOGGER.warn("NovaTiers refresh task failed; keeping stale data", t);
+                    }
                 },
                 config.getNovaRefreshMinutes(), config.getNovaRefreshMinutes(), TimeUnit.MINUTES);
 
