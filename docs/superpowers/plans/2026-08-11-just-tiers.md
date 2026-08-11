@@ -6,13 +6,14 @@
 
 **Architecture:** Three `TierSource` implementations normalise three dissimilar HTTP APIs into one `Map<gamemodeSlug, Tier>` per player. A `TierCache` coalesces in-flight requests and caches negative results. A pure `TierResolver` applies the four display modes and produces a `NametagModel` (a Minecraft-free list of coloured segments). Only the final renderer and the mixin touch Minecraft classes, so the entire domain, HTTP-parsing and resolution layers are unit-testable with plain JUnit.
 
-**Tech Stack:** Java 25, Gradle 9.5.1, Fabric Loom 1.17, Fabric Loader 0.19.3, Fabric API 0.157.0+26.2, Mojang official mappings, MixinExtras, Gson, JUnit 5.
+**Tech Stack:** Java 25, Gradle 9.5.1, Fabric Loom 1.17, Fabric Loader 0.19.3, Fabric API 0.157.0+26.2, unobfuscated Minecraft (no mappings step), MixinExtras, Gson, JUnit 5.
 
 ## Global Constraints
 
 - Minecraft version is exactly `26.2`. Mod is **client-side only** (`"environment": "client"`).
 - Java toolchain **25**, `options.release = 25`. Gradle wrapper **9.5.1**. Loom **1.17-SNAPSHOT**.
-- Mappings are **official Mojang mappings**. Yarn is not published for 26.2 — do not attempt to use it. Class names in this plan are Mojmap (`Player`, `Component`, `ChatFormatting`, `Identifier`).
+- **Minecraft 26.2 ships unobfuscated.** Mojang publishes no `client_mappings` for it (its version manifest has only `client` and `server` downloads), so there is **no `mappings()` step and no remapping**. Do not call `loom.officialMojangMappings()` — it fails with `Failed to find official mojang mappings for 26.2`. Yarn is not published for 26.2 either. Class names in this plan are the real, shipped names (`Player`, `Component`, `ChatFormatting`, `Identifier`), which is what the unobfuscated jar already uses.
+- Loom is applied as **`net.fabricmc.fabric-loom`** and mod dependencies use plain **`implementation`**, not `modImplementation` — the shape used by `FabricMC/fabric-example-mod@26.2`.
 - Mod id is `justtiers`. Root package is `com.w0x7y.justtiers`. Resource namespace is `justtiers`.
 - Packages `tier`, `api`, `cache`, `resolve` and `render.model` **must not import any `net.minecraft.*` class.** This is what keeps them unit-testable. Only `render.NametagRenderer`, `mixin`, `command` and `JustTiersClient` may import Minecraft.
 - Tier ordering, lowest to highest: `LT5 < HT5 < LT4 < HT4 < LT3 < HT3 < LT2 < HT2 < LT1 < HT1`.
@@ -173,9 +174,13 @@ archives_base_name=just-tiers
 
 - [ ] **Step 4: Write `build.gradle.kts`**
 
+Minecraft 26.2 is unobfuscated: there is no `mappings()` call, and mod dependencies are
+declared with plain `implementation` rather than `modImplementation`. This matches
+`FabricMC/fabric-example-mod@26.2`.
+
 ```kotlin
 plugins {
-    id("fabric-loom") version "1.17-SNAPSHOT"
+    id("net.fabricmc.fabric-loom") version "1.17-SNAPSHOT"
     id("java")
 }
 
@@ -201,9 +206,8 @@ repositories {
 
 dependencies {
     minecraft("com.mojang:minecraft:${property("minecraft_version")}")
-    mappings(loom.officialMojangMappings())
-    modImplementation("net.fabricmc:fabric-loader:${property("loader_version")}")
-    modImplementation("net.fabricmc.fabric-api:fabric-api:${property("fabric_api_version")}")
+    implementation("net.fabricmc:fabric-loader:${property("loader_version")}")
+    implementation("net.fabricmc.fabric-api:fabric-api:${property("fabric_api_version")}")
 
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -3097,7 +3101,7 @@ public final class NametagRenderer {
 
 - [ ] **Step 4: Write `PlayerMixin.java`**
 
-`Player#getDisplayName` is the same hook TierTagger uses on 26.2, so it is known to work on this version. Class names are Mojmap.
+`Player#getDisplayName` is the same hook TierTagger uses on 26.2, so it is known to work on this version. Class names are the real shipped names.
 
 ```java
 package com.w0x7y.justtiers.mixin;
