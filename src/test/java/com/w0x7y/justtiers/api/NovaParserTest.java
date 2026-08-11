@@ -76,6 +76,19 @@ class NovaParserTest {
     }
 
     @Test
+    void retiredMapFalseOverridesAnRPrefixedString() {
+        // retiredTiers is authoritative in both directions: an explicit false must
+        // clear the R prefix, not lose to it.
+        String json = """
+                [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504",
+                  "tiers":{"Axe":"RHT2"},"retiredTiers":{"Axe":false}}]
+                """;
+        Tier tier = NovaParser.parseUsers(json).get(X_SUS).get("axe");
+        assertFalse(tier.retired());
+        assertEquals("HT2", tier.label());
+    }
+
+    @Test
     void unknownGamemodeKeysAreDropped() {
         String json = """
                 [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504",
