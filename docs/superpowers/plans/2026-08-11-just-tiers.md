@@ -6,18 +6,19 @@
 
 **Architecture:** Three `TierSource` implementations normalise three dissimilar HTTP APIs into one `Map<gamemodeSlug, Tier>` per player. A `TierCache` coalesces in-flight requests and caches negative results. A pure `TierResolver` applies the four display modes and produces a `NametagModel` (a Minecraft-free list of coloured segments). Only the final renderer and the mixin touch Minecraft classes, so the entire domain, HTTP-parsing and resolution layers are unit-testable with plain JUnit.
 
-**Tech Stack:** Java 25, Gradle 9.5.1, Fabric Loom 1.17, Fabric Loader 0.19.3, Fabric API 0.157.0+26.2, Mojang official mappings, MixinExtras, Gson, JUnit 5.
+**Tech Stack:** Java 25, Gradle 9.5.1, Fabric Loom 1.17, Fabric Loader 0.19.3, Fabric API 0.157.0+26.2, unobfuscated Minecraft (no mappings step), MixinExtras, Gson, JUnit 5.
 
 ## Global Constraints
 
 - Minecraft version is exactly `26.2`. Mod is **client-side only** (`"environment": "client"`).
 - Java toolchain **25**, `options.release = 25`. Gradle wrapper **9.5.1**. Loom **1.17-SNAPSHOT**.
-- Mappings are **official Mojang mappings**. Yarn is not published for 26.2 — do not attempt to use it. Class names in this plan are Mojmap (`Player`, `Component`, `ChatFormatting`, `Identifier`).
+- **Minecraft 26.2 ships unobfuscated.** Mojang publishes no `client_mappings` for it (its version manifest has only `client` and `server` downloads), so there is **no `mappings()` step and no remapping**. Do not call `loom.officialMojangMappings()` — it fails with `Failed to find official mojang mappings for 26.2`. Yarn is not published for 26.2 either. Class names in this plan are the real, shipped names (`Player`, `Component`, `ChatFormatting`, `Identifier`), which is what the unobfuscated jar already uses.
+- Loom is applied as **`net.fabricmc.fabric-loom`** and mod dependencies use plain **`implementation`**, not `modImplementation` — the shape used by `FabricMC/fabric-example-mod@26.2`.
 - Mod id is `justtiers`. Root package is `com.w0x7y.justtiers`. Resource namespace is `justtiers`.
 - Packages `tier`, `api`, `cache`, `resolve` and `render.model` **must not import any `net.minecraft.*` class.** This is what keeps them unit-testable. Only `render.NametagRenderer`, `mixin`, `command` and `JustTiersClient` may import Minecraft.
 - Tier ordering, lowest to highest: `LT5 < HT5 < LT4 < HT4 < LT3 < HT3 < LT2 < HT2 < LT1 < HT1`.
 - Site colours: MCTiers `0xFFFF55` (yellow), SubTiers `0x55FFFF` (cyan), NovaTiers `0xAA55FF` (purple).
-- Retired tiers **count** toward "highest tier" but render with an `R` prefix in light red `0xFF5555`, which overrides the site colour.
+- Retired tiers **count** toward "highest tier" and render with an `R` prefix in their own site's colour — the `R` is the only marker. A `showRetired` config flag (default `true`) hides them entirely across **all four** display modes; when hidden, a player falls back to their best active tier rather than disappearing.
 - **Peak tiers are parsed but never displayed.** Ignore `peak_tier`/`peak_pos`/`peakTiers` in all resolution and rendering.
 - Nametag format: `[` + entries joined by a single space + `] ` + original name. Brackets are dark grey `0x555555`. Each entry is the gamemode icon glyph followed immediately by the tier label.
 - Never block the render thread on HTTP. A cache miss returns "no tier" and schedules an async fetch.
@@ -173,9 +174,13 @@ archives_base_name=just-tiers
 
 - [ ] **Step 4: Write `build.gradle.kts`**
 
+Minecraft 26.2 is unobfuscated: there is no `mappings()` call, and mod dependencies are
+declared with plain `implementation` rather than `modImplementation`. This matches
+`FabricMC/fabric-example-mod@26.2`.
+
 ```kotlin
 plugins {
-    id("fabric-loom") version "1.17-SNAPSHOT"
+    id("net.fabricmc.fabric-loom") version "1.17-SNAPSHOT"
     id("java")
 }
 
@@ -201,9 +206,8 @@ repositories {
 
 dependencies {
     minecraft("com.mojang:minecraft:${property("minecraft_version")}")
-    mappings(loom.officialMojangMappings())
-    modImplementation("net.fabricmc:fabric-loader:${property("loader_version")}")
-    modImplementation("net.fabricmc.fabric-api:fabric-api:${property("fabric_api_version")}")
+    implementation("net.fabricmc:fabric-loader:${property("loader_version")}")
+    implementation("net.fabricmc.fabric-api:fabric-api:${property("fabric_api_version")}")
 
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -1088,6 +1092,19 @@ class NovaParserTest {
     }
 
     @Test
+    void retiredMapFalseOverridesAnRPrefixedString() {
+        // retiredTiers is authoritative in both directions: an explicit false must
+        // clear the R prefix, not lose to it.
+        String json = """
+                [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504",
+                  "tiers":{"Axe":"RHT2"},"retiredTiers":{"Axe":false}}]
+                """;
+        Tier tier = NovaParser.parseUsers(json).get(X_SUS).get("axe");
+        assertFalse(tier.retired());
+        assertEquals("HT2", tier.label());
+    }
+
+    @Test
     void unknownGamemodeKeysAreDropped() {
         String json = """
                 [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504",
@@ -1222,13 +1239,18 @@ public final class NovaParser {
             if (parsed.isEmpty()) {
                 continue;
             }
-            boolean retiredByMap = retiredMap.has(entry.getKey())
-                    && !retiredMap.get(entry.getKey()).isJsonNull()
-                    && retiredMap.get(entry.getKey()).getAsBoolean();
+            // The retiredTiers map is authoritative when it has an entry for this
+            // gamemode: its boolean wins in BOTH directions. The R prefix on the tier
+            // string is only a fallback for keys the map does not mention.
+            boolean mapHasEntry = retiredMap.has(entry.getKey())
+                    && !retiredMap.get(entry.getKey()).isJsonNull();
 
             Tier tier = parsed.get();
-            if (retiredByMap && !tier.retired()) {
-                tier = new Tier(tier.level(), tier.high(), true);
+            boolean retired = mapHasEntry
+                    ? retiredMap.get(entry.getKey()).getAsBoolean()
+                    : tier.retired();
+            if (retired != tier.retired()) {
+                tier = new Tier(tier.level(), tier.high(), retired);
             }
             tiers.put(slug.get(), tier);
         }
@@ -1264,7 +1286,7 @@ public final class NovaParser {
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `./gradlew test --tests '*NovaParserTest*'`
-Expected: PASS, 12 tests.
+Expected: PASS, 13 tests.
 
 - [ ] **Step 5: Commit**
 
@@ -1461,8 +1483,10 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Fetches one player's tiers from one site. Implementations never fail the returned
- * future: unreachable services and unranked players both resolve to an empty map.
+ * Fetches one player's tiers from one site. An empty map means the site answered and
+ * the player is genuinely unranked. A lookup that could not be completed — a transport
+ * failure, or any HTTP status other than 200 and 404 — fails the returned future instead,
+ * so callers can retry rather than caching "unranked" for a site that was merely down.
  */
 public interface TierSource {
 
@@ -2308,7 +2332,7 @@ The text layout lives here, deliberately free of Minecraft types so it can be as
 - Produces:
   - `record Segment(String text, int color)`.
   - `NametagModel.build(List<ResolvedTier>)` -> `List<Segment>`, empty when there is nothing to show.
-  - Constants `NametagModel.BRACKET_COLOR = 0x555555`, `NametagModel.RETIRED_COLOR = 0xFF5555`, `NametagModel.ICON_COLOR = 0xFFFFFF`.
+  - Constants `NametagModel.BRACKET_COLOR = 0x555555`, `NametagModel.ICON_COLOR = 0xFFFFFF`.
   - `NametagModel.plainText(List<Segment>)` -> `String`, for tests and log output.
 
 - [ ] **Step 1: Write the failing test**
@@ -2373,12 +2397,12 @@ class NametagModelTest {
     }
 
     @Test
-    void retiredTiersOverrideTheSiteColourWithLightRed() {
+    void retiredTiersKeepTheirSiteColourAndAreMarkedOnlyByTheRPrefix() {
         List<Segment> segments = NametagModel.build(
                 List.of(resolved(Source.MCTIERS, "vanilla", new Tier(1, true, true))));
 
         Segment tier = segments.stream().filter(s -> s.text().equals("RHT1")).findFirst().orElseThrow();
-        assertEquals(NametagModel.RETIRED_COLOR, tier.color());
+        assertEquals(Source.MCTIERS.color(), tier.color());
         assertEquals("[\uE108RHT1] ", NametagModel.plainText(segments));
     }
 
@@ -2414,7 +2438,7 @@ class NametagModelTest {
     }
 
     @Test
-    void mixedActiveAndRetiredEntriesKeepIndependentColours() {
+    void retiredAndActiveEntriesAreEachColouredBySite() {
         List<Segment> segments = NametagModel.build(List.of(
                 resolved(Source.MCTIERS, "axe", new Tier(1, true, true)),
                 resolved(Source.NOVATIERS, "uhc", new Tier(4, true, false))));
@@ -2422,7 +2446,7 @@ class NametagModelTest {
         Segment retired = segments.stream().filter(s -> s.text().equals("RHT1")).findFirst().orElseThrow();
         Segment active = segments.stream().filter(s -> s.text().equals("HT4")).findFirst().orElseThrow();
 
-        assertEquals(NametagModel.RETIRED_COLOR, retired.color());
+        assertEquals(Source.MCTIERS.color(), retired.color());
         assertEquals(Source.NOVATIERS.color(), active.color());
     }
 }
@@ -2461,7 +2485,6 @@ import java.util.List;
 public final class NametagModel {
 
     public static final int BRACKET_COLOR = 0x555555;
-    public static final int RETIRED_COLOR = 0xFF5555;
     /** Bitmap glyphs are multiplied by the text colour, so icons must be white. */
     public static final int ICON_COLOR = 0xFFFFFF;
 
@@ -2479,10 +2502,8 @@ public final class NametagModel {
             }
             ResolvedTier resolved = tiers.get(i);
             segments.add(new Segment(String.valueOf(resolved.gamemode().icon()), ICON_COLOR));
-            int color = resolved.tier().retired()
-                    ? RETIRED_COLOR
-                    : resolved.gamemode().source().color();
-            segments.add(new Segment(resolved.tier().label(), color));
+            segments.add(new Segment(resolved.tier().label(),
+                    resolved.gamemode().source().color()));
         }
 
         segments.add(new Segment("] ", BRACKET_COLOR));
@@ -2611,6 +2632,50 @@ class JustTiersConfigTest {
         config.setNovaRefreshMinutes(100_000);
         assertEquals(1440, config.getNovaRefreshMinutes());
     }
+
+    @Test
+    void loadClampsAnOutOfRangeNovaRefreshMinutes(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("unclamped.json");
+        Files.writeString(file, """
+                {"enabled":true,"displayMode":"ALL",
+                 "selectedGamemodes":{},
+                 "novaRefreshMinutes":999999}
+                """);
+        assertEquals(1440, JustTiersConfig.load(file).getNovaRefreshMinutes());
+    }
+
+    @Test
+    void saveWritesDisplayModeAsLowerCaseId(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("lowercase.json");
+        JustTiersConfig config = new JustTiersConfig();
+        config.setDisplayMode(DisplayMode.MCTIERS_ONLY);
+        config.save(file);
+        String written = Files.readString(file);
+        assertTrue(written.contains("\"mctiers_only\""));
+        assertFalse(written.contains("\"MCTIERS_ONLY\""));
+    }
+
+    @Test
+    void loadingLegacyUppercaseDisplayModeStillResolves(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("legacy.json");
+        Files.writeString(file, """
+                {"enabled":true,"displayMode":"MCTIERS_ONLY",
+                 "selectedGamemodes":{},
+                 "novaRefreshMinutes":30}
+                """);
+        assertEquals(DisplayMode.MCTIERS_ONLY, JustTiersConfig.load(file).getDisplayMode());
+    }
+
+    @Test
+    void loadingAnUnrecognisedDisplayModeFallsBackToAll(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("unrecognised.json");
+        Files.writeString(file, """
+                {"enabled":true,"displayMode":"not_a_real_mode",
+                 "selectedGamemodes":{},
+                 "novaRefreshMinutes":30}
+                """);
+        assertEquals(DisplayMode.ALL, JustTiersConfig.load(file).getDisplayMode());
+    }
 }
 ```
 
@@ -2626,6 +2691,10 @@ package com.w0x7y.justtiers.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
+import com.google.gson.stream.JsonWriter;
 import com.w0x7y.justtiers.JustTiers;
 import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Gamemodes;
@@ -2642,7 +2711,42 @@ import java.util.Map;
 
 public class JustTiersConfig {
 
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final Gson GSON = new GsonBuilder()
+            .setPrettyPrinting()
+            .registerTypeAdapter(DisplayMode.class, new DisplayModeAdapter())
+            .create();
+
+    /**
+     * Persists {@link DisplayMode} as its lower-case {@link DisplayMode#id()} (the
+     * documented on-disk/command-argument format), while still reading back the legacy
+     * upper-case {@code name()} form that earlier builds wrote. An absent field keeps
+     * whatever default the containing object already had; an explicit {@code null} or an
+     * unrecognised string both fall back to {@link DisplayMode#ALL} with a warning naming
+     * the offending value, rather than failing silently.
+     */
+    private static final class DisplayModeAdapter extends TypeAdapter<DisplayMode> {
+        @Override
+        public void write(JsonWriter out, DisplayMode value) throws IOException {
+            out.value((value == null ? DisplayMode.ALL : value).id());
+        }
+
+        @Override
+        public DisplayMode read(JsonReader in) throws IOException {
+            if (in.peek() == JsonToken.NULL) {
+                in.nextNull();
+                JustTiers.LOGGER.warn("Config displayMode was null, using default {}", DisplayMode.ALL);
+                return DisplayMode.ALL;
+            }
+            String raw = in.nextString();
+            for (DisplayMode mode : DisplayMode.values()) {
+                if (mode.id().equalsIgnoreCase(raw)) {
+                    return mode;
+                }
+            }
+            JustTiers.LOGGER.warn("Unrecognised config displayMode '{}', using default {}", raw, DisplayMode.ALL);
+            return DisplayMode.ALL;
+        }
+    }
 
     private static final Map<Source, String> DEFAULT_GAMEMODES = Map.of(
             Source.MCTIERS, "vanilla",
@@ -2711,7 +2815,12 @@ public class JustTiersConfig {
         }
         try (Reader reader = Files.newBufferedReader(path)) {
             JustTiersConfig config = GSON.fromJson(reader, JustTiersConfig.class);
-            return config == null ? new JustTiersConfig() : config;
+            if (config == null) {
+                return new JustTiersConfig();
+            }
+            // clamp bypassed by reflection during deserialization
+            config.setNovaRefreshMinutes(config.getNovaRefreshMinutes());
+            return config;
         } catch (IOException | RuntimeException e) {
             JustTiers.LOGGER.warn("Could not read config at {}, using defaults", path, e);
             return new JustTiersConfig();
@@ -2737,7 +2846,7 @@ public class JustTiersConfig {
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `./gradlew test --tests '*JustTiersConfigTest*'`
-Expected: PASS, 7 tests.
+Expected: PASS, 11 tests.
 
 - [ ] **Step 5: Commit**
 
@@ -3097,7 +3206,7 @@ public final class NametagRenderer {
 
 - [ ] **Step 4: Write `PlayerMixin.java`**
 
-`Player#getDisplayName` is the same hook TierTagger uses on 26.2, so it is known to work on this version. Class names are Mojmap.
+`Player#getDisplayName` is the same hook TierTagger uses on 26.2, so it is known to work on this version. Class names are the real shipped names.
 
 ```java
 package com.w0x7y.justtiers.mixin;
@@ -3261,8 +3370,8 @@ import net.minecraft.network.chat.Component;
 import java.util.Locale;
 import java.util.Optional;
 
-import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.argument;
-import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.literal;
+import static net.fabricmc.fabric.api.client.command.v2.ClientCommands.argument;
+import static net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal;
 
 public final class JustTiersCommands {
 
@@ -3425,7 +3534,7 @@ git commit -m "feat: add /justtiers client commands"
 
 Run before calling the mod done:
 
-- [ ] `./gradlew build` succeeds with all tests green: 9 test classes, 84 tests (Tier 7, Gamemodes 9, MctiersParser 8, NovaParser 12, TierSource 9, TierCache 8, TierResolver 15, NametagModel 9, JustTiersConfig 7).
+- [ ] `./gradlew build` succeeds with all tests green: 9 test classes, 89 tests (Tier 7, Gamemodes 9, MctiersParser 8, NovaParser 13, TierSource 9, TierCache 8, TierResolver 15, NametagModel 9, JustTiersConfig 11).
 - [ ] `python3 tools/gen_font_provider.py` reports 32 providers and the texture-existence check in Task 11 Step 6 reports 0 missing.
 - [ ] Every codepoint in `Gamemodes.java` has a matching provider in `assets/minecraft/font/default.json`. These files are generated from the same ordering but are not mechanically linked, so eyeball them together after any gamemode change.
 - [ ] In game with `mode=all`, a player ranked on two sites shows exactly two entries, coloured yellow/cyan/purple by site.
@@ -3442,4 +3551,4 @@ Deliberately out of scope, recorded so they are not mistaken for oversights:
 - **Gamemode lists are compiled in.** MCTiers and SubTiers publish `/v2/mode/list`, so new gamemodes could be discovered at runtime, but icons and codepoints still have to ship with the mod. Unknown slugs returned by the API are ignored rather than rendered without an icon. Adding a gamemode means editing `Gamemodes.java`, `tools/gen_font_provider.py` and adding a texture.
 - **No cross-site gamemode merging.** `Vanilla` on MCTiers and `Vanilla` on NovaTiers stay separate entries, per the agreed design. Only five gamemode names overlap between sites at all.
 - **Tab list is untouched.** Tiers appear in nametags only, as specified.
-- **Rate limiting is unmeasured.** MCTiers/SubTiers publish no documented limit. The cache issues at most one request per player per site per session, which should be modest, but if 429s appear, add backoff in `MctiersLikeSource`.
+- **Rate limiting is unmeasured.** MCTiers/SubTiers publish no documented limit. The cache issues at most one request per player per site per cache generation (the NovaTiers timer clears only its own source), which should be modest. A failed lookup is not cached as "unranked": `TierCache` retries it after a 60-second delay, which also bounds what a run of 429s can cost.

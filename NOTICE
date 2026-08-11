@@ -1,0 +1,23 @@
+Just-Tiers
+Copyright (c) 2026 Idan Gilboa
+Licensed under the MIT License (see LICENSE).
+
+------------------------------------------------------------------------
+Third-party assets
+------------------------------------------------------------------------
+
+The following gamemode icon textures are taken from TierTagger
+(https://github.com/mctiers-dev/TierTagger), Copyright (c) 2025 MCTiers,
+mctiers.com, and remain licensed under the Mozilla Public License 2.0.
+A copy of the MPL 2.0 is available at https://mozilla.org/MPL/2.0/.
+
+  src/main/resources/assets/justtiers/textures/mctiers/*.png
+  src/main/resources/assets/justtiers/textures/subtiers/*.png
+
+All other assets, including the NovaTiers gamemode icons under
+src/main/resources/assets/justtiers/textures/novatiers/, are original work
+licensed under the MIT License.
+
+MCTiers, SubTiers and NovaTiers are the property of their respective owners.
+Just-Tiers is an unofficial client and is not affiliated with or endorsed by
+any of them.

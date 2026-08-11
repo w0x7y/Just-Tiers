@@ -6,8 +6,8 @@ A Minecraft **Fabric** client mod that shows a player's competitive PvP tier dir
 
 ## Status
 
-> **In development — not yet released.**
-> The full implementation plan is written and the leaderboard APIs have been verified against the live services, but the mod is not yet built. There is no downloadable jar yet.
+> **Implementation complete — not yet manually verified in-game.**
+> The full implementation plan has been carried out and the leaderboard APIs have been verified against the live services. `./gradlew build` produces `build/libs/just-tiers-1.0.0+mc26.2.jar`. In-game behaviour has not yet been manually verified.
 >
 > Plan: [`docs/superpowers/plans/2026-08-11-just-tiers.md`](docs/superpowers/plans/2026-08-11-just-tiers.md)
 
@@ -32,7 +32,7 @@ Just-Tiers supports all three leaderboards, and adds an **All** mode that shows 
 - **Automatic fallback** — not ranked in your chosen gamemode? It shows that player's highest tier on that same site instead.
 - **Gamemode icons** — a small icon shows *which* gamemode earned the tier.
 - **Colour-coded by site** — you can always tell where a tier came from.
-- **Retired tiers handled properly** — shown with an `R` prefix in light red, and still counted when finding a player's highest tier.
+- **Retired tiers handled properly** — shown with an `R` prefix in their site's colour, still counted when finding a player's highest tier, and hideable entirely with one setting.
 - **Non-blocking** — all lookups are asynchronous and cached; the mod never stalls your frame rate waiting on a web request.
 - **Client-side only** — works on any server, nothing to install server-side.
 
@@ -47,7 +47,9 @@ LT5 → HT5 → LT4 → HT4 → LT3 → HT3 → LT2 → HT2 → LT1 → HT1
 lowest                                                highest
 ```
 
-A **retired** tier is one a player earned but is no longer actively defending. Just-Tiers displays these with an `R` prefix in light red (for example `RHT1`) and still counts them when working out a player's highest tier — otherwise many well-known players, whose placements are entirely retired, would show nothing at all.
+A **retired** tier is one a player earned but is no longer actively defending. Just-Tiers displays these with an `R` prefix (for example `RHT1`), coloured like any other tier from that site, and still counts them when working out a player's highest tier — otherwise many well-known players, whose placements are entirely retired, would show nothing at all.
+
+If you would rather not see them, set `showRetired` to `false` (or run `/justtiers retired`). This applies across all four display modes: a player whose best tier is retired then falls back to their best active tier, and one whose placements are *all* retired shows nothing for that site.
 
 **Peak tiers are ignored.** Only a player's current tier is ever displayed.
 
@@ -80,7 +82,6 @@ Each icon shows the gamemode that earned the tier, so you know a tier came from 
 | MCTiers | Yellow | `#FFFF55` |
 | SubTiers | Cyan | `#55FFFF` |
 | NovaTiers | Purple | `#AA55FF` |
-| Retired tier (any site) | Light red | `#FF5555` |
 
 ---
 
@@ -124,6 +125,7 @@ All commands are client-side and start with `/justtiers`.
 |---|---|
 | `/justtiers` | Show current settings and cache status |
 | `/justtiers toggle` | Turn the nametag display on or off |
+| `/justtiers retired` | Show or hide retired tiers, across every display mode |
 | `/justtiers mode <mode>` | Set display mode: `mctiers_only`, `subtiers_only`, `novatiers_only`, `all` |
 | `/justtiers gamemode <gamemode>` | Set the selected gamemode for the current single-site mode |
 | `/justtiers refresh` | Re-download tier data and clear the cache |
@@ -139,7 +141,8 @@ Settings are stored in `config/justtiers.json` and are written automatically whe
 ```json
 {
   "enabled": true,
-  "displayMode": "ALL",
+  "showRetired": true,
+  "displayMode": "all",
   "selectedGamemodes": {
     "MCTIERS": "vanilla",
     "SUBTIERS": "elytra",
@@ -152,9 +155,14 @@ Settings are stored in `config/justtiers.json` and are written automatically whe
 | Key | Meaning |
 |---|---|
 | `enabled` | Master on/off switch for the nametag display |
-| `displayMode` | `MCTIERS_ONLY`, `SUBTIERS_ONLY`, `NOVATIERS_ONLY` or `ALL` |
+| `showRetired` | Whether retired (`R`-prefixed) tiers are displayed at all |
+| `displayMode` | `mctiers_only`, `subtiers_only`, `novatiers_only` or `all` |
 | `selectedGamemodes` | The chosen gamemode slug per site |
 | `novaRefreshMinutes` | How often to re-download the NovaTiers list (clamped to 5–1440) |
+
+`displayMode` is written in lower-case and read case-insensitively, so config files written by older
+builds with upper-case values (e.g. `"ALL"`) still load correctly. An unrecognised value falls back
+to `all` with a warning logged.
 
 ---
 
@@ -234,7 +242,7 @@ Just-Tiers does not redistribute any of these; they are resolved at build time o
 | Gson | Apache-2.0 |
 | JUnit 5 (tests only) | EPL-2.0 |
 
-Minecraft itself is **not** redistributed. You must own a legitimate copy. Minecraft is © Mojang Studios / Microsoft and is governed by the [Minecraft End User Licence Agreement](https://www.minecraft.net/eula). The build uses Mojang's official obfuscation mappings, which are used under the terms Mojang publishes them with and are never redistributed by this project.
+Minecraft itself is **not** redistributed. You must own a legitimate copy. Minecraft is © Mojang Studios / Microsoft and is governed by the [Minecraft End User Licence Agreement](https://www.minecraft.net/eula). Minecraft 26.2 ships unobfuscated with no Mojang mappings published for it, so the build performs no remapping step and does not use or redistribute any Mojang mappings.
 
 ### Trademarks and affiliation
 

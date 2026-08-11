@@ -1,0 +1,11 @@
+# Agent scratch space — never committed
+.superpowers/
+.claude/
+
+.gradle/
+build/
+run/
+logs/
+*.class
+.idea/
+*.iml
