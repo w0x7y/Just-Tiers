@@ -78,4 +78,48 @@ class JustTiersConfigTest {
         config.setNovaRefreshMinutes(100_000);
         assertEquals(1440, config.getNovaRefreshMinutes());
     }
+
+    @Test
+    void loadClampsAnOutOfRangeNovaRefreshMinutes(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("unclamped.json");
+        Files.writeString(file, """
+                {"enabled":true,"displayMode":"ALL",
+                 "selectedGamemodes":{},
+                 "novaRefreshMinutes":999999}
+                """);
+        assertEquals(1440, JustTiersConfig.load(file).getNovaRefreshMinutes());
+    }
+
+    @Test
+    void saveWritesDisplayModeAsLowerCaseId(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("lowercase.json");
+        JustTiersConfig config = new JustTiersConfig();
+        config.setDisplayMode(DisplayMode.MCTIERS_ONLY);
+        config.save(file);
+        String written = Files.readString(file);
+        assertTrue(written.contains("\"mctiers_only\""));
+        assertFalse(written.contains("\"MCTIERS_ONLY\""));
+    }
+
+    @Test
+    void loadingLegacyUppercaseDisplayModeStillResolves(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("legacy.json");
+        Files.writeString(file, """
+                {"enabled":true,"displayMode":"MCTIERS_ONLY",
+                 "selectedGamemodes":{},
+                 "novaRefreshMinutes":30}
+                """);
+        assertEquals(DisplayMode.MCTIERS_ONLY, JustTiersConfig.load(file).getDisplayMode());
+    }
+
+    @Test
+    void loadingAnUnrecognisedDisplayModeFallsBackToAll(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("unrecognised.json");
+        Files.writeString(file, """
+                {"enabled":true,"displayMode":"not_a_real_mode",
+                 "selectedGamemodes":{},
+                 "novaRefreshMinutes":30}
+                """);
+        assertEquals(DisplayMode.ALL, JustTiersConfig.load(file).getDisplayMode());
+    }
 }
