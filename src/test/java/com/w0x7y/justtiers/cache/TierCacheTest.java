@@ -119,6 +119,26 @@ class TierCacheTest {
     }
 
     @Test
+    void invalidateOnlyForcesARefetchForTheGivenSource() {
+        FakeSource mct = new FakeSource(Source.MCTIERS, Map.of());
+        FakeSource sub = new FakeSource(Source.SUBTIERS, Map.of());
+        TierCache cache = new TierCache(List.of(mct, sub));
+
+        cache.peek(Source.MCTIERS, PLAYER);
+        mct.complete();
+        cache.peek(Source.SUBTIERS, PLAYER);
+        sub.complete();
+
+        cache.invalidate(Source.MCTIERS);
+
+        cache.peek(Source.MCTIERS, PLAYER);
+        assertEquals(2, mct.calls.get(), "the invalidated source must be refetched");
+
+        cache.peek(Source.SUBTIERS, PLAYER);
+        assertEquals(1, sub.calls.get(), "the untouched source must survive");
+    }
+
+    @Test
     void loadExposesTheAwaitableFuture() throws Exception {
         FakeSource fake = new FakeSource(Source.MCTIERS, Map.of("axe", new Tier(4, false, false)));
         TierCache cache = new TierCache(List.of(fake));

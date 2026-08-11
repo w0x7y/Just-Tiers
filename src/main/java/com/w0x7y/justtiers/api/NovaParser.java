@@ -38,7 +38,7 @@ public final class NovaParser {
             }
             array = parsed.getAsJsonArray();
         } catch (RuntimeException e) {
-            JustTiers.LOGGER.debug("Ignoring malformed NovaTiers payload", e);
+            JustTiers.LOGGER.warn("Ignoring malformed NovaTiers payload", e);
             return index;
         }
 
@@ -49,7 +49,7 @@ public final class NovaParser {
             try {
                 parseUser(element.getAsJsonObject(), index);
             } catch (RuntimeException e) {
-                JustTiers.LOGGER.debug("Skipping unparseable NovaTiers user", e);
+                JustTiers.LOGGER.warn("Skipping unparseable NovaTiers user", e);
             }
         }
         return index;

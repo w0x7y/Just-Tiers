@@ -6,8 +6,8 @@ A Minecraft **Fabric** client mod that shows a player's competitive PvP tier dir
 
 ## Status
 
-> **In development — not yet released.**
-> The full implementation plan is written and the leaderboard APIs have been verified against the live services, but the mod is not yet built. There is no downloadable jar yet.
+> **Implementation complete — not yet manually verified in-game.**
+> The full implementation plan has been carried out and the leaderboard APIs have been verified against the live services. `./gradlew build` produces `build/libs/just-tiers-1.0.0+mc26.2.jar`. In-game behaviour has not yet been manually verified.
 >
 > Plan: [`docs/superpowers/plans/2026-08-11-just-tiers.md`](docs/superpowers/plans/2026-08-11-just-tiers.md)
 
@@ -139,7 +139,7 @@ Settings are stored in `config/justtiers.json` and are written automatically whe
 ```json
 {
   "enabled": true,
-  "displayMode": "ALL",
+  "displayMode": "all",
   "selectedGamemodes": {
     "MCTIERS": "vanilla",
     "SUBTIERS": "elytra",
@@ -152,9 +152,13 @@ Settings are stored in `config/justtiers.json` and are written automatically whe
 | Key | Meaning |
 |---|---|
 | `enabled` | Master on/off switch for the nametag display |
-| `displayMode` | `MCTIERS_ONLY`, `SUBTIERS_ONLY`, `NOVATIERS_ONLY` or `ALL` |
+| `displayMode` | `mctiers_only`, `subtiers_only`, `novatiers_only` or `all` |
 | `selectedGamemodes` | The chosen gamemode slug per site |
 | `novaRefreshMinutes` | How often to re-download the NovaTiers list (clamped to 5–1440) |
+
+`displayMode` is written in lower-case and read case-insensitively, so config files written by older
+builds with upper-case values (e.g. `"ALL"`) still load correctly. An unrecognised value falls back
+to `all` with a warning logged.
 
 ---
 
@@ -234,7 +238,7 @@ Just-Tiers does not redistribute any of these; they are resolved at build time o
 | Gson | Apache-2.0 |
 | JUnit 5 (tests only) | EPL-2.0 |
 
-Minecraft itself is **not** redistributed. You must own a legitimate copy. Minecraft is © Mojang Studios / Microsoft and is governed by the [Minecraft End User Licence Agreement](https://www.minecraft.net/eula). The build uses Mojang's official obfuscation mappings, which are used under the terms Mojang publishes them with and are never redistributed by this project.
+Minecraft itself is **not** redistributed. You must own a legitimate copy. Minecraft is © Mojang Studios / Microsoft and is governed by the [Minecraft End User Licence Agreement](https://www.minecraft.net/eula). Minecraft 26.2 ships unobfuscated with no Mojang mappings published for it, so the build performs no remapping step and does not use or redistribute any Mojang mappings.
 
 ### Trademarks and affiliation
 

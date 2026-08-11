@@ -65,4 +65,9 @@ public final class TierCache {
     public void invalidateAll() {
         entries.values().forEach(Map::clear);
     }
+
+    /** Clears cached entries for a single source, leaving every other source's cache intact. */
+    public void invalidate(Source source) {
+        entries.get(source).clear();
+    }
 }
