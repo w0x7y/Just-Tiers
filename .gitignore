@@ -5,6 +5,7 @@
 .gradle/
 build/
 run/
+logs/
 *.class
 .idea/
 *.iml

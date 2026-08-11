@@ -1092,6 +1092,19 @@ class NovaParserTest {
     }
 
     @Test
+    void retiredMapFalseOverridesAnRPrefixedString() {
+        // retiredTiers is authoritative in both directions: an explicit false must
+        // clear the R prefix, not lose to it.
+        String json = """
+                [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504",
+                  "tiers":{"Axe":"RHT2"},"retiredTiers":{"Axe":false}}]
+                """;
+        Tier tier = NovaParser.parseUsers(json).get(X_SUS).get("axe");
+        assertFalse(tier.retired());
+        assertEquals("HT2", tier.label());
+    }
+
+    @Test
     void unknownGamemodeKeysAreDropped() {
         String json = """
                 [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504",
@@ -1226,13 +1239,18 @@ public final class NovaParser {
             if (parsed.isEmpty()) {
                 continue;
             }
-            boolean retiredByMap = retiredMap.has(entry.getKey())
-                    && !retiredMap.get(entry.getKey()).isJsonNull()
-                    && retiredMap.get(entry.getKey()).getAsBoolean();
+            // The retiredTiers map is authoritative when it has an entry for this
+            // gamemode: its boolean wins in BOTH directions. The R prefix on the tier
+            // string is only a fallback for keys the map does not mention.
+            boolean mapHasEntry = retiredMap.has(entry.getKey())
+                    && !retiredMap.get(entry.getKey()).isJsonNull();
 
             Tier tier = parsed.get();
-            if (retiredByMap && !tier.retired()) {
-                tier = new Tier(tier.level(), tier.high(), true);
+            boolean retired = mapHasEntry
+                    ? retiredMap.get(entry.getKey()).getAsBoolean()
+                    : tier.retired();
+            if (retired != tier.retired()) {
+                tier = new Tier(tier.level(), tier.high(), retired);
             }
             tiers.put(slug.get(), tier);
         }
@@ -1268,7 +1286,7 @@ public final class NovaParser {
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `./gradlew test --tests '*NovaParserTest*'`
-Expected: PASS, 12 tests.
+Expected: PASS, 13 tests.
 
 - [ ] **Step 5: Commit**
 
@@ -3429,7 +3447,7 @@ git commit -m "feat: add /justtiers client commands"
 
 Run before calling the mod done:
 
-- [ ] `./gradlew build` succeeds with all tests green: 9 test classes, 84 tests (Tier 7, Gamemodes 9, MctiersParser 8, NovaParser 12, TierSource 9, TierCache 8, TierResolver 15, NametagModel 9, JustTiersConfig 7).
+- [ ] `./gradlew build` succeeds with all tests green: 9 test classes, 85 tests (Tier 7, Gamemodes 9, MctiersParser 8, NovaParser 13, TierSource 9, TierCache 8, TierResolver 15, NametagModel 9, JustTiersConfig 7).
 - [ ] `python3 tools/gen_font_provider.py` reports 32 providers and the texture-existence check in Task 11 Step 6 reports 0 missing.
 - [ ] Every codepoint in `Gamemodes.java` has a matching provider in `assets/minecraft/font/default.json`. These files are generated from the same ordering but are not mechanically linked, so eyeball them together after any gamemode change.
 - [ ] In game with `mode=all`, a player ranked on two sites shows exactly two entries, coloured yellow/cyan/purple by site.
