@@ -7,7 +7,7 @@ A Minecraft **Fabric** client mod that shows a player's competitive PvP tier dir
 ## Status
 
 > **Implementation complete — not yet manually verified in-game.**
-> The full implementation plan has been carried out and the leaderboard APIs have been verified against the live services. `./gradlew build` produces `build/libs/just-tiers-1.0.0+mc26.2.jar`. In-game behaviour has not yet been manually verified.
+> The full implementation plan has been carried out and the leaderboard APIs have been verified against the live services. `./gradlew test` runs 103 unit tests covering tier parsing, the resolver, the cache and the config, and they pass. `./gradlew build` produces `build/libs/just-tiers-1.0.0+mc26.2.jar`. In-game behaviour has not yet been manually verified.
 >
 > Plan: [`docs/superpowers/plans/2026-08-11-just-tiers.md`](docs/superpowers/plans/2026-08-11-just-tiers.md)
 
@@ -34,6 +34,8 @@ Just-Tiers supports all three leaderboards, and adds an **All** mode that shows 
 - **Colour-coded by site** — you can always tell where a tier came from.
 - **Retired tiers handled properly** — shown with an `R` prefix in their site's colour, still counted when finding a player's highest tier, and hideable entirely with one setting.
 - **Non-blocking** — all lookups are asynchronous and cached; the mod never stalls your frame rate waiting on a web request.
+- **Shows up as it arrives** — a nametag gains its badge the moment the first site answers, then fills in as the others land, rather than waiting on the slowest one.
+- **Fails safe** — a site that is down, rate-limiting or unreachable is retried; it is never mistaken for "this player is unranked".
 - **Client-side only** — works on any server, nothing to install server-side.
 
 ---
@@ -89,11 +91,14 @@ Each icon shows the gamemode that earned the tier, so you know a tier came from 
 
 Each leaderboard tests its own gamemodes. They are kept separate and never merged — `Vanilla` on MCTiers and `Vanilla` on NovaTiers are different competitions with different testers.
 
+The name in brackets is the slug you pass to `/justtiers gamemode` and the value stored in the
+config file. Tab-completion offers exactly these.
+
 | Leaderboard | Gamemodes |
 |---|---|
-| **MCTiers** (8) | Axe, Mace, Netherite OP, Pot, SMP, Sword, UHC, Vanilla |
-| **SubTiers** (12) | Bed, Bow, Creeper, DeBuff, Diamond SMP, Diamond Vanilla, Elytra, Manhunt, Minecart, OG Vanilla, Speed, Trident |
-| **NovaTiers** (12) | Axe, Diamond Cart, Diamond OP, Elytra, Elytra Spear, Modern SMP, Pufferfish, SMP, Spear Mace, Spleef, UHC, Vanilla |
+| **MCTiers** (8) | Axe (`axe`), Mace (`mace`), Netherite OP (`nethop`), Pot (`pot`), SMP (`smp`), Sword (`sword`), UHC (`uhc`), Vanilla (`vanilla`) |
+| **SubTiers** (12) | Bed (`bed`), Bow (`bow`), Creeper (`creeper`), DeBuff (`debuff`), Diamond SMP (`dia_smp`), Diamond Vanilla (`dia_crystal`), Elytra (`elytra`), Manhunt (`manhunt`), Minecart (`minecart`), OG Vanilla (`og_vanilla`), Speed (`speed`), Trident (`trident`) |
+| **NovaTiers** (12) | Axe (`axe`), Diamond Cart (`diamondcart`), Diamond OP (`diamondop`), Elytra (`elytra`), Elytra Spear (`elytraspear`), Modern SMP (`modernsmp`), Pufferfish (`pufferfish`), SMP (`smp`), Spear Mace (`spearmace`), Spleef (`spleef`), UHC (`uhc`), Vanilla (`vanilla`) |
 
 ---
 
@@ -101,8 +106,8 @@ Each leaderboard tests its own gamemodes. They are kept separate and never merge
 
 | | |
 |---|---|
-| Minecraft | 26.2 |
-| Mod loader | Fabric Loader 0.19.3 or newer |
+| Minecraft | 26.2 only — the mod declares `~26.2`, so it will not load on a later release until it has been verified against it |
+| Mod loader | Fabric Loader 0.19 or newer (built against 0.19.3) |
 | Dependency | Fabric API 0.157.0+26.2 or newer |
 | Java | 25 or newer |
 
@@ -160,6 +165,10 @@ Settings are stored in `config/justtiers.json` and are written automatically whe
 | `selectedGamemodes` | The chosen gamemode slug per site |
 | `novaRefreshMinutes` | How often to re-download the NovaTiers list (clamped to 5–1440) |
 
+`novaRefreshMinutes` is the one setting with no command; edit the file and restart the game, since
+the refresh timer is scheduled once at startup. Every other key has a command, and out-of-range or
+unrecognised values are corrected on load rather than rejected.
+
 `displayMode` is written in lower-case and read case-insensitively, so config files written by older
 builds with upper-case values (e.g. `"ALL"`) still load correctly. An unrecognised value falls back
 to `all` with a warning logged.
@@ -176,11 +185,22 @@ Just-Tiers reads three public leaderboard APIs and normalises them into one inte
 | SubTiers | `subtiers.net/api/v2/…` | Per player, by UUID (same schema as MCTiers) |
 | NovaTiers | `novatiers.com/users` | Bulk only — the entire ranked player list in one request |
 
-NovaTiers offers no per-player route, so its full list (several thousand players) is downloaded once, indexed by UUID in memory, and refreshed on a timer. MCTiers and SubTiers are queried per player, with results cached for the session and concurrent requests for the same player coalesced into one.
+NovaTiers offers no per-player route, so its full list (roughly 6,500 players, about 1.9 MB) is downloaded once, indexed by UUID in memory, and refreshed on a timer. MCTiers and SubTiers are queried per player, with results cached for the session and concurrent requests for the same player coalesced into one.
 
-Every lookup is asynchronous. A player whose data has not arrived yet simply renders with their normal nametag until it does.
+Every lookup is asynchronous. A player whose data has not arrived yet simply renders with their
+normal nametag until it does, and each site is drawn independently — the badge appears as soon as
+the first site answers and gains the rest over the following frames. Entities without a v4 UUID
+(offline-mode players, NPCs) are skipped outright, as they can never appear on these leaderboards.
 
 **No data is redistributed.** Tier information is fetched from the public APIs at runtime, on your own machine, and is never bundled with the mod or forwarded anywhere.
+
+### When a site is down
+
+An empty answer and a failed request are deliberately different things:
+
+- **HTTP 404** on MCTiers or SubTiers means the site answered and the player is genuinely unranked. That is cached.
+- **Any other status, or a transport failure**, means the lookup did not complete. It is not cached as "unranked"; it is retried, at most once a minute per player, so a rate-limited or briefly unavailable site does not get hammered by a lookup that runs every frame.
+- **A failed NovaTiers refresh** keeps the index already in memory rather than replacing it with nothing, so one bad refresh cannot blank every NovaTiers badge until the next successful one.
 
 ---
 
@@ -264,5 +284,8 @@ If you represent one of these leaderboards and want a change to how your data, n
 ## Contributing
 
 Issues and pull requests are welcome.
+
+Run `./gradlew test` before opening a pull request. The parsing, resolver, cache and config logic is
+deliberately free of Minecraft types so it can all be unit-tested without launching the game.
 
 When adding a gamemode, three things must stay in sync: the registry in `Gamemodes.java`, the icon codepoint list in `tools/gen_font_provider.py`, and the icon texture itself. The plan document explains the layout in detail.
