@@ -65,6 +65,7 @@ public class JustTiersConfig {
             Source.NOVATIERS, "vanilla");
 
     private boolean enabled = true;
+    private boolean showRetired = true;
     private DisplayMode displayMode = DisplayMode.ALL;
     private Map<String, String> selectedGamemodes = new HashMap<>();
     private int novaRefreshMinutes = 30;
@@ -75,6 +76,15 @@ public class JustTiersConfig {
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
+    }
+
+    /** Applies to every display mode: when false, retired tiers are never rendered. */
+    public boolean isShowRetired() {
+        return showRetired;
+    }
+
+    public void setShowRetired(boolean showRetired) {
+        this.showRetired = showRetired;
     }
 
     public DisplayMode getDisplayMode() {

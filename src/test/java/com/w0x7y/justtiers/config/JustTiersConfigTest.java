@@ -122,4 +122,28 @@ class JustTiersConfigTest {
                 """);
         assertEquals(DisplayMode.ALL, JustTiersConfig.load(file).getDisplayMode());
     }
+
+    @Test
+    void showRetiredDefaultsToTrueAndRoundTrips(@TempDir Path dir) throws Exception {
+        assertTrue(new JustTiersConfig().isShowRetired());
+
+        Path file = dir.resolve("retired.json");
+        JustTiersConfig config = new JustTiersConfig();
+        config.setShowRetired(false);
+        config.save(file);
+        assertTrue(Files.readString(file).contains("\"showRetired\": false"));
+        assertFalse(JustTiersConfig.load(file).isShowRetired());
+    }
+
+    @Test
+    void configsWrittenBeforeShowRetiredExistedStillShowRetiredTiers(@TempDir Path dir)
+            throws Exception {
+        Path file = dir.resolve("older.json");
+        Files.writeString(file, """
+                {"enabled":true,"displayMode":"all",
+                 "selectedGamemodes":{},
+                 "novaRefreshMinutes":30}
+                """);
+        assertTrue(JustTiersConfig.load(file).isShowRetired());
+    }
 }

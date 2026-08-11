@@ -7,13 +7,12 @@ import java.util.List;
 
 /**
  * Lays out the tier prefix that goes in front of a player's name, as
- * {@code [<icon>HT2 <icon>LT3] }. Tier text is coloured by its source site, except
- * retired tiers which are light red and carry an {@code R} prefix.
+ * {@code [<icon>HT2 <icon>LT3] }. Tier text is always coloured by its source site;
+ * retired tiers are distinguished by their {@code R} prefix alone.
  */
 public final class NametagModel {
 
     public static final int BRACKET_COLOR = 0x555555;
-    public static final int RETIRED_COLOR = 0xFF5555;
     /** Bitmap glyphs are multiplied by the text colour, so icons must be white. */
     public static final int ICON_COLOR = 0xFFFFFF;
 
@@ -31,10 +30,8 @@ public final class NametagModel {
             }
             ResolvedTier resolved = tiers.get(i);
             segments.add(new Segment(String.valueOf(resolved.gamemode().icon()), ICON_COLOR));
-            int color = resolved.tier().retired()
-                    ? RETIRED_COLOR
-                    : resolved.gamemode().source().color();
-            segments.add(new Segment(resolved.tier().label(), color));
+            segments.add(new Segment(resolved.tier().label(),
+                    resolved.gamemode().source().color()));
         }
 
         segments.add(new Segment("] ", BRACKET_COLOR));

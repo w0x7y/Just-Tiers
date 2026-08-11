@@ -18,7 +18,7 @@
 - Packages `tier`, `api`, `cache`, `resolve` and `render.model` **must not import any `net.minecraft.*` class.** This is what keeps them unit-testable. Only `render.NametagRenderer`, `mixin`, `command` and `JustTiersClient` may import Minecraft.
 - Tier ordering, lowest to highest: `LT5 < HT5 < LT4 < HT4 < LT3 < HT3 < LT2 < HT2 < LT1 < HT1`.
 - Site colours: MCTiers `0xFFFF55` (yellow), SubTiers `0x55FFFF` (cyan), NovaTiers `0xAA55FF` (purple).
-- Retired tiers **count** toward "highest tier" but render with an `R` prefix in light red `0xFF5555`, which overrides the site colour.
+- Retired tiers **count** toward "highest tier" and render with an `R` prefix in their own site's colour — the `R` is the only marker. A `showRetired` config flag (default `true`) hides them entirely across **all four** display modes; when hidden, a player falls back to their best active tier rather than disappearing.
 - **Peak tiers are parsed but never displayed.** Ignore `peak_tier`/`peak_pos`/`peakTiers` in all resolution and rendering.
 - Nametag format: `[` + entries joined by a single space + `] ` + original name. Brackets are dark grey `0x555555`. Each entry is the gamemode icon glyph followed immediately by the tier label.
 - Never block the render thread on HTTP. A cache miss returns "no tier" and schedules an async fetch.
@@ -2330,7 +2330,7 @@ The text layout lives here, deliberately free of Minecraft types so it can be as
 - Produces:
   - `record Segment(String text, int color)`.
   - `NametagModel.build(List<ResolvedTier>)` -> `List<Segment>`, empty when there is nothing to show.
-  - Constants `NametagModel.BRACKET_COLOR = 0x555555`, `NametagModel.RETIRED_COLOR = 0xFF5555`, `NametagModel.ICON_COLOR = 0xFFFFFF`.
+  - Constants `NametagModel.BRACKET_COLOR = 0x555555`, `NametagModel.ICON_COLOR = 0xFFFFFF`.
   - `NametagModel.plainText(List<Segment>)` -> `String`, for tests and log output.
 
 - [ ] **Step 1: Write the failing test**
@@ -2395,12 +2395,12 @@ class NametagModelTest {
     }
 
     @Test
-    void retiredTiersOverrideTheSiteColourWithLightRed() {
+    void retiredTiersKeepTheirSiteColourAndAreMarkedOnlyByTheRPrefix() {
         List<Segment> segments = NametagModel.build(
                 List.of(resolved(Source.MCTIERS, "vanilla", new Tier(1, true, true))));
 
         Segment tier = segments.stream().filter(s -> s.text().equals("RHT1")).findFirst().orElseThrow();
-        assertEquals(NametagModel.RETIRED_COLOR, tier.color());
+        assertEquals(Source.MCTIERS.color(), tier.color());
         assertEquals("[\uE108RHT1] ", NametagModel.plainText(segments));
     }
 
@@ -2436,7 +2436,7 @@ class NametagModelTest {
     }
 
     @Test
-    void mixedActiveAndRetiredEntriesKeepIndependentColours() {
+    void retiredAndActiveEntriesAreEachColouredBySite() {
         List<Segment> segments = NametagModel.build(List.of(
                 resolved(Source.MCTIERS, "axe", new Tier(1, true, true)),
                 resolved(Source.NOVATIERS, "uhc", new Tier(4, true, false))));
@@ -2444,7 +2444,7 @@ class NametagModelTest {
         Segment retired = segments.stream().filter(s -> s.text().equals("RHT1")).findFirst().orElseThrow();
         Segment active = segments.stream().filter(s -> s.text().equals("HT4")).findFirst().orElseThrow();
 
-        assertEquals(NametagModel.RETIRED_COLOR, retired.color());
+        assertEquals(Source.MCTIERS.color(), retired.color());
         assertEquals(Source.NOVATIERS.color(), active.color());
     }
 }
@@ -2483,7 +2483,6 @@ import java.util.List;
 public final class NametagModel {
 
     public static final int BRACKET_COLOR = 0x555555;
-    public static final int RETIRED_COLOR = 0xFF5555;
     /** Bitmap glyphs are multiplied by the text colour, so icons must be white. */
     public static final int ICON_COLOR = 0xFFFFFF;
 
@@ -2501,10 +2500,8 @@ public final class NametagModel {
             }
             ResolvedTier resolved = tiers.get(i);
             segments.add(new Segment(String.valueOf(resolved.gamemode().icon()), ICON_COLOR));
-            int color = resolved.tier().retired()
-                    ? RETIRED_COLOR
-                    : resolved.gamemode().source().color();
-            segments.add(new Segment(resolved.tier().label(), color));
+            segments.add(new Segment(resolved.tier().label(),
+                    resolved.gamemode().source().color()));
         }
 
         segments.add(new Segment("] ", BRACKET_COLOR));
