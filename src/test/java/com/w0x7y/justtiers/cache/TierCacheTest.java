@@ -5,6 +5,7 @@ import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -149,15 +150,58 @@ class TierCacheTest {
     }
 
     @Test
-    void aFailedFetchIsNotCachedAndCanBeRetried() {
+    void aFailedFetchIsNotCachedAndIsRetriedOnceTheDelayHasPassed() {
         FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
-        TierCache cache = new TierCache(List.of(fake));
+        TierCache cache = new TierCache(List.of(fake), Duration.ZERO);
 
         cache.peek(Source.MCTIERS, PLAYER);
         fake.pending.completeExceptionally(new RuntimeException("network down"));
 
         assertEquals(Optional.empty(), cache.peek(Source.MCTIERS, PLAYER),
                 "a failed lookup must not be reported as loaded");
+        assertEquals(Optional.empty(), cache.peek(Source.MCTIERS, PLAYER));
         assertEquals(2, fake.calls.get(), "a failed lookup must be retried");
+    }
+
+    @Test
+    void aFailedFetchIsNotRetriedWhileTheDelayIsStillRunning() {
+        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
+        TierCache cache = new TierCache(List.of(fake), Duration.ofMinutes(10));
+
+        cache.peek(Source.MCTIERS, PLAYER);
+        fake.pending.completeExceptionally(new RuntimeException("network down"));
+
+        // peek() runs every frame, so the backoff is what stops a failing site being hammered.
+        for (int i = 0; i < 50; i++) {
+            assertEquals(Optional.empty(), cache.peek(Source.MCTIERS, PLAYER));
+        }
+        assertEquals(1, fake.calls.get(), "the retry delay must suppress further attempts");
+    }
+
+    @Test
+    void aFailedFetchIsNeverReportedAsAnUnrankedPlayer() {
+        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
+        TierCache cache = new TierCache(List.of(fake), Duration.ofMinutes(10));
+
+        cache.peek(Source.MCTIERS, PLAYER);
+        fake.pending.completeExceptionally(new RuntimeException("site down"));
+
+        // Optional.of(Map.of()) would mean "known unranked" and would blank the badge.
+        assertTrue(cache.peek(Source.MCTIERS, PLAYER).isEmpty());
+    }
+
+    @Test
+    void invalidatingClearsTheRetryDelaySoRefreshRetriesImmediately() {
+        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
+        TierCache cache = new TierCache(List.of(fake), Duration.ofMinutes(10));
+
+        cache.peek(Source.MCTIERS, PLAYER);
+        fake.pending.completeExceptionally(new RuntimeException("site down"));
+        cache.peek(Source.MCTIERS, PLAYER);
+        assertEquals(1, fake.calls.get());
+
+        cache.invalidateAll();
+        cache.peek(Source.MCTIERS, PLAYER);
+        assertEquals(2, fake.calls.get(), "/justtiers refresh must not wait out the backoff");
     }
 }

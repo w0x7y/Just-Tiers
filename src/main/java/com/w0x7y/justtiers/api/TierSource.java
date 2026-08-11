@@ -8,8 +8,10 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Fetches one player's tiers from one site. Implementations never fail the returned
- * future: unreachable services and unranked players both resolve to an empty map.
+ * Fetches one player's tiers from one site. An empty map means the site answered and
+ * the player is genuinely unranked. A lookup that could not be completed — a transport
+ * failure, or any HTTP status other than 200 and 404 — fails the returned future instead,
+ * so callers can retry rather than caching "unranked" for a site that was merely down.
  */
 public interface TierSource {
 
