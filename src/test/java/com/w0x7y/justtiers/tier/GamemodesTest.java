@@ -30,7 +30,7 @@ class GamemodesTest {
     @Test
     void iconsLiveInThePrivateUseArea() {
         for (Gamemode mode : Gamemodes.ALL) {
-            assertTrue(mode.icon() >= '' && mode.icon() <= '',
+            assertTrue(mode.icon() >= '\uE000' && mode.icon() <= '\uF8FF',
                     "icon out of PUA for " + mode.slug());
         }
     }
