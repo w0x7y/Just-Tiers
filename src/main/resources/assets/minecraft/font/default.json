@@ -1,0 +1,292 @@
+{
+  "providers": [
+    {
+      "type": "bitmap",
+      "file": "justtiers:mctiers/axe.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue101"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:mctiers/mace.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue102"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:mctiers/nethop.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue103"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:mctiers/pot.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue104"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:mctiers/smp.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue105"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:mctiers/sword.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue106"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:mctiers/uhc.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue107"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:mctiers/vanilla.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue108"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:subtiers/bed.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue201"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:subtiers/bow.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue202"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:subtiers/creeper.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue203"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:subtiers/debuff.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue204"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:subtiers/dia_crystal.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue205"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:subtiers/dia_smp.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue206"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:subtiers/elytra.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue207"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:subtiers/manhunt.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue208"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:subtiers/minecart.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue209"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:subtiers/og_vanilla.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue20a"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:subtiers/speed.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue20b"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:subtiers/trident.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue20c"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:novatiers/axe.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue301"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:novatiers/diamondcart.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue302"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:novatiers/diamondop.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue303"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:novatiers/elytra.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue304"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:novatiers/elytraspear.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue305"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:novatiers/modernsmp.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue306"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:novatiers/pufferfish.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue307"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:novatiers/smp.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue308"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:novatiers/spearmace.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue309"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:novatiers/spleef.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue30a"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:novatiers/uhc.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue30b"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:novatiers/vanilla.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue30c"
+      ]
+    }
+  ]
+}

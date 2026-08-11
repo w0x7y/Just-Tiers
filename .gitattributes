@@ -1,0 +1,3 @@
+# The Windows wrapper must keep CRLF endings wherever it is checked out.
+/gradlew.bat text eol=crlf
+/gradlew      text eol=lf
