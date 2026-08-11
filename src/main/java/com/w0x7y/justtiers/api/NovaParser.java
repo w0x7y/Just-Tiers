@@ -78,13 +78,18 @@ public final class NovaParser {
             if (parsed.isEmpty()) {
                 continue;
             }
-            boolean retiredByMap = retiredMap.has(entry.getKey())
-                    && !retiredMap.get(entry.getKey()).isJsonNull()
-                    && retiredMap.get(entry.getKey()).getAsBoolean();
+            // The retiredTiers map is authoritative when it has an entry for this
+            // gamemode: its boolean wins in BOTH directions. The R prefix on the tier
+            // string is only a fallback for keys the map does not mention.
+            boolean mapHasEntry = retiredMap.has(entry.getKey())
+                    && !retiredMap.get(entry.getKey()).isJsonNull();
 
             Tier tier = parsed.get();
-            if (retiredByMap && !tier.retired()) {
-                tier = new Tier(tier.level(), tier.high(), true);
+            boolean retired = mapHasEntry
+                    ? retiredMap.get(entry.getKey()).getAsBoolean()
+                    : tier.retired();
+            if (retired != tier.retired()) {
+                tier = new Tier(tier.level(), tier.high(), retired);
             }
             tiers.put(slug.get(), tier);
         }
