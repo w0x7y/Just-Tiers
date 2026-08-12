@@ -6,10 +6,7 @@ A Minecraft **Fabric** client mod that shows a player's competitive PvP tier dir
 
 ## Status
 
-> **Implementation complete — not yet manually verified in-game.**
-> The full implementation plan has been carried out and the leaderboard APIs have been verified against the live services. `./gradlew test` runs 103 unit tests covering tier parsing, the resolver, the cache and the config, and they pass. `./gradlew build` produces `build/libs/just-tiers-1.0.0+mc26.2.jar`. In-game behaviour has not yet been manually verified.
->
-> Plan: [`docs/superpowers/plans/2026-08-11-just-tiers.md`](docs/superpowers/plans/2026-08-11-just-tiers.md)
+> ** ! THE MOD IS STILL IN BETA ! **
 
 ---
 
