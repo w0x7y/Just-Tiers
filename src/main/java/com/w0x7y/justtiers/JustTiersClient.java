@@ -87,8 +87,20 @@ public class JustTiersClient implements ClientModInitializer {
         refreshTask = scheduler.scheduleWithFixedDelay(
                 () -> {
                     try {
-                        novaSource.refresh();
-                        cache.invalidate(Source.NOVATIERS);
+                        // refresh() returns as soon as the download starts, so the cache
+                        // is cleared on completion rather than here: dropping the entries
+                        // up front would blank every NovaTiers badge for the length of a
+                        // ~1.9 MB download, and what is already cached stays correct until
+                        // the new index actually replaces the old one.
+                        novaSource.refresh().whenComplete((ignored, error) -> {
+                            if (error != null) {
+                                // NovaTiersSource already logs the cause and keeps the
+                                // previous index; this only guards the cache.
+                                JustTiers.LOGGER.warn("NovaTiers refresh failed; keeping stale data", error);
+                                return;
+                            }
+                            cache.invalidate(Source.NOVATIERS);
+                        });
                     } catch (Throwable t) {
                         JustTiers.LOGGER.warn("NovaTiers refresh task failed; keeping stale data", t);
                     }
