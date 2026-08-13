@@ -16,9 +16,10 @@ import java.util.Map;
 /**
  * The made-up nametag the config screen draws. It is deliberately <em>not</em> a
  * leaderboard lookup: every placement is tier 1, so the preview shows what a setting
- * looks like rather than what anyone has actually earned. Nothing here ever falls back
- * to another gamemode or comes out empty, which is the whole point — pick any gamemode
- * and you see that gamemode.
+ * looks like rather than what anyone has actually earned. A valid selection is always
+ * the gamemode you see, and the preview is never empty — the only substitution is a
+ * selection naming a gamemode its site no longer has, which draws that site's first
+ * gamemode instead of nothing.
  *
  * <p>Minecraft-free on purpose, and still built through the shared
  * {@link NametagModel}, so the preview keeps agreeing with the real nametag's shape,
