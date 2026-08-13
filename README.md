@@ -150,7 +150,7 @@ Everything the commands can do is also available on an in-game screen, built on
 
 - **A keybind** — unbound by default, so it never steals a key on first launch. Bind it under
   Options → Controls → **Just-Tiers**.
-- **`/justtiers gui`** — from chat, in game.
+- **`/justtiers gui`** — from chat, in-game.
 - **ModMenu** — the config button on the Just-Tiers entry in the mod list, if you have ModMenu installed.
 
 <!-- screenshot: the Display category, showing the preview row above the options -->
@@ -249,6 +249,7 @@ An empty answer and a failed request are deliberately different things:
 - **HTTP 404** on MCTiers or SubTiers means the site answered and the player is genuinely unranked. That is cached.
 - **Any other status, or a transport failure**, means the lookup did not complete. It is not cached as "unranked"; it is retried, at most once a minute per player, so a rate-limited or briefly unavailable site does not get hammered by a lookup that runs every frame.
 - **A failed NovaTiers refresh** keeps the index already in memory rather than replacing it with nothing, so one bad refresh cannot blank every NovaTiers badge until the next successful one.
+- **A refresh in progress** keeps serving the tiers already on screen. The cached entries are only dropped once the new list has finished downloading, so badges do not disappear for the length of a scheduled refresh.
 
 ---
 

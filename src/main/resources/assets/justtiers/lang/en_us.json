@@ -40,7 +40,7 @@
 
   "justtiers.data.indexed": "NovaTiers players indexed: %s",
   "justtiers.about.version": "Just-Tiers %s",
-  "justtiers.about.commands": "All settings are also available via /justtiers",
+  "justtiers.about.commands": "Most settings are also available via /justtiers",
   "justtiers.about.licence": "MIT licensed. Tier data belongs to the sites it comes from.",
 
   "key.justtiers.open_config": "Open config screen",

@@ -1,5 +1,27 @@
 # Just-Tiers Config GUI Implementation Plan
 
+> **Status: historical.** This plan was written before implementation and is kept as a
+> record of what was planned, not of what was built. It was implemented in full, but
+> several details changed once the APIs were checked against the actual jars, so where
+> this document and the code disagree, **the code is correct**. Known divergences:
+>
+> - **Test counts.** The plan's "89 existing tests" was already stale when written; the
+>   real baseline was 103, so the totals here (112) should read **126 across 12 classes**.
+> - **`ControlAvailability`.** Implemented as `Map<Source, Reason> reasons` with
+>   `reasonFor(Source)`, not `Map<Source, Boolean> gamemodes`. The `gamemode(Source)`
+>   accessor and the `Reason` values are as described.
+> - **ModMenu entry point.** `ModMenuIntegration.getModConfigScreenFactory()` adds a
+>   config button to the Just-Tiers entry in ModMenu's mod list. There is no pause-menu
+>   route, contrary to the verification checklist below.
+> - **Minecraft 26.2 API.** `setScreen` is `setScreenAndShow`; the Fabric keybind API is
+>   `keymapping.v1/KeyMappingHelper`; `KeyMapping` takes a registered `Category`, not a
+>   `String`.
+> - **Dependencies.** YACL's `org.quiltmc.parsers` transitives are not on Maven Central,
+>   so the Quilt maven is declared as well.
+> - **Option descriptions.** YACL caches an `Option`'s description, so a greyed gamemode
+>   row carries the explanations for all three inert states rather than only the one that
+>   currently applies.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** An in-game configuration screen for Just-Tiers, built on YetAnotherConfigLib (YACL), with a live nametag preview, every option visible at all times (irrelevant ones greyed rather than hidden), and a full-screen icon grid for picking a gamemode that returns to the config screen the moment you click a tile.
