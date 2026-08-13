@@ -158,13 +158,16 @@ Everything the commands can do is also available on an in-game screen, built on
 The screen has three categories — **Display**, **Data** and **About** — and behaves as follows.
 
 **A live preview.** The top of the Display category draws the nametag your current settings would
-produce, for a fixed sample player. It is generated through exactly the same code path the real
-nametag uses, so it cannot disagree with what you see in the world. Flip **Show retired tiers** and
-the tag changes in the same frame; a caption underneath explains what you are looking at, including
-when a fallback kicked in because the sample player is not ranked in the gamemode you picked.
+produce, under your own name. The tiers in it are invented — always `HT1` — so it is a picture of
+your settings rather than a lookup: pick any gamemode and the preview shows *that* gamemode, whether
+or not you have ever been tested in it. In `all` mode it shows one fixed gamemode per site — MCTiers
+Vanilla, SubTiers Minecart, NovaTiers Spear Mace — since that mode has no gamemode to pick. While
+**Show retired tiers** is on, the tag alternates every five seconds between `HT1` and `RHT1` so you
+can see both spellings; turn it off and it stays active. A caption underneath says the same thing in
+words, so the preview is never mistaken for your real placements.
 
-The sample data is invented, and deliberately so: the screen makes no network request and behaves
-identically offline, on any account.
+Nothing about it is a lookup: the screen makes no network request and behaves identically offline,
+on any account.
 
 **Nothing is hidden, only greyed.** Options that cannot do anything useful in the current state are
 greyed out rather than removed, so the screen never changes shape under you. In `all` mode, for

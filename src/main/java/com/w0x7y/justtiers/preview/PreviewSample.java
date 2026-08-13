@@ -4,82 +4,104 @@ import com.w0x7y.justtiers.render.model.NametagModel;
 import com.w0x7y.justtiers.render.model.Segment;
 import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.resolve.ResolvedTier;
-import com.w0x7y.justtiers.resolve.TierResolver;
 import com.w0x7y.justtiers.tier.Gamemode;
 import com.w0x7y.justtiers.tier.Gamemodes;
 import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 /**
- * The invented player behind the config screen's nametag preview. The placements are
- * chosen so that every switch in the UI visibly changes the result: two sites' best
- * tiers are retired (so {@code showRetired} does something), each site has three
- * placements (so changing gamemode does something), and no site is ranked in every
- * gamemode (so the fallback rule is reachable).
+ * The made-up nametag the config screen draws. It is deliberately <em>not</em> a
+ * leaderboard lookup: every placement is tier 1, so the preview shows what a setting
+ * looks like rather than what anyone has actually earned. A valid selection is always
+ * the gamemode you see, and the preview is never empty — the only substitution is a
+ * selection naming a gamemode its site no longer has, which draws that site's first
+ * gamemode instead of nothing.
  *
- * <p>Minecraft-free on purpose — the same resolve-then-model path the real nametag
- * uses, so a preview can never disagree with what is drawn in the world.
+ * <p>Minecraft-free on purpose, and still built through the shared
+ * {@link NametagModel}, so the preview keeps agreeing with the real nametag's shape,
+ * spacing and colours.
  */
 public final class PreviewSample {
 
-    public static final Map<Source, Map<String, Tier>> TIERS = Map.of(
-            Source.MCTIERS, Map.of(
-                    "vanilla", new Tier(2, true, false),
-                    "axe", new Tier(3, false, false),
-                    "sword", new Tier(4, true, false)),
-            Source.SUBTIERS, Map.of(
-                    "elytra", new Tier(3, false, false),
-                    "bow", new Tier(5, true, false),
-                    "minecart", new Tier(2, true, true)),
-            Source.NOVATIERS, Map.of(
-                    "vanilla", new Tier(4, true, false),
-                    "uhc", new Tier(4, false, false),
-                    "spearmace", new Tier(1, true, true)));
+    /** Every preview placement, active. */
+    public static final Tier ACTIVE = new Tier(1, true, false);
+    /** The same placement while the retired half of the cycle is showing. */
+    public static final Tier RETIRED = new Tier(1, true, true);
 
-    public record Caption(Kind kind, String gamemodeName, String sourceName) {
-        public enum Kind { SAMPLE, FALLBACK, EMPTY }
+    /** How long each half of the active/retired cycle lasts. */
+    public static final long RETIRED_CYCLE_MILLIS = 5_000L;
+
+    /**
+     * What "all sites" previews, whatever the gamemode pickers say. Those pickers are
+     * greyed in this mode, so the preview shows one fixed headline gamemode per site
+     * instead of pretending the greyed selections still matter.
+     */
+    public static final Map<Source, String> ALL_MODE_GAMEMODES = Map.of(
+            Source.MCTIERS, "vanilla",
+            Source.SUBTIERS, "minecart",
+            Source.NOVATIERS, "spearmace");
+
+    /**
+     * Which half of the cycle {@code timeMillis} lands in. Always active while retired
+     * tiers are hidden, so the toggle still visibly does something; otherwise it
+     * alternates so both spellings of a tier get shown.
+     */
+    public static boolean retiredPhase(boolean showRetired, long timeMillis) {
+        if (!showRetired) {
+            return false;
+        }
+        return Math.floorMod(Math.floorDiv(timeMillis, RETIRED_CYCLE_MILLIS), 2L) == 1L;
     }
 
     public static List<ResolvedTier> resolve(DisplayMode mode,
                                              Map<Source, String> selectedGamemodes,
-                                             boolean showRetired) {
-        return TierResolver.resolve(mode, TIERS, selectedGamemodes, showRetired);
+                                             boolean retired) {
+        Tier tier = retired ? RETIRED : ACTIVE;
+        return gamemodes(mode, selectedGamemodes).stream()
+                .map(gamemode -> new ResolvedTier(gamemode, tier))
+                .toList();
     }
 
     public static List<Segment> segments(DisplayMode mode,
                                          Map<Source, String> selectedGamemodes,
-                                         boolean showRetired) {
-        return NametagModel.build(resolve(mode, selectedGamemodes, showRetired));
+                                         boolean retired) {
+        return NametagModel.build(resolve(mode, selectedGamemodes, retired));
+    }
+
+    /** Convenience for callers holding a clock rather than a phase. */
+    public static List<Segment> segments(DisplayMode mode,
+                                         Map<Source, String> selectedGamemodes,
+                                         boolean showRetired,
+                                         long timeMillis) {
+        return segments(mode, selectedGamemodes, retiredPhase(showRetired, timeMillis));
+    }
+
+    /** The gamemodes the tag shows: the selection on one site, or the fixed trio. */
+    private static List<Gamemode> gamemodes(DisplayMode mode,
+                                            Map<Source, String> selectedGamemodes) {
+        var single = mode.singleSource();
+        if (single.isPresent()) {
+            return List.of(gamemodeOf(single.get(), selectedGamemodes));
+        }
+
+        List<Gamemode> all = new ArrayList<>(Source.values().length);
+        for (Source source : Source.values()) {
+            all.add(gamemodeOf(source, ALL_MODE_GAMEMODES));
+        }
+        return List.copyOf(all);
     }
 
     /**
-     * Explains what the preview is showing: the selected gamemode, or — when the sample
-     * player has no placement there — which gamemode it fell back from.
+     * The selected gamemode, or the site's first one when the selection is missing or
+     * no longer a real gamemode — a preview should never be blank over a stale slug.
      */
-    public static Caption caption(DisplayMode mode,
-                                  Map<Source, String> selectedGamemodes,
-                                  boolean showRetired) {
-        List<ResolvedTier> resolved = resolve(mode, selectedGamemodes, showRetired);
-        if (resolved.isEmpty()) {
-            return new Caption(Caption.Kind.EMPTY, "", "");
-        }
-
-        var single = mode.singleSource();
-        if (single.isEmpty()) {
-            return new Caption(Caption.Kind.SAMPLE, "", "");
-        }
-
-        Source source = single.get();
-        String slug = selectedGamemodes.get(source);
-        String requested = Gamemodes.find(source, slug).map(Gamemode::displayName).orElse(slug);
-        String shown = resolved.getFirst().gamemode().displayName();
-        Caption.Kind kind = shown.equals(requested)
-                ? Caption.Kind.SAMPLE
-                : Caption.Kind.FALLBACK;
-        return new Caption(kind, requested, source.displayName());
+    private static Gamemode gamemodeOf(Source source, Map<Source, String> selectedGamemodes) {
+        return Gamemodes.find(source, selectedGamemodes.get(source))
+                .orElseGet(() -> Gamemodes.of(source).getFirst());
     }
 
     private PreviewSample() {

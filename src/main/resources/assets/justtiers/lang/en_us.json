@@ -28,11 +28,9 @@
   "justtiers.mode.novatiers_only": "NovaTiers only",
   "justtiers.mode.all": "All three",
 
-  "justtiers.preview.player": "Steve",
-  "justtiers.preview.sample": "Sample data · %s",
-  "justtiers.preview.fallback": "Not ranked in %s — showing best on %s",
+  "justtiers.preview.player": "Player",
+  "justtiers.preview.example": "Example only — not your real tiers",
   "justtiers.preview.off": "Nametag tiers are turned off",
-  "justtiers.preview.empty": "Nothing would be shown",
 
   "justtiers.grid.title": "%s gamemode",
   "justtiers.grid.back": "Back",

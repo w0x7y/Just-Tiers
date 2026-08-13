@@ -22,9 +22,10 @@ import java.util.function.Supplier;
 
 /**
  * A read-only option row that draws the nametag the current pending settings would
- * produce. It goes through {@link PreviewSample} — and so through the same
- * resolve-then-model path {@code NametagRenderer} uses — rather than inventing its own
- * idea of a nametag, which is the only way the preview can be trusted.
+ * produce, under the player's own name. The tiers come from {@link PreviewSample} and
+ * are made up — always tier 1 — so this is a picture of the settings, never a
+ * leaderboard lookup; the shape and colours still come from the same {@code NametagModel}
+ * the world nametag uses.
  *
  * <p>The widget re-reads its {@link PreviewState} supplier every frame, so it follows
  * pending edits with no listener wiring at all.
@@ -67,7 +68,7 @@ public final class NametagPreviewController implements Controller<Component> {
 
     @Override
     public Component formatValue() {
-        return tag(state.get(), null);
+        return tag(state.get(), null, System.currentTimeMillis());
     }
 
     @Override
@@ -79,38 +80,22 @@ public final class NametagPreviewController implements Controller<Component> {
      * The tag as a component. {@code widget} is passed only so a disabled preview can
      * borrow YACL's colour-multiply; pass null for an undimmed tag.
      */
-    private MutableComponent tag(PreviewState current, PreviewWidget widget) {
-        List<Segment> segments = PreviewSample.segments(
-                current.displayMode(), current.selectedGamemodes(), current.showRetired());
+    private MutableComponent tag(PreviewState current, PreviewWidget widget, long timeMillis) {
+        List<Segment> segments = PreviewSample.segments(current.displayMode(),
+                current.selectedGamemodes(), current.showRetired(), timeMillis);
         if (widget != null && !current.enabled()) {
             segments = segments.stream()
                     .map(segment -> new Segment(segment.text(),
                             widget.dim(segment.color())))
                     .toList();
         }
-        return Segments.toComponent(segments)
-                .append(Component.translatable("justtiers.preview.player"));
+        return Segments.toComponent(segments).append(PreviewName.component());
     }
 
     private Component caption(PreviewState current) {
-        if (!current.enabled()) {
-            return Component.translatable("justtiers.preview.off");
-        }
-        PreviewSample.Caption caption = PreviewSample.caption(
-                current.displayMode(), current.selectedGamemodes(), current.showRetired());
-        return switch (caption.kind()) {
-            case EMPTY -> Component.translatable("justtiers.preview.empty");
-            case FALLBACK -> Component.translatable("justtiers.preview.fallback",
-                    caption.gamemodeName(), caption.sourceName());
-            case SAMPLE -> Component.translatable("justtiers.preview.sample",
-                    caption.gamemodeName().isEmpty()
-                            ? allSitesLabel()
-                            : caption.gamemodeName());
-        };
-    }
-
-    private static Component allSitesLabel() {
-        return Component.translatable("justtiers.mode.all");
+        return current.enabled()
+                ? Component.translatable("justtiers.preview.example")
+                : Component.translatable("justtiers.preview.off");
     }
 
     /** Inert by design — the preview is something to look at, not something to click. */
@@ -154,7 +139,8 @@ public final class NametagPreviewController implements Controller<Component> {
             graphics.pose().pushMatrix();
             graphics.pose().translate(contentX, tagY);
             graphics.pose().scale(TAG_SCALE, TAG_SCALE);
-            graphics.text(textRenderer, tag(current, this), 0, 0, 0xFFFFFFFF, true);
+            graphics.text(textRenderer, tag(current, this, System.currentTimeMillis()),
+                    0, 0, 0xFFFFFFFF, true);
             graphics.pose().popMatrix();
 
             int captionY = tagY + Math.round(textRenderer.lineHeight * TAG_SCALE) + 6;
@@ -190,7 +176,7 @@ public final class NametagPreviewController implements Controller<Component> {
         @Override
         public void updateNarration(NarrationElementOutput output) {
             PreviewState current = state.get();
-            output.add(NarratedElementType.TITLE, tag(current, null));
+            output.add(NarratedElementType.TITLE, tag(current, null, System.currentTimeMillis()));
             output.add(NarratedElementType.HINT, caption(current));
         }
 
