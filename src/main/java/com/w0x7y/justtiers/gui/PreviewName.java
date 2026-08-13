@@ -25,7 +25,8 @@ public final class PreviewName {
         if (client == null || client.getGameProfile() == null) {
             return null;
         }
-        String name = client.getGameProfile().getName();
+        // GameProfile is a record in current authlib: name(), not getName().
+        String name = client.getGameProfile().name();
         return name == null || name.isBlank() ? null : name;
     }
 
