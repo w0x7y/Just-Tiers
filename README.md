@@ -33,6 +33,8 @@ Just-Tiers supports all three leaderboards, and adds an **All** mode that shows 
 - **Non-blocking** — all lookups are asynchronous and cached; the mod never stalls your frame rate waiting on a web request.
 - **Shows up as it arrives** — a nametag gains its badge the moment the first site answers, then fills in as the others land, rather than waiting on the slowest one.
 - **Fails safe** — a site that is down, rate-limiting or unreachable is retried; it is never mistaken for "this player is unranked".
+- **In-game config screen** — every setting in one place, with a live nametag preview and an
+  icon grid for picking gamemodes. See [Configuration screen](#configuration-screen).
 - **Client-side only** — works on any server, nothing to install server-side.
 
 ---
@@ -106,6 +108,8 @@ config file. Tab-completion offers exactly these.
 | Minecraft | 26.2 only — the mod declares `~26.2`, so it will not load on a later release until it has been verified against it |
 | Mod loader | Fabric Loader 0.19 or newer (built against 0.19.3) |
 | Dependency | Fabric API 0.157.0+26.2 or newer |
+| Dependency | [YetAnotherConfigLib](https://modrinth.com/mod/yacl) 3.9.4 or newer — **required**, the config screen is built on it |
+| Optional | [ModMenu](https://modrinth.com/mod/modmenu) — adds a config button to the mod list |
 | Java | 25 or newer |
 
 ---
@@ -114,8 +118,10 @@ config file. Tab-completion offers exactly these.
 
 1. Install [Fabric Loader](https://fabricmc.net/use/) for Minecraft 26.2.
 2. Download [Fabric API](https://modrinth.com/mod/fabric-api) for 26.2 and put it in your `mods` folder.
-3. Put the Just-Tiers jar in your `mods` folder.
-4. Launch the game.
+3. Download [YetAnotherConfigLib](https://modrinth.com/mod/yacl) for 26.2 and put it in your `mods` folder. This one is required — Just-Tiers will refuse to load without it.
+4. Optionally add [ModMenu](https://modrinth.com/mod/modmenu) if you want a config button in the mod list.
+5. Put the Just-Tiers jar in your `mods` folder.
+6. Launch the game.
 
 ---
 
@@ -131,14 +137,57 @@ All commands are client-side and start with `/justtiers`.
 | `/justtiers mode <mode>` | Set display mode: `mctiers_only`, `subtiers_only`, `novatiers_only`, `all` |
 | `/justtiers gamemode <gamemode>` | Set the selected gamemode for the current single-site mode |
 | `/justtiers refresh` | Re-download tier data and clear the cache |
+| `/justtiers gui` | Open the configuration screen |
 
 `/justtiers gamemode` offers tab-completion limited to the gamemodes that actually exist on the site you are currently viewing.
 
 ---
 
+## Configuration screen
+
+Everything the commands can do is also available on an in-game screen, built on
+[YetAnotherConfigLib](https://modrinth.com/mod/yacl). Open it any of three ways:
+
+- **A keybind** — unbound by default, so it never steals a key on first launch. Bind it under
+  Options → Controls → **Just-Tiers**.
+- **`/justtiers gui`** — from chat, in-game.
+- **ModMenu** — the config button on the Just-Tiers entry in the mod list, if you have ModMenu installed.
+
+<!-- screenshot: the Display category, showing the preview row above the options -->
+
+The screen has three categories — **Display**, **Data** and **About** — and behaves as follows.
+
+**A live preview.** The top of the Display category draws the nametag your current settings would
+produce, for a fixed sample player. It is generated through exactly the same code path the real
+nametag uses, so it cannot disagree with what you see in the world. Flip **Show retired tiers** and
+the tag changes in the same frame; a caption underneath explains what you are looking at, including
+when a fallback kicked in because the sample player is not ranked in the gamemode you picked.
+
+The sample data is invented, and deliberately so: the screen makes no network request and behaves
+identically offline, on any account.
+
+**Nothing is hidden, only greyed.** Options that cannot do anything useful in the current state are
+greyed out rather than removed, so the screen never changes shape under you. In `all` mode, for
+instance, all three gamemode rows go inert — that mode always shows each site's highest tier, so
+there is no gamemode to pick — but they stay visible, still showing the value they hold, and their
+description says why they are inert.
+
+**A gamemode grid.** Clicking a gamemode row opens a full-screen grid of that site's gamemodes with
+their icons. The current selection is outlined in the site's colour, hovering a tile previews the
+nametag that choice would produce, and a single click selects it and returns — there is no confirm
+button. Escape or **Back** leaves it unchanged. Arrow keys and Enter work too.
+
+<!-- screenshot: the gamemode grid, with one tile outlined in the site colour -->
+
+**Nothing is written until you press Save.** Edits — including a gamemode picked in the grid — live
+in a pending state that **Cancel** discards and **Undo** reverts. **Save** writes
+`config/justtiers.json` once, the same file the commands write.
+
+---
+
 ## Configuration
 
-Settings are stored in `config/justtiers.json` and are written automatically whenever you change them with a command.
+Settings are stored in `config/justtiers.json` and are written automatically whenever you change them with a command, or when you press Save on the configuration screen.
 
 ```json
 {
@@ -162,9 +211,11 @@ Settings are stored in `config/justtiers.json` and are written automatically whe
 | `selectedGamemodes` | The chosen gamemode slug per site |
 | `novaRefreshMinutes` | How often to re-download the NovaTiers list (clamped to 5–1440) |
 
-`novaRefreshMinutes` is the one setting with no command; edit the file and restart the game, since
-the refresh timer is scheduled once at startup. Every other key has a command, and out-of-range or
-unrecognised values are corrected on load rather than rejected.
+Settings are also written by the [configuration screen](#configuration-screen), which produces the
+same file. `novaRefreshMinutes` has no command, but it does have a slider on the screen's **Data**
+category, and changing it takes effect as soon as you press Save — the refresh timer is rescheduled
+rather than waiting for the next launch. Out-of-range or unrecognised values are corrected on load
+rather than rejected.
 
 `displayMode` is written in lower-case and read case-insensitively, so config files written by older
 builds with upper-case values (e.g. `"ALL"`) still load correctly. An unrecognised value falls back
@@ -198,6 +249,7 @@ An empty answer and a failed request are deliberately different things:
 - **HTTP 404** on MCTiers or SubTiers means the site answered and the player is genuinely unranked. That is cached.
 - **Any other status, or a transport failure**, means the lookup did not complete. It is not cached as "unranked"; it is retried, at most once a minute per player, so a rate-limited or briefly unavailable site does not get hammered by a lookup that runs every frame.
 - **A failed NovaTiers refresh** keeps the index already in memory rather than replacing it with nothing, so one bad refresh cannot blank every NovaTiers badge until the next successful one.
+- **A refresh in progress** keeps serving the tiers already on screen. The cached entries are only dropped once the new list has finished downloading, so badges do not disappear for the length of a scheduled refresh.
 
 ---
 
@@ -218,6 +270,10 @@ To run a development client:
 ```
 
 Requires a JDK 25 toolchain. The Gradle build can provision one automatically.
+
+The build resolves YetAnotherConfigLib from Maven Central, ModMenu from Terraformers' maven and
+YACL's `org.quiltmc.parsers` transitives from Quilt's maven; all three repositories are declared
+in `build.gradle.kts`, so no extra setup is needed.
 
 ---
 
@@ -254,6 +310,8 @@ Just-Tiers does not redistribute any of these; they are resolved at build time o
 |---|---|
 | Fabric Loader | Apache-2.0 |
 | Fabric API | Apache-2.0 |
+| YetAnotherConfigLib | LGPL-3.0-or-later — linked at runtime, not redistributed |
+| ModMenu (compile-only, optional at runtime) | MIT |
 | Fabric Loom (build only) | MIT |
 | Mixin / MixinExtras | MIT |
 | Gson | Apache-2.0 |
