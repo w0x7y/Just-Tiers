@@ -136,9 +136,9 @@ public final class GamemodeGridScreen extends Screen {
     private void extractPreview(GuiGraphicsExtractor graphics) {
         String slug = hoveredIndex >= 0 ? gamemodes.get(hoveredIndex).slug() : selectedSlug;
         PreviewState state = stateFor(slug);
-        Component tag = Segments.toComponent(PreviewSample.segments(
-                        state.displayMode(), state.selectedGamemodes(), state.showRetired()))
-                .append(Component.translatable("justtiers.preview.player"));
+        Component tag = Segments.toComponent(PreviewSample.segments(state.displayMode(),
+                        state.selectedGamemodes(), state.showRetired(), System.currentTimeMillis()))
+                .append(PreviewName.component());
 
         int tagWidth = Math.round(font.width(tag) * TAG_SCALE);
         graphics.pose().pushMatrix();
