@@ -1,0 +1,48 @@
+{
+  "justtiers.config.title": "Just-Tiers",
+  "justtiers.config.category.display": "Display",
+  "justtiers.config.category.data": "Data",
+  "justtiers.config.category.about": "About",
+
+  "justtiers.option.enabled": "Show tiers in nametags",
+  "justtiers.option.enabled.desc": "Master switch. When off, nametags render untouched and no lookups are made.",
+  "justtiers.option.displayMode": "Display mode",
+  "justtiers.option.displayMode.desc": "Which leaderboards to show. 'All' shows each site's highest tier side by side.",
+  "justtiers.option.showRetired": "Show retired tiers",
+  "justtiers.option.showRetired.desc": "Retired tiers are shown with an R prefix. When off, a player falls back to their best active tier.",
+  "justtiers.option.gamemode": "%s gamemode",
+  "justtiers.option.gamemode.desc": "The gamemode to show for %s. If the player is not ranked in it, their highest tier on that site is shown instead.",
+  "justtiers.option.gamemode.inactive": "'all' mode always shows each site's highest tier, so there is no gamemode to pick. Switch mode first.",
+  "justtiers.option.gamemode.disabled": "Turn Just-Tiers on to change this.",
+  "justtiers.option.novaRefresh": "NovaTiers refresh interval",
+  "justtiers.option.novaRefresh.desc": "NovaTiers has no per-player endpoint, so the full ranked list (~1.9 MB) is downloaded on this interval.",
+  "justtiers.option.novaRefresh.value": "%s min",
+  "justtiers.option.refresh": "Refresh tier data now",
+  "justtiers.option.refresh.text": "Refresh",
+  "justtiers.option.refresh.desc": "Clears the cache and re-downloads. Use if a site was down.",
+
+  "justtiers.group.gamemodes": "Gamemodes",
+
+  "justtiers.mode.mctiers_only": "MCTiers only",
+  "justtiers.mode.subtiers_only": "SubTiers only",
+  "justtiers.mode.novatiers_only": "NovaTiers only",
+  "justtiers.mode.all": "All three",
+
+  "justtiers.preview.player": "Steve",
+  "justtiers.preview.sample": "Sample data · %s",
+  "justtiers.preview.fallback": "Not ranked in %s — showing best on %s",
+  "justtiers.preview.off": "Nametag tiers are turned off",
+  "justtiers.preview.empty": "Nothing would be shown",
+
+  "justtiers.grid.title": "%s gamemode",
+  "justtiers.grid.back": "Back",
+  "justtiers.grid.hint": "Click a gamemode to select it",
+
+  "justtiers.data.indexed": "NovaTiers players indexed: %s",
+  "justtiers.about.version": "Just-Tiers %s",
+  "justtiers.about.commands": "All settings are also available via /justtiers",
+  "justtiers.about.licence": "MIT licensed. Tier data belongs to the sites it comes from.",
+
+  "key.justtiers.open_config": "Open config screen",
+  "key.category.justtiers.main": "Just-Tiers"
+}

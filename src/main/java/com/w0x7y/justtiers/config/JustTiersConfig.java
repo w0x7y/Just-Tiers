@@ -103,6 +103,11 @@ public class JustTiersConfig {
         this.novaRefreshMinutes = Math.clamp(minutes, 5, 1440);
     }
 
+    /** The out-of-the-box gamemode for a site, and the config screen's reset target. */
+    public static String defaultGamemode(Source source) {
+        return DEFAULT_GAMEMODES.get(source);
+    }
+
     /** Falls back to the site default when the stored slug is absent or no longer valid. */
     public String selectedGamemode(Source source) {
         if (selectedGamemodes == null) {

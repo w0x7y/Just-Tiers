@@ -5,6 +5,7 @@ import com.w0x7y.justtiers.api.NovaTiersSource;
 import com.w0x7y.justtiers.cache.TierCache;
 import com.w0x7y.justtiers.command.JustTiersCommands;
 import com.w0x7y.justtiers.config.JustTiersConfig;
+import com.w0x7y.justtiers.gui.JustTiersKeybinds;
 import com.w0x7y.justtiers.tier.Source;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
@@ -13,6 +14,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 public class JustTiersClient implements ClientModInitializer {
@@ -21,6 +23,8 @@ public class JustTiersClient implements ClientModInitializer {
     private static TierCache cache;
     private static NovaTiersSource novaSource;
     private static Path configPath;
+    private static ScheduledExecutorService scheduler;
+    private static ScheduledFuture<?> refreshTask;
 
     @Override
     public void onInitializeClient() {
@@ -35,24 +39,15 @@ public class JustTiersClient implements ClientModInitializer {
 
         // NovaTiers only offers a bulk list, so warm it once up front and refresh on a timer.
         novaSource.refresh();
-        ScheduledExecutorService scheduler =
-                Executors.newSingleThreadScheduledExecutor(runnable -> {
-                    Thread thread = new Thread(runnable, "just-tiers-refresh");
-                    thread.setDaemon(true);
-                    return thread;
-                });
-        scheduler.scheduleWithFixedDelay(
-                () -> {
-                    try {
-                        novaSource.refresh();
-                        cache.invalidate(Source.NOVATIERS);
-                    } catch (Throwable t) {
-                        JustTiers.LOGGER.warn("NovaTiers refresh task failed; keeping stale data", t);
-                    }
-                },
-                config.getNovaRefreshMinutes(), config.getNovaRefreshMinutes(), TimeUnit.MINUTES);
+        scheduler = Executors.newSingleThreadScheduledExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "just-tiers-refresh");
+            thread.setDaemon(true);
+            return thread;
+        });
+        scheduleNovaRefresh(config.getNovaRefreshMinutes());
 
         JustTiersCommands.register();
+        JustTiersKeybinds.register();
 
         JustTiers.LOGGER.info("Just-Tiers {} ready (mode {})",
                 JustTiers.VERSION, config.getDisplayMode());
@@ -72,5 +67,33 @@ public class JustTiersClient implements ClientModInitializer {
 
     public static void saveConfig() {
         config.save(configPath);
+        // The interval is a live setting, so a changed slider takes effect now rather
+        // than at next launch. Harmless when the interval did not actually change.
+        scheduleNovaRefresh(config.getNovaRefreshMinutes());
+    }
+
+    /**
+     * Replaces the standing refresh timer with one at the given interval. The
+     * outstanding task is cancelled without interrupting it — a download in flight is
+     * left to finish rather than being torn up mid-stream.
+     */
+    private static void scheduleNovaRefresh(int minutes) {
+        if (scheduler == null) {
+            return;
+        }
+        if (refreshTask != null) {
+            refreshTask.cancel(false);
+        }
+        refreshTask = scheduler.scheduleWithFixedDelay(
+                () -> {
+                    try {
+                        novaSource.refresh();
+                        cache.invalidate(Source.NOVATIERS);
+                    } catch (Throwable t) {
+                        JustTiers.LOGGER.warn("NovaTiers refresh task failed; keeping stale data", t);
+                    }
+                },
+                minutes, minutes, TimeUnit.MINUTES);
+        JustTiers.LOGGER.info("NovaTiers refresh scheduled every {} minutes", minutes);
     }
 }

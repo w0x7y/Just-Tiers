@@ -21,12 +21,18 @@ tasks.withType<JavaCompile>().configureEach {
 repositories {
     mavenCentral()
     maven("https://maven.fabricmc.net/")
+    maven("https://maven.terraformersmc.com/releases/")
+    // YACL's org.quiltmc.parsers transitives are not mirrored to Maven Central.
+    maven("https://maven.quiltmc.org/repository/release/")
 }
 
 dependencies {
     minecraft("com.mojang:minecraft:${property("minecraft_version")}")
     implementation("net.fabricmc:fabric-loader:${property("loader_version")}")
     implementation("net.fabricmc.fabric-api:fabric-api:${property("fabric_api_version")}")
+    implementation("dev.isxander:yet-another-config-lib:${property("yacl_version")}")
+    // Only loaded when ModMenu is installed, so it never becomes a runtime dependency.
+    compileOnly("com.terraformersmc:modmenu:${property("modmenu_version")}")
     compileOnly("io.github.llamalad7:mixinextras-common:0.5.4")
     annotationProcessor("io.github.llamalad7:mixinextras-common:0.5.4")
 
