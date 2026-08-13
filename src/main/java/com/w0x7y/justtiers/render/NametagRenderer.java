@@ -50,11 +50,7 @@ public final class NametagRenderer {
             return original;
         }
 
-        MutableComponent prefix = Component.empty();
-        for (Segment segment : segments) {
-            prefix.append(Component.literal(segment.text())
-                    .withStyle(style -> style.withColor(segment.color())));
-        }
+        MutableComponent prefix = Segments.toComponent(segments);
         return prefix.append(original);
     }
 

@@ -1,6 +1,7 @@
 package com.w0x7y.justtiers.command;
 
 import com.w0x7y.justtiers.JustTiersClient;
+import com.w0x7y.justtiers.gui.JustTiersKeybinds;
 import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Gamemode;
 import com.w0x7y.justtiers.tier.Gamemodes;
@@ -27,6 +28,7 @@ public final class JustTiersCommands {
                         .then(literal("toggle").executes(JustTiersCommands::toggle))
                         .then(literal("retired").executes(JustTiersCommands::toggleRetired))
                         .then(literal("refresh").executes(JustTiersCommands::refresh))
+                        .then(literal("gui").executes(JustTiersCommands::openGui))
                         .then(literal("mode")
                                 .then(argument("mode", StringArgumentType.word())
                                         .suggests((context, builder) -> {
@@ -94,6 +96,13 @@ public final class JustTiersCommands {
                         ? "Showing retired tiers"
                         : "Hiding retired tiers",
                 config.isShowRetired() ? ChatFormatting.GREEN : ChatFormatting.YELLOW);
+        return 1;
+    }
+
+    private static int openGui(CommandContext<FabricClientCommandSource> context) {
+        // Opened on the next tick: the chat screen is still closing right now, and its
+        // setScreen(null) would overwrite anything we opened from here.
+        JustTiersKeybinds.requestOpen();
         return 1;
     }
 
