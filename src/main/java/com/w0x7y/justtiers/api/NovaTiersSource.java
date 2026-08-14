@@ -15,7 +15,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * NovaTiers exposes only a bulk {@code /users} array (~6.5k players, ~1.9 MB), so the
+ * NovaTiers exposes only a bulk {@code /users} array (~6.5k players, ~1.7 MB), so the
  * entire list is downloaded once and held as a UUID index. Call {@link #refresh()}
  * periodically to pick up new placements.
  */

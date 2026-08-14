@@ -35,6 +35,9 @@ Just-Tiers supports all three leaderboards, and adds an **All** mode that shows 
 - **Fails safe** — a site that is down, rate-limiting or unreachable is retried; it is never mistaken for "this player is unranked".
 - **In-game config screen** — every setting in one place, with a live nametag preview and an
   icon grid for picking gamemodes. See [Configuration screen](#configuration-screen).
+- **Visible downloads** — the NovaTiers list has to be fetched in full, so a small progress bar
+  appears in the bottom-left corner while it downloads, rather than leaving you wondering whether
+  the mod is working.
 - **Client-side only** — works on any server, nothing to install server-side.
 
 ---
@@ -202,7 +205,8 @@ Settings are stored in `config/justtiers.json` and are written automatically whe
     "SUBTIERS": "elytra",
     "NOVATIERS": "vanilla"
   },
-  "novaRefreshMinutes": 30
+  "novaRefreshMinutes": 30,
+  "showDownloadProgress": true
 }
 ```
 
@@ -213,12 +217,13 @@ Settings are stored in `config/justtiers.json` and are written automatically whe
 | `displayMode` | `mctiers_only`, `subtiers_only`, `novatiers_only` or `all` |
 | `selectedGamemodes` | The chosen gamemode slug per site |
 | `novaRefreshMinutes` | How often to re-download the NovaTiers list (clamped to 5–1440) |
+| `showDownloadProgress` | Whether a progress bar is shown in the bottom-left while the NovaTiers list downloads |
 
 Settings are also written by the [configuration screen](#configuration-screen), which produces the
-same file. `novaRefreshMinutes` has no command, but it does have a slider on the screen's **Data**
-category, and changing it takes effect as soon as you press Save — the refresh timer is rescheduled
-rather than waiting for the next launch. Out-of-range or unrecognised values are corrected on load
-rather than rejected.
+same file. `novaRefreshMinutes` and `showDownloadProgress` have no commands, but both appear on the
+screen's **Data** category — a slider and a tick box respectively. Changing the interval takes effect
+as soon as you press Save: the refresh timer is rescheduled rather than waiting for the next launch.
+Out-of-range or unrecognised values are corrected on load rather than rejected.
 
 `displayMode` is written in lower-case and read case-insensitively, so config files written by older
 builds with upper-case values (e.g. `"ALL"`) still load correctly. An unrecognised value falls back
@@ -236,7 +241,7 @@ Just-Tiers reads three public leaderboard APIs and normalises them into one inte
 | SubTiers | `subtiers.net/api/v2/…` | Per player, by UUID (same schema as MCTiers) |
 | NovaTiers | `novatiers.com/users` | Bulk only — the entire ranked player list in one request |
 
-NovaTiers offers no per-player route, so its full list (roughly 6,500 players, about 1.9 MB) is downloaded once, indexed by UUID in memory, and refreshed on a timer. MCTiers and SubTiers are queried per player, with results cached for the session and concurrent requests for the same player coalesced into one.
+NovaTiers offers no per-player route, so its full list (roughly 6,500 players, about 1.7 MB) is downloaded once, indexed by UUID in memory, and refreshed on a timer. MCTiers and SubTiers are queried per player, with results cached for the session and concurrent requests for the same player coalesced into one.
 
 Every lookup is asynchronous. A player whose data has not arrived yet simply renders with their
 normal nametag until it does, and each site is drawn independently — the badge appears as soon as

@@ -15,7 +15,7 @@
   "justtiers.option.gamemode.inactive": "'all' mode always shows each site's highest tier, so there is no gamemode to pick. Switch mode first.",
   "justtiers.option.gamemode.disabled": "Turn Just-Tiers on to change this.",
   "justtiers.option.novaRefresh": "NovaTiers refresh interval",
-  "justtiers.option.novaRefresh.desc": "NovaTiers has no per-player endpoint, so the full ranked list (~1.9 MB) is downloaded on this interval.",
+  "justtiers.option.novaRefresh.desc": "NovaTiers has no per-player endpoint, so the full ranked list (~1.7 MB) is downloaded on this interval.",
   "justtiers.option.novaRefresh.value": "%s min",
   "justtiers.option.downloadProgress": "Show download progress",
   "justtiers.option.downloadProgress.desc": "Shows a progress bar in the bottom-left corner while the NovaTiers list is downloading. Appears for every download, including the timed refresh.",

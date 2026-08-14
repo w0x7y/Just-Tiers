@@ -100,7 +100,7 @@ public class JustTiersClient implements ClientModInitializer {
                         // refresh() returns as soon as the download starts, so the cache
                         // is cleared on completion rather than here: dropping the entries
                         // up front would blank every NovaTiers badge for the length of a
-                        // ~1.9 MB download, and what is already cached stays correct until
+                        // ~1.7 MB download, and what is already cached stays correct until
                         // the new index actually replaces the old one.
                         novaSource.refresh().whenComplete((ignored, error) -> {
                             if (error != null) {
