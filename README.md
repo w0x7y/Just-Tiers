@@ -36,7 +36,7 @@ Just-Tiers supports all three leaderboards, and adds an **All** mode that shows 
 - **In-game config screen** — every setting in one place, with a live nametag preview and an
   icon grid for picking gamemodes. See [Configuration screen](#configuration-screen).
 - **Visible downloads** — the NovaTiers list has to be fetched in full, so a small progress bar
-  appears in the bottom-left corner while it downloads, rather than leaving you wondering whether
+  appears in the bottom-right corner while it downloads, rather than leaving you wondering whether
   the mod is working.
 - **Client-side only** — works on any server, nothing to install server-side.
 
@@ -217,7 +217,7 @@ Settings are stored in `config/justtiers.json` and are written automatically whe
 | `displayMode` | `mctiers_only`, `subtiers_only`, `novatiers_only` or `all` |
 | `selectedGamemodes` | The chosen gamemode slug per site |
 | `novaRefreshMinutes` | How often to re-download the NovaTiers list (clamped to 5–1440) |
-| `showDownloadProgress` | Whether a progress bar is shown in the bottom-left while the NovaTiers list downloads |
+| `showDownloadProgress` | Whether a progress bar is shown in the bottom-right while the NovaTiers list downloads |
 
 Settings are also written by the [configuration screen](#configuration-screen), which produces the
 same file. `novaRefreshMinutes` and `showDownloadProgress` have no commands, but both appear on the

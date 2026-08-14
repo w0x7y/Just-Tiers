@@ -18,7 +18,7 @@
   "justtiers.option.novaRefresh.desc": "NovaTiers has no per-player endpoint, so the full ranked list (~1.7 MB) is downloaded on this interval.",
   "justtiers.option.novaRefresh.value": "%s min",
   "justtiers.option.downloadProgress": "Show download progress",
-  "justtiers.option.downloadProgress.desc": "Shows a progress bar in the bottom-left corner while the NovaTiers list is downloading. Appears for every download, including the timed refresh.",
+  "justtiers.option.downloadProgress.desc": "Shows a progress bar in the bottom-right corner while the NovaTiers list is downloading. Appears for every download, including the timed refresh.",
   "justtiers.option.refresh": "Refresh tier data now",
   "justtiers.option.refresh.text": "Refresh",
   "justtiers.option.refresh.desc": "Clears the cache and re-downloads. Use if a site was down.",

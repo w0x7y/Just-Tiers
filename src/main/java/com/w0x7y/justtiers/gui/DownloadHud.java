@@ -11,23 +11,20 @@ import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 /**
- * Draws a small progress indicator in the bottom-left corner while the NovaTiers list is
+ * Draws a small progress indicator in the bottom-right corner while the NovaTiers list is
  * downloading. It is deliberately transient: it exists only so a user whose badges have not
  * appeared can tell "still downloading" from "the site is down".
  */
 public final class DownloadHud implements HudElement {
 
-    private static final int LEFT_MARGIN = 4;
+    private static final int RIGHT_MARGIN = 4;
     private static final int BOTTOM_GAP = 4;
-    /** Rough height of the chat input box, which sits below the message area. Tune by eye. */
-    private static final int CHAT_INPUT_ALLOWANCE = 14;
 
-    private static final int TRACK_WIDTH = 120;
+    private static final int TRACK_WIDTH = 180;
     private static final int TRACK_HEIGHT = 4;
     private static final int PADDING = 3;
     private static final int LINE_GAP = 2;
@@ -79,8 +76,10 @@ public final class DownloadHud implements HudElement {
         int contentHeight = failed ? font.lineHeight : font.lineHeight + LINE_GAP + TRACK_HEIGHT;
         int boxHeight = contentHeight + PADDING * 2;
 
-        int left = LEFT_MARGIN;
-        int bottom = graphics.guiHeight() - chatReserve(minecraft) - BOTTOM_GAP;
+        // Bottom-right: vanilla chat grows upward from the opposite corner, so nothing
+        // here has to be dodged.
+        int left = graphics.guiWidth() - RIGHT_MARGIN - boxWidth;
+        int bottom = graphics.guiHeight() - BOTTOM_GAP;
         int top = bottom - boxHeight;
 
         graphics.fill(left, top, left + boxWidth, bottom, BACKDROP);
@@ -125,21 +124,4 @@ public final class DownloadHud implements HudElement {
                 left + boxWidth - PADDING - font.width(readout), top + PADDING, TEXT_COLOUR);
     }
 
-    /**
-     * How much room to leave at the bottom for chat. Vanilla chat renders upward from this
-     * exact corner, so a bar flush to the bottom would sit on the newest message.
-     *
-     * <p>26.2 exposes no way to ask whether chat is focused - {@code Gui} has no
-     * {@code ChatComponent} accessor and {@code Minecraft} no current-screen accessor - so
-     * the focused height is reserved unconditionally. That costs a few pixels of clearance
-     * when chat is closed and buys a bar that does not jump when chat opens.
-     */
-    private static int chatReserve(Minecraft minecraft) {
-        if (minecraft.level == null) {
-            return 0;
-        }
-        double heightPct = minecraft.options.chatHeightFocused().get();
-        double scale = minecraft.options.chatScale().get();
-        return (int) Math.ceil(ChatComponent.getHeight(heightPct) * scale) + CHAT_INPUT_ALLOWANCE;
-    }
 }

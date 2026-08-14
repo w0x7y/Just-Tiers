@@ -36,6 +36,22 @@ Two design details changed once the 26.2 jars were inspected. **Where this plan 
 - **`finished()` takes no argument.** The spec listed `finished(long)`. Deriving the total
   from the counter that was just incremented removes the chance of the two disagreeing.
 
+### Changed during execution, on 2026-08-14
+
+The code below shows the bar in the **bottom-left**. It was moved to the **bottom-right**
+after seeing it in-game, at the author's request. Where the code blocks below and the
+implementation disagree, **the implementation is correct**.
+
+- **Bottom-right, not bottom-left.** Purely a look-and-feel call, but it made the design
+  simpler: chat grows upward from the bottom-*left*, so the whole chat-reserve mechanism
+  became unnecessary. `chatReserve()`, `CHAT_INPUT_ALLOWANCE` and the `ChatComponent`
+  import were deleted, and with them the one approximation this feature carried. Placement
+  is now `guiWidth() - RIGHT_MARGIN - boxWidth` and `guiHeight() - BOTTOM_GAP`.
+- **`TRACK_WIDTH` is 180, not 120.** It reads better wider.
+- **F1 needs no guard — confirmed in-game.** The assumption recorded below held: Minecraft
+  skips the HUD render when the GUI is hidden, so Fabric never invokes the element. No
+  hide-GUI flag had to be found.
+
 ---
 
 ## Verified API Reference
@@ -81,9 +97,9 @@ static Identifier fromNamespaceAndPath(String, String);   // NOT Identifier.of �
 
 ### Not verified — confirm at implementation time
 
-- **F1 (hide GUI).** No `hideGui` field exists on `Options`, `Gui` or `Minecraft` in 26.2; only `Options.keyToggleGui`. The expectation is that vanilla skips the HUD render entirely when hidden, so Fabric never invokes the element and no guard is needed. **Press F1 during a download in Task 7.** If it still draws, find where 26.2 keeps the flag and guard on it.
+- ~~**F1 (hide GUI).**~~ **Resolved 2026-08-14:** confirmed in-game that the bar hides on F1 with no guard, as expected. Nothing to do.
 - **HUD draw order.** `addLast` is expected to put the element above chat. If it renders beneath, switch to `HudElementRegistry.attachElementAfter(VanillaHudElements.CHAT, id, element)`.
-- **Chat reserve constants.** `CHAT_INPUT_ALLOWANCE = 14` is an estimate. Tune by eye in Task 7.
+- ~~**Chat reserve constants.**~~ **Resolved 2026-08-14:** moot. The bar moved to the bottom-right, so there is no chat to clear and no constant to tune.
 
 ---
 
@@ -1216,9 +1232,9 @@ git commit -m "Document the download indicator and correct the NovaTiers list si
 - [ ] `ProgressBarLayout` imports nothing from `net.minecraft.*`.
 - [ ] The indicator appears on the title screen during the launch download and animates.
 - [ ] A second download shows a real percentage.
-- [ ] The bar clears the chat area, chat open and closed, at GUI scale 2 and 3.
+- [x] The bar sits in the bottom-right, clear of chat by construction.
 - [ ] No double-draw with a screen open in-world.
-- [ ] F1 hides it, or a guard has been added and the divergence recorded.
+- [x] F1 hides it, with no guard needed.
 - [ ] `showDownloadProgress = false` suppresses it entirely.
 - [ ] A failed download (point `Source.NOVATIERS.baseUrl()` at a dead host, or pull the network) shows the red message and clears after ~4 seconds.
 - [ ] Nametag rendering is unchanged: `NametagModelTest` and `TierResolverTest` pass untouched.
