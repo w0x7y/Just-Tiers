@@ -148,6 +148,13 @@ public final class JustTiersScreens {
                                         String.valueOf(minutes))))
                 .build();
 
+        Option<Boolean> showProgress = Option.<Boolean>createBuilder()
+                .name(Component.translatable("justtiers.option.downloadProgress"))
+                .description(description("justtiers.option.downloadProgress.desc"))
+                .binding(true, config::isShowDownloadProgress, config::setShowDownloadProgress)
+                .controller(TickBoxControllerBuilder::create)
+                .build();
+
         ButtonOption refresh = ButtonOption.createBuilder()
                 .name(Component.translatable("justtiers.option.refresh"))
                 .text(Component.translatable("justtiers.option.refresh.text"))
@@ -161,6 +168,7 @@ public final class JustTiersScreens {
         return ConfigCategory.createBuilder()
                 .name(Component.translatable("justtiers.config.category.data"))
                 .option(refreshMinutes)
+                .option(showProgress)
                 .option(refresh)
                 .option(LabelOption.create(Component.translatable("justtiers.data.indexed",
                         String.valueOf(JustTiersClient.novaSource().indexedPlayerCount()))))

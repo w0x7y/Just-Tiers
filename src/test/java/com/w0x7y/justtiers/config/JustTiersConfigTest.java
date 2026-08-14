@@ -146,4 +146,27 @@ class JustTiersConfigTest {
                 """);
         assertTrue(JustTiersConfig.load(file).isShowRetired());
     }
+
+    @Test
+    void downloadProgressIsShownByDefault() {
+        assertTrue(new JustTiersConfig().isShowDownloadProgress());
+    }
+
+    @Test
+    void downloadProgressRoundTripsThroughDisk(@TempDir Path dir) {
+        Path file = dir.resolve("justtiers.json");
+        JustTiersConfig config = new JustTiersConfig();
+        config.setShowDownloadProgress(false);
+        config.save(file);
+
+        assertFalse(JustTiersConfig.load(file).isShowDownloadProgress());
+    }
+
+    @Test
+    void aConfigWrittenBeforeTheSettingExistedStillShowsProgress(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("justtiers.json");
+        Files.writeString(file, "{\"enabled\":true,\"displayMode\":\"all\"}");
+
+        assertTrue(JustTiersConfig.load(file).isShowDownloadProgress());
+    }
 }
