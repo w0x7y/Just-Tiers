@@ -1249,5 +1249,4 @@ Deliberately out of scope, recorded so they are not mistaken for oversights:
 - **`lastKnownTotal` is not persisted**, so every session's first download is indeterminate. Persisting one integer would fix it, but this design writes nothing to disk by choice.
 - **The indicator covers NovaTiers only.** MCTiers and SubTiers are small per-player requests that resolve in milliseconds; there is nothing to watch.
 - **No delay threshold.** The bar appears the instant any download starts, including the timed refresh. Chosen deliberately; `showDownloadProgress` is the escape hatch.
-- **The chat reserve is an approximation.** It clears vanilla chat at default settings. A mod that relocates or resizes chat may overlap; there is no general API for "where is the chat right now".
 - **novatiers.com ignores `Accept-Encoding: gzip`.** A JSON list of this shape would likely compress to a fraction of 1.74 MB. Nothing can be done client-side; worth raising with the site.

@@ -32,6 +32,7 @@ public final class DownloadProgress {
 
     private final LongSupplier clock;
     private final AtomicLong bytesRead = new AtomicLong();
+    private final AtomicLong generation = new AtomicLong();
     private volatile long lastKnownTotal;
     private volatile boolean downloading;
     private volatile boolean failed;
@@ -45,13 +46,25 @@ public final class DownloadProgress {
         this.clock = clock;
     }
 
-    public void started() {
+    /**
+     * Begins a download and returns the token that its own later updates must carry.
+     * Downloads can overlap - a refresh does not wait for a load already in flight - and
+     * only the newest one owns the displayed state, so every update is checked against the
+     * token here and a stale one is dropped rather than reporting an older download's
+     * bytes, completion or failure over a newer download's.
+     */
+    public long started() {
+        long token = generation.incrementAndGet();
         bytesRead.set(0);
         failed = false;
         downloading = true;
+        return token;
     }
 
-    public void advanced(long bytes) {
+    public void advanced(long token, long bytes) {
+        if (stale(token)) {
+            return;
+        }
         bytesRead.addAndGet(bytes);
     }
 
@@ -59,16 +72,26 @@ public final class DownloadProgress {
      * Calibrates from the bytes just counted rather than from a figure passed in, so the
      * total and the counter can never disagree.
      */
-    public void finished() {
+    public void finished(long token) {
+        if (stale(token)) {
+            return;
+        }
         lastKnownTotal = bytesRead.get();
         downloading = false;
     }
 
     /** A failed download does not calibrate: a truncated body is not a size. */
-    public void failed() {
+    public void failed(long token) {
+        if (stale(token)) {
+            return;
+        }
         downloading = false;
         failed = true;
         failedAt = clock.getAsLong();
+    }
+
+    private boolean stale(long token) {
+        return token != generation.get();
     }
 
     public Snapshot snapshot() {
