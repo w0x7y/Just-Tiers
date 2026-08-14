@@ -1,5 +1,7 @@
 package com.w0x7y.justtiers.config;
 
+import com.w0x7y.justtiers.render.model.BadgePosition;
+import com.w0x7y.justtiers.render.model.NametagStyle;
 import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Source;
 import org.junit.jupiter.api.Test;
@@ -168,5 +170,66 @@ class JustTiersConfigTest {
         Files.writeString(file, "{\"enabled\":true,\"displayMode\":\"all\"}");
 
         assertTrue(JustTiersConfig.load(file).isShowDownloadProgress());
+    }
+
+    // --- appearance ---
+
+    @Test
+    void theBadgeDefaultsToTheShapeJustTiersHasAlwaysDrawn() {
+        JustTiersConfig config = new JustTiersConfig();
+        assertEquals(BadgePosition.BEFORE, config.getBadgePosition());
+        assertTrue(config.isShowIcons());
+        assertTrue(config.isShowBrackets());
+        assertEquals(NametagStyle.DEFAULT, config.nametagStyle());
+    }
+
+    @Test
+    void appearanceRoundTripsThroughDisk(@TempDir Path dir) {
+        Path file = dir.resolve("appearance.json");
+        JustTiersConfig config = new JustTiersConfig();
+        config.setBadgePosition(BadgePosition.AFTER);
+        config.setShowIcons(false);
+        config.setShowBrackets(false);
+        config.save(file);
+
+        JustTiersConfig loaded = JustTiersConfig.load(file);
+        assertEquals(BadgePosition.AFTER, loaded.getBadgePosition());
+        assertFalse(loaded.isShowIcons());
+        assertFalse(loaded.isShowBrackets());
+        assertEquals(new NametagStyle(BadgePosition.AFTER, false, false),
+                loaded.nametagStyle());
+    }
+
+    @Test
+    void saveWritesBadgePositionAsLowerCaseId(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("position.json");
+        JustTiersConfig config = new JustTiersConfig();
+        config.setBadgePosition(BadgePosition.AFTER);
+        config.save(file);
+
+        String written = Files.readString(file);
+        assertTrue(written.contains("\"after\""));
+        assertFalse(written.contains("\"AFTER\""));
+    }
+
+    @Test
+    void anUnrecognisedBadgePositionFallsBackToBefore(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("nonsense.json");
+        Files.writeString(file, """
+                {"enabled":true,"displayMode":"all","badgePosition":"sideways"}
+                """);
+        assertEquals(BadgePosition.BEFORE, JustTiersConfig.load(file).getBadgePosition());
+    }
+
+    @Test
+    void aConfigWrittenBeforeTheAppearanceSettingsExistedKeepsTheOldLook(@TempDir Path dir)
+            throws Exception {
+        Path file = dir.resolve("older.json");
+        Files.writeString(file, """
+                {"enabled":true,"displayMode":"all",
+                 "selectedGamemodes":{},
+                 "novaRefreshMinutes":30}
+                """);
+        assertEquals(NametagStyle.DEFAULT, JustTiersConfig.load(file).nametagStyle());
     }
 }

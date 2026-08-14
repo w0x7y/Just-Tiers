@@ -204,4 +204,106 @@ class TierCacheTest {
         cache.peek(Source.MCTIERS, PLAYER);
         assertEquals(2, fake.calls.get(), "/justtiers refresh must not wait out the backoff");
     }
+
+    // --- forgetFailed ---
+
+    @Test
+    void loadOnItsOwnWouldKeepAFailureForever() {
+        // The behaviour forgetFailed exists to correct: nothing peeks at a player who is
+        // not in the world, so a failed load would be replayed by every later lookup.
+        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
+        TierCache cache = new TierCache(List.of(fake));
+
+        cache.load(Source.MCTIERS, PLAYER);
+        fake.pending.completeExceptionally(new RuntimeException("site down"));
+
+        assertTrue(cache.load(Source.MCTIERS, PLAYER).isCompletedExceptionally());
+        assertEquals(1, fake.calls.get());
+    }
+
+    @Test
+    void forgetFailedLetsTheNextLoadTryAgain() {
+        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of("axe", new Tier(1, true, false)));
+        TierCache cache = new TierCache(List.of(fake));
+
+        cache.load(Source.MCTIERS, PLAYER);
+        fake.pending.completeExceptionally(new RuntimeException("site down"));
+        cache.forgetFailed(Source.MCTIERS, PLAYER);
+
+        cache.load(Source.MCTIERS, PLAYER);
+        assertEquals(2, fake.calls.get());
+    }
+
+    @Test
+    void forgetFailedLeavesASuccessfulEntryAlone() throws Exception {
+        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of("axe", new Tier(1, true, false)));
+        TierCache cache = new TierCache(List.of(fake));
+
+        CompletableFuture<Map<String, Tier>> loaded = cache.load(Source.MCTIERS, PLAYER);
+        fake.complete();
+        cache.forgetFailed(Source.MCTIERS, PLAYER);
+
+        assertSame(loaded, cache.load(Source.MCTIERS, PLAYER));
+        assertEquals(1, fake.calls.get());
+        assertEquals("HT1", loaded.get().get("axe").label());
+    }
+
+    @Test
+    void forgetFailedLeavesALookupStillInFlightAlone() {
+        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
+        TierCache cache = new TierCache(List.of(fake));
+
+        CompletableFuture<Map<String, Tier>> inFlight = cache.load(Source.MCTIERS, PLAYER);
+        cache.forgetFailed(Source.MCTIERS, PLAYER);
+
+        assertSame(inFlight, cache.load(Source.MCTIERS, PLAYER));
+        assertEquals(1, fake.calls.get());
+    }
+
+    @Test
+    void aSuccessfulLoadEndsTheBackoffAnEarlierFailureLeftBehind() {
+        // /justtiers lookup goes through load(), which ignores the backoff. When it
+        // succeeds the site has answered, so peek() must stop reporting "not yet known"
+        // rather than blanking the badge for the rest of the delay.
+        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of("axe", new Tier(1, true, false)));
+        TierCache cache = new TierCache(List.of(fake), Duration.ofMinutes(10));
+
+        cache.peek(Source.MCTIERS, PLAYER);
+        fake.pending.completeExceptionally(new RuntimeException("site down"));
+        assertEquals(Optional.empty(), cache.peek(Source.MCTIERS, PLAYER));
+
+        cache.load(Source.MCTIERS, PLAYER);
+        fake.complete();
+
+        Optional<Map<String, Tier>> loaded = cache.peek(Source.MCTIERS, PLAYER);
+        assertTrue(loaded.isPresent(), "the badge must not stay blank behind a spent backoff");
+        assertEquals("HT1", loaded.get().get("axe").label());
+    }
+
+    @Test
+    void aFailedLoadLeavesTheBackoffInPlace() {
+        // Only an answer spends the backoff; a second failure must not hand peek() a
+        // free retry, or a failing site gets hammered every frame again.
+        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
+        TierCache cache = new TierCache(List.of(fake), Duration.ofMinutes(10));
+
+        cache.peek(Source.MCTIERS, PLAYER);
+        fake.pending.completeExceptionally(new RuntimeException("site down"));
+        cache.peek(Source.MCTIERS, PLAYER);
+
+        cache.load(Source.MCTIERS, PLAYER);
+        fake.pending.completeExceptionally(new RuntimeException("still down"));
+        cache.forgetFailed(Source.MCTIERS, PLAYER);
+
+        for (int i = 0; i < 10; i++) {
+            assertEquals(Optional.empty(), cache.peek(Source.MCTIERS, PLAYER));
+        }
+        assertEquals(2, fake.calls.get(), "the backoff must survive a failed load");
+    }
+
+    @Test
+    void forgettingAPlayerWhoWasNeverLookedUpIsHarmless() {
+        TierCache cache = new TierCache(List.of());
+        assertDoesNotThrow(() -> cache.forgetFailed(Source.NOVATIERS, PLAYER));
+    }
 }

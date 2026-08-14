@@ -1,6 +1,7 @@
 package com.w0x7y.justtiers.preview;
 
 import com.w0x7y.justtiers.render.model.NametagModel;
+import com.w0x7y.justtiers.render.model.NametagStyle;
 import com.w0x7y.justtiers.render.model.Segment;
 import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.resolve.ResolvedTier;
@@ -69,7 +70,14 @@ public final class PreviewSample {
     public static List<Segment> segments(DisplayMode mode,
                                          Map<Source, String> selectedGamemodes,
                                          boolean retired) {
-        return NametagModel.build(resolve(mode, selectedGamemodes, retired));
+        return segments(mode, selectedGamemodes, retired, NametagStyle.DEFAULT);
+    }
+
+    public static List<Segment> segments(DisplayMode mode,
+                                         Map<Source, String> selectedGamemodes,
+                                         boolean retired,
+                                         NametagStyle style) {
+        return NametagModel.build(resolve(mode, selectedGamemodes, retired), style);
     }
 
     /** Convenience for callers holding a clock rather than a phase. */
@@ -77,7 +85,15 @@ public final class PreviewSample {
                                          Map<Source, String> selectedGamemodes,
                                          boolean showRetired,
                                          long timeMillis) {
-        return segments(mode, selectedGamemodes, retiredPhase(showRetired, timeMillis));
+        return segments(mode, selectedGamemodes, showRetired, timeMillis, NametagStyle.DEFAULT);
+    }
+
+    public static List<Segment> segments(DisplayMode mode,
+                                         Map<Source, String> selectedGamemodes,
+                                         boolean showRetired,
+                                         long timeMillis,
+                                         NametagStyle style) {
+        return segments(mode, selectedGamemodes, retiredPhase(showRetired, timeMillis), style);
     }
 
     /** The gamemodes the tag shows: the selection on one site, or the fixed trio. */

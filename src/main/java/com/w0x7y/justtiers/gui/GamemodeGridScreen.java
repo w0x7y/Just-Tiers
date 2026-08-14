@@ -116,7 +116,8 @@ public final class GamemodeGridScreen extends Screen {
         Map<Source, String> selected = new EnumMap<>(Source.class);
         selected.putAll(base.selectedGamemodes());
         selected.put(source, slug);
-        return new PreviewState(base.enabled(), base.displayMode(), selected, base.showRetired());
+        return new PreviewState(base.enabled(), base.displayMode(), selected,
+                base.showRetired(), base.style());
     }
 
     @Override
@@ -136,9 +137,10 @@ public final class GamemodeGridScreen extends Screen {
     private void extractPreview(GuiGraphicsExtractor graphics) {
         String slug = hoveredIndex >= 0 ? gamemodes.get(hoveredIndex).slug() : selectedSlug;
         PreviewState state = stateFor(slug);
-        Component tag = Segments.toComponent(PreviewSample.segments(state.displayMode(),
-                        state.selectedGamemodes(), state.showRetired(), System.currentTimeMillis()))
-                .append(PreviewName.component());
+        Component tag = Segments.compose(
+                PreviewSample.segments(state.displayMode(), state.selectedGamemodes(),
+                        state.showRetired(), System.currentTimeMillis(), state.style()),
+                PreviewName.component(), state.style().position());
 
         int tagWidth = Math.round(font.width(tag) * TAG_SCALE);
         graphics.pose().pushMatrix();
