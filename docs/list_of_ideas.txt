@@ -1,0 +1,13 @@
+2. /justtiers lookup <player>. Check someone's tiers without them being in render distance, with tab-completion from online players. All the machinery exists; it's a thin command on top of TierCache.load. Genuinely useful right before a duel, and it's the natural place to show all gamemodes for a player rather than just the selected one.
+
+3. Tab list (and chat) tiers. Right now PlayerMixin hooks Player.getDisplayName, which only reaches the in-world nametag. The tab list goes through PlayerInfo/PlayerTabOverlay and chat comes from the server packet, so both are untouched (the plan lists this as deliberate scope). For a PvP tier mod this is arguably the highest-value missing piece: you check who's in the lobby by pressing Tab, not by walking up to each person.
+
+4. Per-site toggles in all mode. DisplayMode is a 4-value enum, so "MCTiers + NovaTiers, skip SubTiers" is unreachable. A set of enabled sources would cover all four current modes and more, though it's a config-shape change with migration.
+
+5. Display polish: badge before/after the name, icons on/off, brackets on/off. Cheap, and the config screen already has a live preview to show it.
+
+6. Runtime gamemode discovery. MCTiers/SubTiers publish /v2/mode/list, but unknown slugs are silently dropped today, so a newly-added gamemode is invisible until you ship an update. A generic fallback icon would degrade gracefully instead.
+
+7. Broader version support. ~26.2 only is a hard ceiling on your user base; a version matrix plus Modrinth publishing automation (minotaur) is boring but probably the biggest single lever on adoption.
+
+8. Screenshots. The README still has <!-- screenshot: --> placeholders, and a Modrinth listing without images converts badly.
