@@ -1,5 +1,10 @@
 # NovaTiers Download Progress Indicator — Design
 
+> **Amended 2026-08-14, after seeing it in-game.** The indicator sits in the **bottom-right**
+> corner, not the bottom-left described below, and its track is 180 px rather than 120 px.
+> The move deleted the *Placement* section's chat-reserve rule entirely: chat grows upward
+> from the bottom-*left*, so there is nothing to clear. The implementation is the authority.
+
 **Goal:** Make the NovaTiers bulk download visible. Today it runs at launch and every
 `novaRefreshMinutes` thereafter, downloading ~1.7 MB with no indication that anything is
 happening; a user whose NovaTiers badges have not appeared yet cannot tell the difference
