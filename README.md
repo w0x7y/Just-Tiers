@@ -250,6 +250,28 @@ the first site answers and gains the rest over the following frames. Entities wi
 
 **No data is redistributed.** Tier information is fetched from the public APIs at runtime, on your own machine, and is never bundled with the mod or forwarded anywhere.
 
+### The download indicator
+
+Because the NovaTiers list has to arrive in full before any NovaTiers badge can appear, a small
+progress bar is drawn in the **bottom-right corner** while it downloads. It shows up for every
+download — at launch, on the timed refresh, and when you run `/justtiers refresh` — and disappears
+the moment the download finishes.
+
+`novatiers.com` sends no `Content-Length`, so the size of the list is not knowable in advance. The
+bar calibrates itself instead: the **first** download of a session shows a sliding bar and a live
+byte count, and once one download has completed the mod knows how big the list actually is, so
+**every later download in that session shows a true percentage**. Nothing is remembered between
+sessions, so the first download after each launch is always the indeterminate one. A percentage is
+never shown against a guess.
+
+If a download fails, the bar is replaced for a few seconds by **NovaTiers unavailable** in red. This
+is worth saying out loud, because a failed refresh is otherwise silent — the mod keeps serving the
+tiers it already has, so without the message there is nothing to distinguish a failed refresh from a
+successful one.
+
+Set `showDownloadProgress` to `false`, or untick **Show download progress** on the config screen's
+**Data** category, to turn it off entirely.
+
 ### When a site is down
 
 An empty answer and a failed request are deliberately different things:
