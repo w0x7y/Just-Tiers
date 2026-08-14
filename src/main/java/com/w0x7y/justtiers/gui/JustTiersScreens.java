@@ -5,6 +5,8 @@ import com.w0x7y.justtiers.JustTiersClient;
 import com.w0x7y.justtiers.config.JustTiersConfig;
 import com.w0x7y.justtiers.gui.state.ControlAvailability;
 import com.w0x7y.justtiers.gui.state.PreviewState;
+import com.w0x7y.justtiers.render.model.BadgePosition;
+import com.w0x7y.justtiers.render.model.NametagStyle;
 import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Source;
 import dev.isxander.yacl3.api.ButtonOption;
@@ -65,6 +67,30 @@ public final class JustTiersScreens {
                 .controller(TickBoxControllerBuilder::create)
                 .build();
 
+        Option<BadgePosition> badgePosition = Option.<BadgePosition>createBuilder()
+                .name(Component.translatable("justtiers.option.badgePosition"))
+                .description(description("justtiers.option.badgePosition.desc"))
+                .binding(BadgePosition.BEFORE, config::getBadgePosition, config::setBadgePosition)
+                .controller(opt -> EnumControllerBuilder.create(opt)
+                        .enumClass(BadgePosition.class)
+                        .valueFormatter(position ->
+                                Component.translatable("justtiers.badge." + position.id())))
+                .build();
+
+        Option<Boolean> showIcons = Option.<Boolean>createBuilder()
+                .name(Component.translatable("justtiers.option.showIcons"))
+                .description(description("justtiers.option.showIcons.desc"))
+                .binding(true, config::isShowIcons, config::setShowIcons)
+                .controller(TickBoxControllerBuilder::create)
+                .build();
+
+        Option<Boolean> showBrackets = Option.<Boolean>createBuilder()
+                .name(Component.translatable("justtiers.option.showBrackets"))
+                .description(description("justtiers.option.showBrackets.desc"))
+                .binding(true, config::isShowBrackets, config::setShowBrackets)
+                .controller(TickBoxControllerBuilder::create)
+                .build();
+
         // Read lazily, so the pickers can hand this supplier to the grid screen even
         // though the map they live in is still being filled in below.
         Map<Source, Option<String>> pickers = new EnumMap<>(Source.class);
@@ -72,7 +98,9 @@ public final class JustTiersScreens {
                 enabled.pendingValue(),
                 displayMode.pendingValue(),
                 pendingGamemodes(pickers),
-                showRetired.pendingValue());
+                showRetired.pendingValue(),
+                new NametagStyle(badgePosition.pendingValue(),
+                        showIcons.pendingValue(), showBrackets.pendingValue()));
 
         for (Source source : Source.values()) {
             pickers.put(source, Option.<String>createBuilder()
@@ -92,6 +120,9 @@ public final class JustTiersScreens {
                     enabled.pendingValue(), displayMode.pendingValue());
             displayMode.setAvailable(state.displayMode());
             showRetired.setAvailable(state.showRetired());
+            badgePosition.setAvailable(state.appearance());
+            showIcons.setAvailable(state.appearance());
+            showBrackets.setAvailable(state.appearance());
             pickers.forEach((source, option) -> option.setAvailable(state.gamemode(source)));
         };
         enabled.addEventListener((option, event) -> syncAvailability.run());
@@ -102,7 +133,8 @@ public final class JustTiersScreens {
 
         return YetAnotherConfigLib.createBuilder()
                 .title(Component.translatable("justtiers.config.title"))
-                .category(displayCategory(preview, enabled, displayMode, showRetired, pickers))
+                .category(displayCategory(preview, enabled, displayMode, showRetired,
+                        badgePosition, showIcons, showBrackets, pickers))
                 .category(dataCategory(config))
                 .category(aboutCategory())
                 .save(JustTiersClient::saveConfig)
@@ -120,7 +152,19 @@ public final class JustTiersScreens {
                                                   Option<Boolean> enabled,
                                                   Option<DisplayMode> displayMode,
                                                   Option<Boolean> showRetired,
+                                                  Option<BadgePosition> badgePosition,
+                                                  Option<Boolean> showIcons,
+                                                  Option<Boolean> showBrackets,
                                                   Map<Source, Option<String>> pickers) {
+        // Appearance sits above the gamemode pickers because every one of its rows shows
+        // up in the preview immediately, whatever else the screen is set to.
+        OptionGroup appearance = OptionGroup.createBuilder()
+                .name(Component.translatable("justtiers.group.appearance"))
+                .option(badgePosition)
+                .option(showIcons)
+                .option(showBrackets)
+                .build();
+
         OptionGroup.Builder gamemodes = OptionGroup.createBuilder()
                 .name(Component.translatable("justtiers.group.gamemodes"));
         pickers.values().forEach(gamemodes::option);
@@ -131,6 +175,7 @@ public final class JustTiersScreens {
                 .option(enabled)
                 .option(displayMode)
                 .option(showRetired)
+                .group(appearance)
                 .group(gamemodes.build())
                 .build();
     }

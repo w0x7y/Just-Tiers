@@ -10,6 +10,12 @@
   "justtiers.option.displayMode.desc": "Which leaderboards to show. 'All' shows each site's highest tier side by side.",
   "justtiers.option.showRetired": "Show retired tiers",
   "justtiers.option.showRetired.desc": "Retired tiers are shown with an R prefix. When off, a player falls back to their best active tier.",
+  "justtiers.option.badgePosition": "Badge position",
+  "justtiers.option.badgePosition.desc": "Whether the tier badge is drawn in front of the player's name or behind it.",
+  "justtiers.option.showIcons": "Show gamemode icons",
+  "justtiers.option.showIcons.desc": "The small glyph in front of each tier. With icons off the badge is as short as it gets, and the sites are told apart by tier colour alone.",
+  "justtiers.option.showBrackets": "Show brackets",
+  "justtiers.option.showBrackets.desc": "The [ ] around the badge. With brackets off the tiers sit against the name with only a space between them.",
   "justtiers.option.gamemode": "%s gamemode",
   "justtiers.option.gamemode.desc": "The gamemode to show for %s. If the player is not ranked in it, their highest tier on that site is shown instead.",
   "justtiers.option.gamemode.inactive": "'all' mode always shows each site's highest tier, so there is no gamemode to pick. Switch mode first.",
@@ -23,12 +29,24 @@
   "justtiers.option.refresh.text": "Refresh",
   "justtiers.option.refresh.desc": "Clears the cache and re-downloads. Use if a site was down.",
 
+  "justtiers.group.appearance": "Appearance",
   "justtiers.group.gamemodes": "Gamemodes",
 
   "justtiers.mode.mctiers_only": "MCTiers only",
   "justtiers.mode.subtiers_only": "SubTiers only",
   "justtiers.mode.novatiers_only": "NovaTiers only",
   "justtiers.mode.all": "All three",
+
+  "justtiers.badge.before": "Before the name",
+  "justtiers.badge.after": "After the name",
+
+  "justtiers.lookup.searching": "Looking up %s...",
+  "justtiers.lookup.header": "Tiers for %s",
+  "justtiers.lookup.unranked": "not ranked",
+  "justtiers.lookup.unavailable": "site unavailable",
+  "justtiers.lookup.none": "%s is not ranked on any site Just-Tiers could reach.",
+  "justtiers.lookup.unknown": "No Minecraft account is named '%s'.",
+  "justtiers.lookup.nameFailed": "Could not check who '%s' is — Mojang did not answer.",
 
   "justtiers.preview.player": "Player",
   "justtiers.preview.example": "Example only — not your real tiers",

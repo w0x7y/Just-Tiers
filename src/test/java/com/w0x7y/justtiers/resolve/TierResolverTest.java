@@ -261,4 +261,49 @@ class TierResolverTest {
         assertEquals(1, result.size());
         assertEquals("RHT1", result.get(0).tier().label());
     }
+
+    // --- rankAll ---
+
+    @Test
+    void rankAllListsEveryPlacementBestFirst() {
+        List<ResolvedTier> result = TierResolver.rankAll(Source.MCTIERS,
+                Map.of("axe", ht(3), "sword", lt(1), "pot", ht(4), "vanilla", ht(1)));
+
+        assertEquals(List.of("vanilla", "sword", "axe", "pot"),
+                result.stream().map(r -> r.gamemode().slug()).toList());
+        assertEquals(List.of("HT1", "LT1", "HT3", "HT4"),
+                result.stream().map(r -> r.tier().label()).toList());
+    }
+
+    @Test
+    void rankAllBreaksTiesTowardTheActiveTierThenTheSitesOrder() {
+        List<ResolvedTier> result = TierResolver.rankAll(Source.MCTIERS,
+                Map.of("sword", retiredHt(2), "axe", ht(2), "pot", ht(2)));
+
+        // axe before pot is the site's declared order; the retired HT2 comes last.
+        assertEquals(List.of("axe", "pot", "sword"),
+                result.stream().map(r -> r.gamemode().slug()).toList());
+    }
+
+    @Test
+    void rankAllSkipsGamemodesThisBuildDoesNotKnow() {
+        List<ResolvedTier> result = TierResolver.rankAll(Source.MCTIERS,
+                Map.of("axe", ht(2), "not_a_real_gamemode", ht(1)));
+
+        assertEquals(1, result.size());
+        assertEquals("axe", result.get(0).gamemode().slug());
+    }
+
+    @Test
+    void rankAllOfNothingIsAnEmptyList() {
+        assertTrue(TierResolver.rankAll(Source.MCTIERS, Map.of()).isEmpty());
+        assertTrue(TierResolver.rankAll(Source.MCTIERS, null).isEmpty());
+    }
+
+    @Test
+    void highestOnIsTheHeadOfRankAll() {
+        Map<String, Tier> tiers = Map.of("axe", ht(3), "sword", lt(1), "pot", ht(4));
+        assertEquals(TierResolver.rankAll(Source.MCTIERS, tiers).get(0),
+                TierResolver.highestOn(Source.MCTIERS, tiers).orElseThrow());
+    }
 }

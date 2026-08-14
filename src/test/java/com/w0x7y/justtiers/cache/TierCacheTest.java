@@ -204,4 +204,65 @@ class TierCacheTest {
         cache.peek(Source.MCTIERS, PLAYER);
         assertEquals(2, fake.calls.get(), "/justtiers refresh must not wait out the backoff");
     }
+
+    // --- forgetFailed ---
+
+    @Test
+    void loadOnItsOwnWouldKeepAFailureForever() {
+        // The behaviour forgetFailed exists to correct: nothing peeks at a player who is
+        // not in the world, so a failed load would be replayed by every later lookup.
+        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
+        TierCache cache = new TierCache(List.of(fake));
+
+        cache.load(Source.MCTIERS, PLAYER);
+        fake.pending.completeExceptionally(new RuntimeException("site down"));
+
+        assertTrue(cache.load(Source.MCTIERS, PLAYER).isCompletedExceptionally());
+        assertEquals(1, fake.calls.get());
+    }
+
+    @Test
+    void forgetFailedLetsTheNextLoadTryAgain() {
+        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of("axe", new Tier(1, true, false)));
+        TierCache cache = new TierCache(List.of(fake));
+
+        cache.load(Source.MCTIERS, PLAYER);
+        fake.pending.completeExceptionally(new RuntimeException("site down"));
+        cache.forgetFailed(Source.MCTIERS, PLAYER);
+
+        cache.load(Source.MCTIERS, PLAYER);
+        assertEquals(2, fake.calls.get());
+    }
+
+    @Test
+    void forgetFailedLeavesASuccessfulEntryAlone() throws Exception {
+        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of("axe", new Tier(1, true, false)));
+        TierCache cache = new TierCache(List.of(fake));
+
+        CompletableFuture<Map<String, Tier>> loaded = cache.load(Source.MCTIERS, PLAYER);
+        fake.complete();
+        cache.forgetFailed(Source.MCTIERS, PLAYER);
+
+        assertSame(loaded, cache.load(Source.MCTIERS, PLAYER));
+        assertEquals(1, fake.calls.get());
+        assertEquals("HT1", loaded.get().get("axe").label());
+    }
+
+    @Test
+    void forgetFailedLeavesALookupStillInFlightAlone() {
+        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
+        TierCache cache = new TierCache(List.of(fake));
+
+        CompletableFuture<Map<String, Tier>> inFlight = cache.load(Source.MCTIERS, PLAYER);
+        cache.forgetFailed(Source.MCTIERS, PLAYER);
+
+        assertSame(inFlight, cache.load(Source.MCTIERS, PLAYER));
+        assertEquals(1, fake.calls.get());
+    }
+
+    @Test
+    void forgettingAPlayerWhoWasNeverLookedUpIsHarmless() {
+        TierCache cache = new TierCache(List.of());
+        assertDoesNotThrow(() -> cache.forgetFailed(Source.NOVATIERS, PLAYER));
+    }
 }
