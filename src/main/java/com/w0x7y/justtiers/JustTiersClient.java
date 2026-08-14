@@ -5,6 +5,8 @@ import com.w0x7y.justtiers.api.NovaTiersSource;
 import com.w0x7y.justtiers.cache.TierCache;
 import com.w0x7y.justtiers.command.JustTiersCommands;
 import com.w0x7y.justtiers.config.JustTiersConfig;
+import com.w0x7y.justtiers.download.DownloadProgress;
+import com.w0x7y.justtiers.gui.DownloadHud;
 import com.w0x7y.justtiers.gui.JustTiersKeybinds;
 import com.w0x7y.justtiers.tier.Source;
 import net.fabricmc.api.ClientModInitializer;
@@ -22,6 +24,7 @@ public class JustTiersClient implements ClientModInitializer {
     private static JustTiersConfig config;
     private static TierCache cache;
     private static NovaTiersSource novaSource;
+    private static DownloadProgress downloadProgress;
     private static Path configPath;
     private static ScheduledExecutorService scheduler;
     private static ScheduledFuture<?> refreshTask;
@@ -31,7 +34,9 @@ public class JustTiersClient implements ClientModInitializer {
         configPath = FabricLoader.getInstance().getConfigDir().resolve("justtiers.json");
         config = JustTiersConfig.load(configPath);
 
-        novaSource = new NovaTiersSource(JustTiers.httpClient(), Source.NOVATIERS.baseUrl());
+        downloadProgress = new DownloadProgress();
+        novaSource = new NovaTiersSource(
+                JustTiers.httpClient(), Source.NOVATIERS.baseUrl(), downloadProgress);
         cache = new TierCache(List.of(
                 new MctiersLikeSource(Source.MCTIERS, JustTiers.httpClient(), Source.MCTIERS.baseUrl()),
                 new MctiersLikeSource(Source.SUBTIERS, JustTiers.httpClient(), Source.SUBTIERS.baseUrl()),
@@ -48,6 +53,7 @@ public class JustTiersClient implements ClientModInitializer {
 
         JustTiersCommands.register();
         JustTiersKeybinds.register();
+        DownloadHud.register();
 
         JustTiers.LOGGER.info("Just-Tiers {} ready (mode {})",
                 JustTiers.VERSION, config.getDisplayMode());
@@ -63,6 +69,10 @@ public class JustTiersClient implements ClientModInitializer {
 
     public static NovaTiersSource novaSource() {
         return novaSource;
+    }
+
+    public static DownloadProgress downloadProgress() {
+        return downloadProgress;
     }
 
     public static void saveConfig() {
@@ -90,7 +100,7 @@ public class JustTiersClient implements ClientModInitializer {
                         // refresh() returns as soon as the download starts, so the cache
                         // is cleared on completion rather than here: dropping the entries
                         // up front would blank every NovaTiers badge for the length of a
-                        // ~1.9 MB download, and what is already cached stays correct until
+                        // ~1.7 MB download, and what is already cached stays correct until
                         // the new index actually replaces the old one.
                         novaSource.refresh().whenComplete((ignored, error) -> {
                             if (error != null) {

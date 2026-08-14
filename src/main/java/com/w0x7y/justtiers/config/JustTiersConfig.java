@@ -69,6 +69,7 @@ public class JustTiersConfig {
     private DisplayMode displayMode = DisplayMode.ALL;
     private Map<String, String> selectedGamemodes = new HashMap<>();
     private int novaRefreshMinutes = 30;
+    private boolean showDownloadProgress = true;
 
     public boolean isEnabled() {
         return enabled;
@@ -101,6 +102,19 @@ public class JustTiersConfig {
 
     public void setNovaRefreshMinutes(int minutes) {
         this.novaRefreshMinutes = Math.clamp(minutes, 5, 1440);
+    }
+
+    /**
+     * Whether the download indicator is drawn. It appears for every download the moment one
+     * starts, including the timed background refresh, so this is the escape hatch for anyone
+     * who finds that intrusive.
+     */
+    public boolean isShowDownloadProgress() {
+        return showDownloadProgress;
+    }
+
+    public void setShowDownloadProgress(boolean showDownloadProgress) {
+        this.showDownloadProgress = showDownloadProgress;
     }
 
     /** The out-of-the-box gamemode for a site, and the config screen's reset target. */
