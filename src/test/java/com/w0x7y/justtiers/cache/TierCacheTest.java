@@ -261,6 +261,47 @@ class TierCacheTest {
     }
 
     @Test
+    void aSuccessfulLoadEndsTheBackoffAnEarlierFailureLeftBehind() {
+        // /justtiers lookup goes through load(), which ignores the backoff. When it
+        // succeeds the site has answered, so peek() must stop reporting "not yet known"
+        // rather than blanking the badge for the rest of the delay.
+        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of("axe", new Tier(1, true, false)));
+        TierCache cache = new TierCache(List.of(fake), Duration.ofMinutes(10));
+
+        cache.peek(Source.MCTIERS, PLAYER);
+        fake.pending.completeExceptionally(new RuntimeException("site down"));
+        assertEquals(Optional.empty(), cache.peek(Source.MCTIERS, PLAYER));
+
+        cache.load(Source.MCTIERS, PLAYER);
+        fake.complete();
+
+        Optional<Map<String, Tier>> loaded = cache.peek(Source.MCTIERS, PLAYER);
+        assertTrue(loaded.isPresent(), "the badge must not stay blank behind a spent backoff");
+        assertEquals("HT1", loaded.get().get("axe").label());
+    }
+
+    @Test
+    void aFailedLoadLeavesTheBackoffInPlace() {
+        // Only an answer spends the backoff; a second failure must not hand peek() a
+        // free retry, or a failing site gets hammered every frame again.
+        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
+        TierCache cache = new TierCache(List.of(fake), Duration.ofMinutes(10));
+
+        cache.peek(Source.MCTIERS, PLAYER);
+        fake.pending.completeExceptionally(new RuntimeException("site down"));
+        cache.peek(Source.MCTIERS, PLAYER);
+
+        cache.load(Source.MCTIERS, PLAYER);
+        fake.pending.completeExceptionally(new RuntimeException("still down"));
+        cache.forgetFailed(Source.MCTIERS, PLAYER);
+
+        for (int i = 0; i < 10; i++) {
+            assertEquals(Optional.empty(), cache.peek(Source.MCTIERS, PLAYER));
+        }
+        assertEquals(2, fake.calls.get(), "the backoff must survive a failed load");
+    }
+
+    @Test
     void forgettingAPlayerWhoWasNeverLookedUpIsHarmless() {
         TierCache cache = new TierCache(List.of());
         assertDoesNotThrow(() -> cache.forgetFailed(Source.NOVATIERS, PLAYER));

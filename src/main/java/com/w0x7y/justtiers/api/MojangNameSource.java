@@ -31,8 +31,14 @@ public final class MojangNameSource {
 
     public static final String DEFAULT_BASE_URL = "https://api.mojang.com";
 
-    /** Mojang's own rule for a name, so an impossible one never becomes a request. */
-    private static final Pattern VALID_NAME = Pattern.compile("[A-Za-z0-9_]{3,16}");
+    /**
+     * What can be asked about at all. Deliberately looser than Mojang's current rule:
+     * that rule is only enforced on new accounts, and names shorter than three
+     * characters were handed out before it existed. Asking about one and being told no
+     * costs a request; refusing to ask calls a real account nonexistent. The character
+     * class stays, because the name goes into the request path as typed.
+     */
+    private static final Pattern ASKABLE_NAME = Pattern.compile("[A-Za-z0-9_]{1,16}");
 
     private static final Gson GSON = new Gson();
 
@@ -47,12 +53,22 @@ public final class MojangNameSource {
     }
 
     /**
+     * Whether a name is worth a request at all. A caller that gets {@code false} knows
+     * the name itself is the problem, which is not the same as Mojang saying nobody owns
+     * it — {@link #resolve} cannot tell the two apart in its return value, so the command
+     * asks here first and words its message accordingly.
+     */
+    public static boolean isAskable(String name) {
+        return name != null && ASKABLE_NAME.matcher(name).matches();
+    }
+
+    /**
      * @return the account, or an empty optional when Mojang says nobody owns that name.
      *         The future fails only when Mojang could not be asked — "no such player"
      *         and "could not tell" are different answers and the command says so.
      */
     public CompletableFuture<Optional<PlayerRef>> resolve(String name) {
-        if (name == null || !VALID_NAME.matcher(name).matches()) {
+        if (!isAskable(name)) {
             return CompletableFuture.completedFuture(Optional.empty());
         }
 
@@ -62,17 +78,19 @@ public final class MojangNameSource {
             return cached;
         }
 
-        CompletableFuture<Optional<PlayerRef>> fresh = request(name);
-        CompletableFuture<Optional<PlayerRef>> raced = cache.putIfAbsent(key, fresh);
-        if (raced != null) {
-            return raced;
-        }
-        fresh.whenComplete((profile, error) -> {
+        // computeIfAbsent, not request-then-putIfAbsent: two lookups of the same name
+        // racing here would otherwise both reach Mojang and one answer be thrown away,
+        // which is the rate limit paid twice for the deduplication promised above.
+        CompletableFuture<Optional<PlayerRef>> pending =
+                cache.computeIfAbsent(key, ignored -> request(name));
+        // Attached outside computeIfAbsent: the removal touches the same map, and a
+        // request that somehow completed inside the mapping function would re-enter it.
+        pending.whenComplete((profile, error) -> {
             if (error != null) {
-                cache.remove(key, fresh);
+                cache.remove(key, pending);
             }
         });
-        return fresh;
+        return pending;
     }
 
     private CompletableFuture<Optional<PlayerRef>> request(String name) {

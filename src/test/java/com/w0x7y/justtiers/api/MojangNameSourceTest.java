@@ -10,9 +10,17 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -24,12 +32,16 @@ class MojangNameSourceTest {
     private static final UUID NOTCH = UUID.fromString("069a79f4-44e9-4726-a5be-fca90e38aaf5");
 
     private HttpServer server;
+    /** Several threads on purpose: a held request must not stall the next one. */
+    private final ExecutorService executor = Executors.newFixedThreadPool(4);
     private String baseUrl;
     private final HttpClient client = HttpClient.newHttpClient();
     private final AtomicInteger requestCount = new AtomicInteger();
 
     private final int[] status = {200};
     private final String[] body = {""};
+    /** Set to hold every response until the test releases it, to force a real overlap. */
+    private volatile CountDownLatch held;
     /** The name the last request actually asked about, as Mojang would have seen it. */
     private volatile String requestedName;
 
@@ -41,6 +53,14 @@ class MojangNameSourceTest {
         server.createContext(PREFIX, exchange -> {
             requestCount.incrementAndGet();
             requestedName = exchange.getRequestURI().getPath().substring(PREFIX.length());
+            CountDownLatch gate = held;
+            if (gate != null) {
+                try {
+                    gate.await();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
             byte[] bytes = body[0].getBytes(StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(status[0], bytes.length == 0 ? -1 : bytes.length);
             if (bytes.length > 0) {
@@ -49,13 +69,18 @@ class MojangNameSourceTest {
                 }
             }
         });
+        server.setExecutor(executor);
         server.start();
         baseUrl = "http://127.0.0.1:" + server.getAddress().getPort();
     }
 
     @AfterEach
     void stopServer() {
+        if (held != null) {
+            held.countDown();
+        }
         server.stop(0);
+        executor.shutdownNow();
     }
 
     private void respond(int code, String content) {
@@ -107,11 +132,78 @@ class MojangNameSourceTest {
     @Test
     void anImpossibleNameNeverBecomesARequest() throws Exception {
         MojangNameSource source = source();
-        assertTrue(source.resolve("no").get().isEmpty());
         assertTrue(source.resolve("this_name_is_far_too_long").get().isEmpty());
         assertTrue(source.resolve("has spaces").get().isEmpty());
+        assertTrue(source.resolve("").get().isEmpty());
         assertTrue(source.resolve(null).get().isEmpty());
         assertEquals(0, requestCount.get());
+    }
+
+    @Test
+    void aNameTooShortForTodaysRuleIsStillAskedAbout() throws Exception {
+        // Two-character accounts predate the three-character minimum. Deciding here that
+        // they cannot exist would report a real account as an unowned name.
+        respond(200, "{\"id\":\"069a79f444e94726a5befca90e38aaf5\",\"name\":\"gg\"}");
+
+        assertEquals(NOTCH, source().resolve("gg").get().orElseThrow().uuid());
+        assertEquals(1, requestCount.get());
+    }
+
+    @Test
+    void anUnaskableNameIsDistinguishableFromAnUnownedOne() {
+        // The command needs the two apart: one is "that is not a name", the other is
+        // "Mojang says nobody has it", and only the second is a fact about accounts.
+        assertFalse(MojangNameSource.isAskable("has spaces"));
+        assertFalse(MojangNameSource.isAskable("this_name_is_far_too_long"));
+        assertFalse(MojangNameSource.isAskable(""));
+        assertFalse(MojangNameSource.isAskable(null));
+
+        assertTrue(MojangNameSource.isAskable(NAME));
+        assertTrue(MojangNameSource.isAskable("gg"));
+    }
+
+    @Test
+    void lookupsRacingOnOneNameCostOneRequest() throws Exception {
+        // Sequential calls prove nothing here: the second is served from the cache
+        // either way. Only callers genuinely inside resolve() at the same time can tell
+        // an atomic claim on the name from a request fired before the map is claimed.
+        respond(200, "{\"id\":\"069a79f444e94726a5befca90e38aaf5\",\"name\":\"Notch\"}");
+        held = new CountDownLatch(1);
+        MojangNameSource source = source();
+
+        int callers = 8;
+        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch entered = new CountDownLatch(callers);
+        List<CompletableFuture<Optional<PlayerRef>>> results =
+                Collections.synchronizedList(new ArrayList<>());
+        ExecutorService callerPool = Executors.newFixedThreadPool(callers);
+        try {
+            for (int i = 0; i < callers; i++) {
+                callerPool.execute(() -> {
+                    entered.countDown();
+                    try {
+                        start.await();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                    results.add(source.resolve(NAME));
+                });
+            }
+            assertTrue(entered.await(5, TimeUnit.SECONDS));
+            start.countDown();
+            callerPool.shutdown();
+            assertTrue(callerPool.awaitTermination(10, TimeUnit.SECONDS));
+        } finally {
+            callerPool.shutdownNow();
+        }
+        held.countDown();
+
+        for (CompletableFuture<Optional<PlayerRef>> result : results) {
+            assertEquals(NOTCH, result.get().orElseThrow().uuid());
+        }
+        assertEquals(callers, results.size());
+        assertEquals(1, requestCount.get(), "a name in flight must not be requested twice");
     }
 
     @Test

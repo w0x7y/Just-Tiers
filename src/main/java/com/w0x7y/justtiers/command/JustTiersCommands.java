@@ -1,6 +1,8 @@
 package com.w0x7y.justtiers.command;
 
+import com.w0x7y.justtiers.JustTiers;
 import com.w0x7y.justtiers.JustTiersClient;
+import com.w0x7y.justtiers.api.MojangNameSource;
 import com.w0x7y.justtiers.api.PlayerRef;
 import com.w0x7y.justtiers.gui.JustTiersKeybinds;
 import com.w0x7y.justtiers.lookup.LookupReport;
@@ -249,6 +251,14 @@ public final class JustTiersCommands {
             return 1;
         }
 
+        if (!MojangNameSource.isAskable(name)) {
+            // Said before "Looking up X...", and worded as a fact about the name rather
+            // than about accounts: nothing has been asked, so nothing is known yet.
+            reply(source, Component.translatable("justtiers.lookup.invalidName", name)
+                    .withStyle(ChatFormatting.RED));
+            return 0;
+        }
+
         searching(source, name);
         JustTiersClient.names().resolve(name).whenComplete((profile, error) -> onClient(() -> {
             if (error != null) {
@@ -292,9 +302,18 @@ public final class JustTiersCommands {
                     }));
         }
 
+        // whenComplete rather than thenRun: should a handler above throw, allOf completes
+        // exceptionally and thenRun would never run, leaving the command silent forever
+        // after "Looking up X...". Whatever did answer is still in the map, and every
+        // site that did not prints as unavailable, which is the honest report either way.
         CompletableFuture.allOf(pending.toArray(CompletableFuture[]::new))
-                .thenRun(() -> onClient(() ->
-                        print(source, player, LookupReport.build(answers))));
+                .whenComplete((ignored, error) -> {
+                    if (error != null) {
+                        JustTiers.LOGGER.warn("Lookup for {} did not finish cleanly",
+                                player.name(), error);
+                    }
+                    onClient(() -> print(source, player, LookupReport.build(answers)));
+                });
     }
 
     private static void print(FabricClientCommandSource source, PlayerRef player,
@@ -307,7 +326,10 @@ public final class JustTiersCommands {
                             .withStyle(style -> style.withColor(section.source().color())))
                     .append(body(section)));
         }
-        if (LookupReport.nothingRanked(sections)) {
+        // Only a site that answered can support this verdict: with every site down the
+        // rows above have already said so, and "not ranked anywhere" on top of them
+        // would be the conflation UNAVAILABLE exists to prevent.
+        if (LookupReport.anySiteAnswered(sections) && LookupReport.nothingRanked(sections)) {
             reply(source, Component.translatable("justtiers.lookup.none", player.name())
                     .withStyle(ChatFormatting.GRAY));
         }

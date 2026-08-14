@@ -52,6 +52,16 @@ public final class LookupReport {
                 .noneMatch(section -> section.status() == LookupSection.Status.RANKED);
     }
 
+    /**
+     * True when at least one site actually answered, ranked or not. With every site
+     * unavailable a lookup has collected no evidence about the player at all, so
+     * {@link #nothingRanked} is only worth saying out loud when this is true.
+     */
+    public static boolean anySiteAnswered(List<LookupSection> sections) {
+        return sections.stream()
+                .anyMatch(section -> section.status() != LookupSection.Status.UNAVAILABLE);
+    }
+
     private LookupReport() {
     }
 }
