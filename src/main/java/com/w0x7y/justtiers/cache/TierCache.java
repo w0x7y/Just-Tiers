@@ -85,6 +85,21 @@ public final class TierCache {
         return entries.get(source).computeIfAbsent(uuid, tierSource::fetch);
     }
 
+    /**
+     * Drops one player's failed entry for a site so the next attempt goes out again.
+     * {@link #peek} does this for itself, behind a retry delay, because it runs every
+     * frame; {@link #load} cannot, so a caller that waits on a load has to say when a
+     * failure is finished with. A successful entry, and one still in flight, are both
+     * left alone.
+     */
+    public void forgetFailed(Source source, UUID uuid) {
+        Map<UUID, CompletableFuture<Map<String, Tier>>> entriesForSource = entries.get(source);
+        CompletableFuture<Map<String, Tier>> entry = entriesForSource.get(uuid);
+        if (entry != null && entry.isCompletedExceptionally()) {
+            entriesForSource.remove(uuid, entry);
+        }
+    }
+
     public void invalidateAll() {
         entries.values().forEach(Map::clear);
         retryAfter.values().forEach(Map::clear);

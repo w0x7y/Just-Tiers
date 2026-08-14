@@ -1,6 +1,7 @@
 package com.w0x7y.justtiers;
 
 import com.w0x7y.justtiers.api.MctiersLikeSource;
+import com.w0x7y.justtiers.api.MojangNameSource;
 import com.w0x7y.justtiers.api.NovaTiersSource;
 import com.w0x7y.justtiers.cache.TierCache;
 import com.w0x7y.justtiers.command.JustTiersCommands;
@@ -24,6 +25,7 @@ public class JustTiersClient implements ClientModInitializer {
     private static JustTiersConfig config;
     private static TierCache cache;
     private static NovaTiersSource novaSource;
+    private static MojangNameSource nameSource;
     private static DownloadProgress downloadProgress;
     private static Path configPath;
     private static ScheduledExecutorService scheduler;
@@ -41,6 +43,9 @@ public class JustTiersClient implements ClientModInitializer {
                 new MctiersLikeSource(Source.MCTIERS, JustTiers.httpClient(), Source.MCTIERS.baseUrl()),
                 new MctiersLikeSource(Source.SUBTIERS, JustTiers.httpClient(), Source.SUBTIERS.baseUrl()),
                 novaSource));
+        // Only ever asked about names /justtiers lookup could not find on the server.
+        nameSource = new MojangNameSource(
+                JustTiers.httpClient(), MojangNameSource.DEFAULT_BASE_URL);
 
         // NovaTiers only offers a bulk list, so warm it once up front and refresh on a timer.
         novaSource.refresh();
@@ -69,6 +74,10 @@ public class JustTiersClient implements ClientModInitializer {
 
     public static NovaTiersSource novaSource() {
         return novaSource;
+    }
+
+    public static MojangNameSource names() {
+        return nameSource;
     }
 
     public static DownloadProgress downloadProgress() {

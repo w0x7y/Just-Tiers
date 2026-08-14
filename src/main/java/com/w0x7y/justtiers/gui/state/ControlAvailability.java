@@ -14,6 +14,7 @@ import java.util.Map;
  */
 public record ControlAvailability(boolean displayMode,
                                   boolean showRetired,
+                                  boolean appearance,
                                   Map<Source, Reason> reasons) {
 
     public enum Reason { AVAILABLE, MOD_DISABLED, MODE_IS_ALL, OTHER_SITE }
@@ -27,7 +28,9 @@ public record ControlAvailability(boolean displayMode,
         for (Source source : Source.values()) {
             reasons.put(source, reasonFor(enabled, mode, source));
         }
-        return new ControlAvailability(enabled, enabled, reasons);
+        // The badge's shape - its side, its icons, its brackets - means the same thing in
+        // every display mode, so the master switch is the only thing that can grey it.
+        return new ControlAvailability(enabled, enabled, enabled, reasons);
     }
 
     private static Reason reasonFor(boolean enabled, DisplayMode mode, Source source) {
