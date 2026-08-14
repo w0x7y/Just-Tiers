@@ -45,7 +45,7 @@ tasks.test { useJUnitPlatform() }
 
 tasks.processResources {
     inputs.property("version", project.version)
-    filesMatching("fabric.mod.json") {
+    filesMatching(listOf("fabric.mod.json", "justtiers-version.properties")) {
         expand("version" to project.version)
     }
 }
