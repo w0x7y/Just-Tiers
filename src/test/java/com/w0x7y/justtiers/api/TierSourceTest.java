@@ -1,5 +1,6 @@
 package com.w0x7y.justtiers.api;
 
+import com.w0x7y.justtiers.download.DownloadProgress;
 import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
 import com.sun.net.httpserver.HttpServer;
@@ -193,5 +194,35 @@ class TierSourceTest {
 
         assertFalse(nova.fetch(PLAYER).get().isEmpty(), "stale index must survive a failed refresh");
         assertEquals(indexed, nova.indexedPlayerCount());
+    }
+
+    // --- download progress ---
+
+    @Test
+    void reportsProgressForASuccessfulBulkDownload() throws Exception {
+        respond("/users", 200, "[]");
+        DownloadProgress progress = new DownloadProgress();
+
+        new NovaTiersSource(client, baseUrl, progress).fetch(PLAYER).get();
+
+        DownloadProgress.Snapshot snapshot = progress.snapshot();
+        assertEquals(DownloadProgress.State.IDLE, snapshot.state());
+        // Calibrated by the download that just finished, so the next one can show a percentage.
+        assertEquals(2, snapshot.total());
+        assertTrue(snapshot.determinate());
+    }
+
+    @Test
+    void reportsFailureWhenTheBulkDownloadFails() {
+        respond("/users", 500, "");
+        DownloadProgress progress = new DownloadProgress();
+
+        assertThrows(ExecutionException.class,
+                () -> new NovaTiersSource(client, baseUrl, progress).fetch(PLAYER).get());
+
+        DownloadProgress.Snapshot snapshot = progress.snapshot();
+        assertEquals(DownloadProgress.State.FAILED, snapshot.state());
+        // A failed download is not a measurement, so it must not calibrate the next one.
+        assertFalse(snapshot.determinate());
     }
 }
