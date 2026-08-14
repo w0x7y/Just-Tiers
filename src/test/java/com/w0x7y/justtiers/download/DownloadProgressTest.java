@@ -19,9 +19,9 @@ class DownloadProgressTest {
 
     @Test
     void reportsBytesWhileDownloading() {
-        progress.started();
-        progress.advanced(100);
-        progress.advanced(50);
+        long token = progress.started();
+        progress.advanced(token, 100);
+        progress.advanced(token, 50);
 
         DownloadProgress.Snapshot snapshot = progress.snapshot();
         assertEquals(DownloadProgress.State.DOWNLOADING, snapshot.state());
@@ -30,20 +30,20 @@ class DownloadProgressTest {
 
     @Test
     void firstDownloadIsIndeterminate() {
-        progress.started();
-        progress.advanced(100);
+        long token = progress.started();
+        progress.advanced(token, 100);
         assertFalse(progress.snapshot().determinate());
         assertEquals(0, progress.snapshot().total());
     }
 
     @Test
     void successCalibratesTheNextDownload() {
-        progress.started();
-        progress.advanced(1_000);
-        progress.finished();
+        long first = progress.started();
+        progress.advanced(first, 1_000);
+        progress.finished(first);
 
-        progress.started();
-        progress.advanced(400);
+        long second = progress.started();
+        progress.advanced(second, 400);
 
         DownloadProgress.Snapshot snapshot = progress.snapshot();
         assertTrue(snapshot.determinate());
@@ -53,9 +53,9 @@ class DownloadProgressTest {
 
     @Test
     void startedResetsTheByteCount() {
-        progress.started();
-        progress.advanced(1_000);
-        progress.finished();
+        long token = progress.started();
+        progress.advanced(token, 1_000);
+        progress.finished(token);
 
         progress.started();
         assertEquals(0, progress.snapshot().bytesRead());
@@ -63,9 +63,9 @@ class DownloadProgressTest {
 
     @Test
     void failureDoesNotCalibrate() {
-        progress.started();
-        progress.advanced(1_000);
-        progress.failed();
+        long token = progress.started();
+        progress.advanced(token, 1_000);
+        progress.failed(token);
 
         progress.started();
         assertFalse(progress.snapshot().determinate());
@@ -73,8 +73,8 @@ class DownloadProgressTest {
 
     @Test
     void failureIsShownThenExpires() {
-        progress.started();
-        progress.failed();
+        long token = progress.started();
+        progress.failed(token);
         assertEquals(DownloadProgress.State.FAILED, progress.snapshot().state());
 
         now.addAndGet(DownloadProgress.FAILURE_DISPLAY_NANOS + 1);
@@ -83,9 +83,53 @@ class DownloadProgressTest {
 
     @Test
     void aNewDownloadClearsAStandingFailure() {
-        progress.started();
-        progress.failed();
+        long token = progress.started();
+        progress.failed(token);
         progress.started();
         assertEquals(DownloadProgress.State.DOWNLOADING, progress.snapshot().state());
+    }
+
+    // --- overlapping downloads ---
+    // A refresh does not wait for a load already in flight, so the older download can
+    // report long after the newer one has taken over the indicator.
+
+    @Test
+    void aStaleCompletionDoesNotEndTheCurrentDownload() {
+        long stale = progress.started();
+        progress.advanced(stale, 1_000);
+
+        long current = progress.started();
+        progress.advanced(current, 400);
+        progress.finished(stale);
+
+        DownloadProgress.Snapshot snapshot = progress.snapshot();
+        assertEquals(DownloadProgress.State.DOWNLOADING, snapshot.state());
+        assertEquals(400, snapshot.bytesRead());
+        // The stale download must not calibrate either: its byte count was never the total.
+        assertFalse(snapshot.determinate());
+    }
+
+    @Test
+    void aStaleFailureDoesNotFailTheCurrentDownload() {
+        long stale = progress.started();
+        long current = progress.started();
+
+        progress.failed(stale);
+
+        assertEquals(DownloadProgress.State.DOWNLOADING, progress.snapshot().state());
+
+        progress.advanced(current, 250);
+        assertEquals(250, progress.snapshot().bytesRead());
+    }
+
+    @Test
+    void aStaleDownloadDoesNotAddToTheCurrentByteCount() {
+        long stale = progress.started();
+        long current = progress.started();
+
+        progress.advanced(stale, 1_000);
+        progress.advanced(current, 100);
+
+        assertEquals(100, progress.snapshot().bytesRead());
     }
 }

@@ -1,15 +1,16 @@
 # NovaTiers Download Progress Indicator — Design
 
 > **Amended 2026-08-14, after seeing it in-game.** The indicator sits in the **bottom-right**
-> corner, not the bottom-left described below, and its track is 180 px rather than 120 px.
-> The move deleted the *Placement* section's chat-reserve rule entirely: chat grows upward
-> from the bottom-*left*, so there is nothing to clear. The implementation is the authority.
+> corner, and its track is 180 px rather than the 120 px described below. *Placement* has
+> been rewritten to match; the move deleted its chat-reserve rule entirely, because chat
+> grows upward from the bottom-*left* and there is nothing to clear. The implementation is
+> the authority.
 
 **Goal:** Make the NovaTiers bulk download visible. Today it runs at launch and every
 `novaRefreshMinutes` thereafter, downloading ~1.7 MB with no indication that anything is
 happening; a user whose NovaTiers badges have not appeared yet cannot tell the difference
 between "still downloading", "site is down" and "this mod is broken". A small progress
-indicator in the bottom-left corner, present only while a download is in flight, removes
+indicator in the bottom-right corner, present only while a download is in flight, removes
 that ambiguity.
 
 **Architecture:** Byte counts flow from the HTTP body subscriber into one thread-safe state
@@ -138,9 +139,6 @@ no render pipelines.
   render when the GUI is hidden and therefore Fabric never invokes registered `HudElement`s,
   making an explicit guard unnecessary. **Verify in-game by pressing F1 during a download.**
   If the element still draws, find where 26.2 keeps the flag and guard on it.
-- **Exact chat reserve arithmetic.** The constants relating `ChatComponent.getHeight(...)`,
-  `chatScale()` and the chat input box to a final Y offset must be tuned by eye in-game. The
-  *rule* is fixed (see *Placement*); the numbers are not.
 - **`Font` access.** Assumed `Minecraft.getInstance().font`. Confirm the accessor name.
 - **HUD ordering.** `addLast` should place the element above the chat in draw order.
   If it renders beneath, switch to `attachElementAfter(VanillaHudElements.CHAT, ...)`.
@@ -183,24 +181,21 @@ subsequent refresh in that session shows a true percentage.
 
 ### Placement
 
-Bottom-left, **above the chat**, because vanilla chat renders upward from that exact corner
-and a bar in the corner would sit on top of the newest message and on the chat input box.
-
-The rule:
+Bottom-**right**, at the normal bottom margin. Vanilla chat renders upward from the
+bottom-*left*, and the input box only spans the same side, so the opposite corner is clear
+of both by construction:
 
 ```
-x      = left margin (4 px, scaled GUI coords)
-bottom = guiHeight() - chatReserve - gap
-
-chatReserve = 0                                                  when level == null
-            = ChatComponent.getHeight(focused ? chatHeightFocused
-                                              : chatHeightUnfocused) * chatScale
-              + input box allowance                              otherwise
+left   = guiWidth() - right margin - box width
+bottom = guiHeight() - gap
 ```
 
-`focused` comes from `ChatComponent.isChatFocused()`, so opening chat lifts the bar clear of
-the taller focused chat area rather than letting the input box cover it. On the title screen
-and main menu there is no chat, so the bar sits at the normal bottom margin.
+An earlier draft placed the bar bottom-left and lifted it above the chat by a computed
+`chatReserve` (`ChatComponent.getHeight()` scaled, plus an input-box allowance, plus a
+focused/unfocused branch). That was dropped: the reserve was an approximation of where chat
+*happens* to be, and moving to the far corner removes the question entirely. Nothing about
+chat state - height, scale, focus - is consulted any more, and the placement is identical
+on the title screen, in the main menu, and in-world.
 
 ### The double-draw guard
 
@@ -249,7 +244,7 @@ escape hatch for anyone who finds it intrusive.
 
 | Class | Package | Minecraft-free | Purpose |
 |---|---|---|---|
-| `DownloadProgress` | `download` | yes | Thread-safe state: `started()`, `advanced(long)`, `finished(long)`, `failed()`, `snapshot()`. Holds `lastKnownTotal`. |
+| `DownloadProgress` | `download` | yes | Thread-safe state: `started()`, `advanced(long, long)`, `finished(long)`, `failed(long)`, `snapshot()`. Holds `lastKnownTotal`. `started()` returns a generation token that the other three carry, so a stale download's updates are dropped when downloads overlap. |
 | `DownloadProgress.Snapshot` | `download` | yes | Immutable per-frame read: state, `bytesRead`, `totalOrZero`. |
 | `ProgressBodyHandler` | `download` | yes | `BodyHandler<String>` delegating to `BodySubscribers.ofString(UTF_8)`, counting bytes in `onNext` before passing them on. |
 | `ProgressBarLayout` | `gui.layout` | yes | Fill fraction with the 0.99 clamp, marquee offset from a nanosecond timestamp, `1.2 MB` / `71%` formatting. |
@@ -305,5 +300,3 @@ Deliberately out of scope, recorded so they are not mistaken for oversights:
 - **The indicator covers NovaTiers only.** MCTiers and SubTiers are small per-player requests
   that resolve in milliseconds; there is nothing to watch.
 - **No delay threshold.** Chosen deliberately, per the configuration section above.
-- **The chat reserve is an approximation.** It clears vanilla chat. A mod that relocates or
-  resizes chat may overlap; there is no general API for "where is the chat right now".

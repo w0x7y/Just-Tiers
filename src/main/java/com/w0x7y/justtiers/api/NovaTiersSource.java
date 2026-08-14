@@ -104,8 +104,9 @@ public final class NovaTiersSource implements TierSource {
                 .GET()
                 .build();
 
-        progress.started();
-        return client.sendAsync(request, new ProgressBodyHandler(progress::advanced))
+        long token = progress.started();
+        return client.sendAsync(request,
+                        new ProgressBodyHandler(bytes -> progress.advanced(token, bytes)))
                 .thenApply(response -> {
                     if (response.statusCode() != 200) {
                         throw new TierLookupException(
@@ -126,9 +127,9 @@ public final class NovaTiersSource implements TierSource {
                 // is untouched.
                 .whenComplete((parsed, error) -> {
                     if (error != null) {
-                        progress.failed();
+                        progress.failed(token);
                     } else {
-                        progress.finished();
+                        progress.finished(token);
                     }
                 });
     }
