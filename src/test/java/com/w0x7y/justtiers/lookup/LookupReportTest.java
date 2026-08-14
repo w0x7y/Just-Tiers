@@ -110,6 +110,40 @@ class LookupReportTest {
     }
 
     @Test
+    void anySiteAnsweredIsFalseWhenEverySiteWasUnavailable() {
+        // Three "site unavailable" rows are no evidence at all, and "not ranked anywhere"
+        // on top of them would be the exact confusion UNAVAILABLE exists to prevent.
+        var down = answers();
+        for (Source source : Source.values()) {
+            down.put(source, Optional.empty());
+        }
+        List<LookupSection> sections = LookupReport.build(down);
+
+        assertTrue(LookupReport.nothingRanked(sections));
+        assertFalse(LookupReport.anySiteAnswered(sections));
+    }
+
+    @Test
+    void aSiteAnsweringUnrankedCountsAsAnAnswer() {
+        var mixed = answers();
+        mixed.put(Source.MCTIERS, Optional.of(Map.of()));
+        mixed.put(Source.SUBTIERS, Optional.empty());
+
+        List<LookupSection> sections = LookupReport.build(mixed);
+        assertTrue(LookupReport.nothingRanked(sections));
+        assertTrue(LookupReport.anySiteAnswered(sections),
+                "one site saying 'never placed' is enough to say the player is unranked");
+    }
+
+    @Test
+    void aRankedSiteIsAnAnswerToo() {
+        var ranked = answers();
+        ranked.put(Source.NOVATIERS, Optional.of(Map.of("sword", ht(2))));
+
+        assertTrue(LookupReport.anySiteAnswered(LookupReport.build(ranked)));
+    }
+
+    @Test
     void sectionsAreImmutableOnceBuilt() {
         var answers = answers();
         answers.put(Source.MCTIERS, Optional.of(Map.of("axe", ht(2))));

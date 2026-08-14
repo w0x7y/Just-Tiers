@@ -76,13 +76,23 @@ public final class TierCache {
         return Optional.ofNullable(future.getNow(null));
     }
 
-    /** Starts (or joins) a lookup and returns its future. */
+    /**
+     * Starts (or joins) a lookup and returns its future. A lookup that succeeds also
+     * ends the backoff an earlier failure left behind: the site has just answered for
+     * this player, so {@link #peek} must not go on reporting "not yet known" — and blank
+     * the badge — for the rest of a delay the answer has already settled.
+     */
     public CompletableFuture<Map<String, Tier>> load(Source source, UUID uuid) {
         TierSource tierSource = sources.get(source);
         if (tierSource == null) {
             return CompletableFuture.completedFuture(Map.of());
         }
-        return entries.get(source).computeIfAbsent(uuid, tierSource::fetch);
+        return entries.get(source).computeIfAbsent(uuid, key -> tierSource.fetch(key)
+                .whenComplete((tiers, error) -> {
+                    if (error == null) {
+                        retryAfter.get(source).remove(key);
+                    }
+                }));
     }
 
     /**

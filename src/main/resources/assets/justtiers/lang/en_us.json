@@ -46,6 +46,7 @@
   "justtiers.lookup.unavailable": "site unavailable",
   "justtiers.lookup.none": "%s is not ranked on any site Just-Tiers could reach.",
   "justtiers.lookup.unknown": "No Minecraft account is named '%s'.",
+  "justtiers.lookup.invalidName": "'%s' is not a name a Minecraft account can have.",
   "justtiers.lookup.nameFailed": "Could not check who '%s' is — Mojang did not answer.",
 
   "justtiers.preview.player": "Player",
