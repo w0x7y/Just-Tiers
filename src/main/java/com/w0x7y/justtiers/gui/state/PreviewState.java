@@ -1,5 +1,6 @@
 package com.w0x7y.justtiers.gui.state;
 
+import com.w0x7y.justtiers.render.model.NametagStyle;
 import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Source;
 
@@ -13,9 +14,11 @@ import java.util.Map;
 public record PreviewState(boolean enabled,
                            DisplayMode displayMode,
                            Map<Source, String> selectedGamemodes,
-                           boolean showRetired) {
+                           boolean showRetired,
+                           NametagStyle style) {
 
     public PreviewState {
         selectedGamemodes = Map.copyOf(selectedGamemodes);
+        style = style == null ? NametagStyle.DEFAULT : style;
     }
 }

@@ -2,6 +2,7 @@ package com.w0x7y.justtiers.render;
 
 import com.w0x7y.justtiers.JustTiersClient;
 import com.w0x7y.justtiers.render.model.NametagModel;
+import com.w0x7y.justtiers.render.model.NametagStyle;
 import com.w0x7y.justtiers.render.model.Segment;
 import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.resolve.ResolvedTier;
@@ -9,7 +10,6 @@ import com.w0x7y.justtiers.resolve.TierResolver;
 import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
 
 import java.util.EnumMap;
 import java.util.List;
@@ -45,13 +45,13 @@ public final class NametagRenderer {
 
         List<ResolvedTier> resolved = TierResolver.resolve(
                 mode, tiersBySource, config.selectedGamemodesBySource(), config.isShowRetired());
-        List<Segment> segments = NametagModel.build(resolved);
+        NametagStyle style = config.nametagStyle();
+        List<Segment> segments = NametagModel.build(resolved, style);
         if (segments.isEmpty()) {
             return original;
         }
 
-        MutableComponent prefix = Segments.toComponent(segments);
-        return prefix.append(original);
+        return Segments.compose(segments, original, style.position());
     }
 
     private static List<Source> sourcesFor(DisplayMode mode) {

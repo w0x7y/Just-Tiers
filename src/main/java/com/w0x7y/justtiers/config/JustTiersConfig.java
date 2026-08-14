@@ -2,11 +2,9 @@ package com.w0x7y.justtiers.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.TypeAdapter;
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonToken;
-import com.google.gson.stream.JsonWriter;
 import com.w0x7y.justtiers.JustTiers;
+import com.w0x7y.justtiers.render.model.BadgePosition;
+import com.w0x7y.justtiers.render.model.NametagStyle;
 import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Gamemodes;
 import com.w0x7y.justtiers.tier.Source;
@@ -24,40 +22,12 @@ public class JustTiersConfig {
 
     private static final Gson GSON = new GsonBuilder()
             .setPrettyPrinting()
-            .registerTypeAdapter(DisplayMode.class, new DisplayModeAdapter())
+            .registerTypeAdapter(DisplayMode.class, new IdEnumAdapter<>(
+                    "displayMode", DisplayMode.class, DisplayMode.ALL, DisplayMode::id))
+            .registerTypeAdapter(BadgePosition.class, new IdEnumAdapter<>(
+                    "badgePosition", BadgePosition.class, BadgePosition.BEFORE,
+                    BadgePosition::id))
             .create();
-
-    /**
-     * Persists {@link DisplayMode} as its lower-case {@link DisplayMode#id()} (the
-     * documented on-disk/command-argument format), while still reading back the legacy
-     * upper-case {@code name()} form that earlier builds wrote. An absent field keeps
-     * whatever default the containing object already had; an explicit {@code null} or an
-     * unrecognised string both fall back to {@link DisplayMode#ALL} with a warning naming
-     * the offending value, rather than failing silently.
-     */
-    private static final class DisplayModeAdapter extends TypeAdapter<DisplayMode> {
-        @Override
-        public void write(JsonWriter out, DisplayMode value) throws IOException {
-            out.value((value == null ? DisplayMode.ALL : value).id());
-        }
-
-        @Override
-        public DisplayMode read(JsonReader in) throws IOException {
-            if (in.peek() == JsonToken.NULL) {
-                in.nextNull();
-                JustTiers.LOGGER.warn("Config displayMode was null, using default {}", DisplayMode.ALL);
-                return DisplayMode.ALL;
-            }
-            String raw = in.nextString();
-            for (DisplayMode mode : DisplayMode.values()) {
-                if (mode.id().equalsIgnoreCase(raw)) {
-                    return mode;
-                }
-            }
-            JustTiers.LOGGER.warn("Unrecognised config displayMode '{}', using default {}", raw, DisplayMode.ALL);
-            return DisplayMode.ALL;
-        }
-    }
 
     private static final Map<Source, String> DEFAULT_GAMEMODES = Map.of(
             Source.MCTIERS, "vanilla",
@@ -70,6 +40,9 @@ public class JustTiersConfig {
     private Map<String, String> selectedGamemodes = new HashMap<>();
     private int novaRefreshMinutes = 30;
     private boolean showDownloadProgress = true;
+    private BadgePosition badgePosition = BadgePosition.BEFORE;
+    private boolean showIcons = true;
+    private boolean showBrackets = true;
 
     public boolean isEnabled() {
         return enabled;
@@ -115,6 +88,41 @@ public class JustTiersConfig {
 
     public void setShowDownloadProgress(boolean showDownloadProgress) {
         this.showDownloadProgress = showDownloadProgress;
+    }
+
+    /** Which side of the name the badge is drawn on. */
+    public BadgePosition getBadgePosition() {
+        return badgePosition == null ? BadgePosition.BEFORE : badgePosition;
+    }
+
+    public void setBadgePosition(BadgePosition badgePosition) {
+        this.badgePosition = badgePosition;
+    }
+
+    /**
+     * Whether each tier carries its gamemode glyph. With icons off the sites are told
+     * apart by tier colour alone, which is what the shortest possible badge costs.
+     */
+    public boolean isShowIcons() {
+        return showIcons;
+    }
+
+    public void setShowIcons(boolean showIcons) {
+        this.showIcons = showIcons;
+    }
+
+    /** Whether the badge is wrapped in {@code [ ]}. */
+    public boolean isShowBrackets() {
+        return showBrackets;
+    }
+
+    public void setShowBrackets(boolean showBrackets) {
+        this.showBrackets = showBrackets;
+    }
+
+    /** The three cosmetic settings as the one value the nametag layout takes. */
+    public NametagStyle nametagStyle() {
+        return new NametagStyle(getBadgePosition(), showIcons, showBrackets);
     }
 
     /** The out-of-the-box gamemode for a site, and the config screen's reset target. */

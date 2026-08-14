@@ -82,14 +82,16 @@ public final class NametagPreviewController implements Controller<Component> {
      */
     private MutableComponent tag(PreviewState current, PreviewWidget widget, long timeMillis) {
         List<Segment> segments = PreviewSample.segments(current.displayMode(),
-                current.selectedGamemodes(), current.showRetired(), timeMillis);
+                current.selectedGamemodes(), current.showRetired(), timeMillis,
+                current.style());
         if (widget != null && !current.enabled()) {
             segments = segments.stream()
                     .map(segment -> new Segment(segment.text(),
                             widget.dim(segment.color())))
                     .toList();
         }
-        return Segments.toComponent(segments).append(PreviewName.component());
+        return Segments.compose(segments, PreviewName.component(),
+                current.style().position());
     }
 
     private Component caption(PreviewState current) {

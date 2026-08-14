@@ -93,8 +93,17 @@ public final class TierResolver {
      * toward the active tier, then toward the site's declared gamemode order.
      */
     public static Optional<ResolvedTier> highestOn(Source source, Map<String, Tier> tiers) {
+        return rankAll(source, tiers).stream().findFirst();
+    }
+
+    /**
+     * Every placement the player holds on one site, best first, under exactly the
+     * ordering {@link #highestOn} picks its winner by. {@code /justtiers lookup} lists
+     * the whole thing; the nametag only ever wants the head of it.
+     */
+    public static List<ResolvedTier> rankAll(Source source, Map<String, Tier> tiers) {
         if (tiers == null || tiers.isEmpty()) {
-            return Optional.empty();
+            return List.of();
         }
 
         List<Gamemode> order = Gamemodes.of(source);
@@ -107,10 +116,10 @@ public final class TierResolver {
         }
         // Gamemodes the site added after this build are skipped rather than guessed at.
 
-        return candidates.stream().min(
-                Comparator.comparingInt((ResolvedTier r) -> r.tier().rank())
-                        .thenComparing(r -> r.tier().retired())
-                        .thenComparingInt(r -> order.indexOf(r.gamemode())));
+        candidates.sort(Comparator.comparingInt((ResolvedTier r) -> r.tier().rank())
+                .thenComparing(r -> r.tier().retired())
+                .thenComparingInt(r -> order.indexOf(r.gamemode())));
+        return List.copyOf(candidates);
     }
 
     private TierResolver() {

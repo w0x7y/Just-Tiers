@@ -1,6 +1,8 @@
 package com.w0x7y.justtiers.preview;
 
+import com.w0x7y.justtiers.render.model.BadgePosition;
 import com.w0x7y.justtiers.render.model.NametagModel;
+import com.w0x7y.justtiers.render.model.NametagStyle;
 import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Gamemode;
 import com.w0x7y.justtiers.tier.Gamemodes;
@@ -129,6 +131,31 @@ class PreviewSampleTest {
             assertFalse(PreviewSample.resolve(mode, DEFAULTS, false).isEmpty(), mode.toString());
             assertFalse(PreviewSample.resolve(mode, Map.of(), true).isEmpty(), mode.toString());
         }
+    }
+
+    @Test
+    void thePreviewIsDrawnInWhateverStyleTheScreenIsPendingOn() {
+        // The point of the preview is that it answers to the appearance rows too, not
+        // just the mode and gamemode ones.
+        NametagStyle stripped = new NametagStyle(BadgePosition.AFTER, false, false);
+        String shown = NametagModel.plainText(
+                PreviewSample.segments(DisplayMode.MCTIERS_ONLY,
+                        Map.of(Source.MCTIERS, "axe"), false, stripped));
+
+        assertEquals(" HT1", shown);
+        assertEquals("[" + entry(gamemode(Source.MCTIERS, "axe"), false) + "] ",
+                text(DisplayMode.MCTIERS_ONLY, Map.of(Source.MCTIERS, "axe"), false));
+    }
+
+    @Test
+    void theStyleSurvivesTheClockOverloadToo() {
+        NametagStyle stripped = new NametagStyle(BadgePosition.AFTER, false, false);
+        assertEquals(
+                NametagModel.plainText(PreviewSample.segments(
+                        DisplayMode.ALL, DEFAULTS, true, stripped)),
+                NametagModel.plainText(PreviewSample.segments(
+                        DisplayMode.ALL, DEFAULTS, true,
+                        PreviewSample.RETIRED_CYCLE_MILLIS, stripped)));
     }
 
     @Test

@@ -29,6 +29,8 @@ Just-Tiers supports all three leaderboards, and adds an **All** mode that shows 
 - **Automatic fallback** — not ranked in your chosen gamemode? It shows that player's highest tier on that same site instead.
 - **Gamemode icons** — a small icon shows *which* gamemode earned the tier.
 - **Colour-coded by site** — you can always tell where a tier came from.
+- **Look anyone up** — `/justtiers lookup <player>` prints every gamemode a player is ranked in, on all three sites, without them being anywhere near you. See [Looking a player up](#looking-a-player-up).
+- **Shape the badge** — put it before or after the name, and turn the icons or the brackets off to make it as short as you like. The config screen previews every combination live.
 - **Retired tiers handled properly** — shown with an `R` prefix in their site's colour, still counted when finding a player's highest tier, and hideable entirely with one setting.
 - **Non-blocking** — all lookups are asynchronous and cached; the mod never stalls your frame rate waiting on a web request.
 - **Shows up as it arrives** — a nametag gains its badge the moment the first site answers, then fills in as the others land, rather than waiting on the slowest one.
@@ -135,14 +137,62 @@ All commands are client-side and start with `/justtiers`.
 | Command | Description |
 |---|---|
 | `/justtiers` | Show current settings and cache status |
+| `/justtiers lookup <player>` | Print every tier a player holds, on all three sites |
 | `/justtiers toggle` | Turn the nametag display on or off |
 | `/justtiers retired` | Show or hide retired tiers, across every display mode |
 | `/justtiers mode <mode>` | Set display mode: `mctiers_only`, `subtiers_only`, `novatiers_only`, `all` |
 | `/justtiers gamemode <gamemode>` | Set the selected gamemode for the current single-site mode |
+| `/justtiers badge <before\|after>` | Put the badge in front of the player's name or behind it |
+| `/justtiers icons` | Show or hide the gamemode icons |
+| `/justtiers brackets` | Show or hide the `[ ]` around the badge |
 | `/justtiers refresh` | Re-download tier data and clear the cache |
 | `/justtiers gui` | Open the configuration screen |
 
-`/justtiers gamemode` offers tab-completion limited to the gamemodes that actually exist on the site you are currently viewing.
+`/justtiers gamemode` offers tab-completion limited to the gamemodes that actually exist on the site you are currently viewing. `/justtiers lookup` completes from the players currently on the server.
+
+---
+
+## Looking a player up
+
+The nametag only tells you about people you can see. `/justtiers lookup <player>` tells you about
+anyone — useful in the thirty seconds before a duel, when the person you are about to fight is on
+the other side of the lobby.
+
+```
+/justtiers lookup Notch
+```
+
+```
+[Just-Tiers] Tiers for Notch
+  MCTiers    HT2  LT3  RHT1
+  SubTiers   not ranked
+  NovaTiers  site unavailable
+```
+
+A lookup deliberately ignores your display mode and your gamemode selections: those settings exist
+to keep a nametag short, and the reason to ask about a player by name is to see everything. Every
+site is listed, every gamemode that site ranked them in, best first, retired placements included.
+The one setting it does follow is **Show gamemode icons** — turning icons off shortens the lookup
+too.
+
+The three answers a site can give are kept distinct, because they mean different things:
+
+| Line | Meaning |
+|---|---|
+| a list of tiers | The site has placed this player |
+| `not ranked` | The site answered, and has never placed them |
+| `site unavailable` | The site could not be reached — it has said nothing either way |
+
+**Finding the player.** Names are resolved from the tab list first, which covers everyone on the
+server whether or not they are in render distance, and costs nothing. A name that is not on the
+server is resolved through Mojang's public profile API instead, so you can look up someone who is
+not even online. Results are remembered for the session; a name nobody owns is reported as such,
+and a Mojang that does not answer is reported as a failure rather than as a player who does not
+exist.
+
+On offline-mode servers the tab list hands out UUIDs that are not real account UUIDs, so those
+players go through Mojang as well rather than being looked up as someone the leaderboards will
+never have heard of.
 
 ---
 
@@ -171,6 +221,14 @@ words, so the preview is never mistaken for your real placements.
 
 Nothing about it is a lookup: the screen makes no network request and behaves identically offline,
 on any account.
+
+**Appearance.** Under the display mode sits an **Appearance** group with the three cosmetic
+settings: **Badge position** (before or after the name), **Show gamemode icons** and **Show
+brackets**. None of them change *which* tiers are shown — that is what the display mode and the
+gamemode pickers are for — so they stay live in every mode, greying only when Just-Tiers itself is
+switched off. Each one shows up in the preview immediately, including the space between the badge
+and the name, which follows the badge to whichever side it is on. With icons off the sites are told
+apart by tier colour alone, which is the same legend the display-mode row is coloured with.
 
 **Nothing is hidden, only greyed.** Options that cannot do anything useful in the current state are
 greyed out rather than removed, so the screen never changes shape under you. In `all` mode, for
@@ -206,7 +264,10 @@ Settings are stored in `config/justtiers.json` and are written automatically whe
     "NOVATIERS": "vanilla"
   },
   "novaRefreshMinutes": 30,
-  "showDownloadProgress": true
+  "showDownloadProgress": true,
+  "badgePosition": "before",
+  "showIcons": true,
+  "showBrackets": true
 }
 ```
 
@@ -218,6 +279,9 @@ Settings are stored in `config/justtiers.json` and are written automatically whe
 | `selectedGamemodes` | The chosen gamemode slug per site |
 | `novaRefreshMinutes` | How often to re-download the NovaTiers list (clamped to 5–1440) |
 | `showDownloadProgress` | Whether a progress bar is shown in the bottom-right while the NovaTiers list downloads |
+| `badgePosition` | `before` or `after` — which side of the player's name the badge sits on |
+| `showIcons` | Whether each tier carries its gamemode glyph |
+| `showBrackets` | Whether the badge is wrapped in `[ ]` |
 
 Settings are also written by the [configuration screen](#configuration-screen), which produces the
 same file. `novaRefreshMinutes` and `showDownloadProgress` have no commands, but both appear on the
@@ -225,9 +289,11 @@ screen's **Data** category — a slider and a tick box respectively. Changing th
 as soon as you press Save: the refresh timer is rescheduled rather than waiting for the next launch.
 Out-of-range or unrecognised values are corrected on load rather than rejected.
 
-`displayMode` is written in lower-case and read case-insensitively, so config files written by older
-builds with upper-case values (e.g. `"ALL"`) still load correctly. An unrecognised value falls back
-to `all` with a warning logged.
+`displayMode` and `badgePosition` are written in lower-case and read case-insensitively, so config
+files written by older builds with upper-case values (e.g. `"ALL"`) still load correctly. An
+unrecognised value falls back to `all` and `before` respectively, with a warning logged. A file
+written before the appearance settings existed simply keeps the badge Just-Tiers has always drawn:
+bracketed, with icons, in front of the name.
 
 ---
 
@@ -240,6 +306,11 @@ Just-Tiers reads three public leaderboard APIs and normalises them into one inte
 | MCTiers | `mctiers.com/api/v2/…` | Per player, by UUID |
 | SubTiers | `subtiers.net/api/v2/…` | Per player, by UUID (same schema as MCTiers) |
 | NovaTiers | `novatiers.com/users` | Bulk only — the entire ranked player list in one request |
+
+One more endpoint is contacted, and only by `/justtiers lookup`: Mojang's
+`api.mojang.com/users/profiles/minecraft/<name>`, to turn a name that is not on the server into the
+account UUID the leaderboards are keyed by. Nothing else in the mod ever calls it — every other
+lookup already has a UUID in hand.
 
 NovaTiers offers no per-player route, so its full list (roughly 6,500 players, about 1.7 MB) is downloaded once, indexed by UUID in memory, and refreshed on a timer. MCTiers and SubTiers are queried per player, with results cached for the session and concurrent requests for the same player coalesced into one.
 

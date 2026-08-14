@@ -13,6 +13,7 @@ class ControlAvailabilityTest {
         var state = ControlAvailability.of(true, DisplayMode.MCTIERS_ONLY);
         assertTrue(state.displayMode());
         assertTrue(state.showRetired());
+        assertTrue(state.appearance());
         assertTrue(state.gamemode(Source.MCTIERS));
         assertFalse(state.gamemode(Source.SUBTIERS));
         assertFalse(state.gamemode(Source.NOVATIERS));
@@ -33,6 +34,7 @@ class ControlAvailabilityTest {
         var state = ControlAvailability.of(false, DisplayMode.MCTIERS_ONLY);
         assertFalse(state.displayMode());
         assertFalse(state.showRetired());
+        assertFalse(state.appearance());
         for (Source source : Source.values()) {
             assertFalse(state.gamemode(source));
             assertEquals(ControlAvailability.Reason.MOD_DISABLED, state.reasonFor(source));
@@ -45,6 +47,16 @@ class ControlAvailabilityTest {
         assertEquals(ControlAvailability.Reason.AVAILABLE, state.reasonFor(Source.SUBTIERS));
         assertEquals(ControlAvailability.Reason.OTHER_SITE, state.reasonFor(Source.MCTIERS));
         assertEquals(ControlAvailability.Reason.OTHER_SITE, state.reasonFor(Source.NOVATIERS));
+    }
+
+    @Test
+    void theBadgeShapeStaysLiveInEveryDisplayMode() {
+        // Where the badge sits and what chrome it carries means the same thing whichever
+        // sites are being shown, so only the master switch may grey those rows.
+        for (DisplayMode mode : DisplayMode.values()) {
+            assertTrue(ControlAvailability.of(true, mode).appearance(), mode.toString());
+            assertFalse(ControlAvailability.of(false, mode).appearance(), mode.toString());
+        }
     }
 
     @Test
