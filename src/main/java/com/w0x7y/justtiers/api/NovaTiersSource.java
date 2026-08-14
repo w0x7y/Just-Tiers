@@ -1,13 +1,14 @@
 package com.w0x7y.justtiers.api;
 
 import com.w0x7y.justtiers.JustTiers;
+import com.w0x7y.justtiers.download.DownloadProgress;
+import com.w0x7y.justtiers.download.ProgressBodyHandler;
 import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
 
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
@@ -22,13 +23,19 @@ public final class NovaTiersSource implements TierSource {
 
     private final HttpClient client;
     private final String baseUrl;
+    private final DownloadProgress progress;
 
     private volatile CompletableFuture<Map<UUID, Map<String, Tier>>> index;
     private volatile int indexedPlayerCount;
 
     public NovaTiersSource(HttpClient client, String baseUrl) {
+        this(client, baseUrl, new DownloadProgress());
+    }
+
+    public NovaTiersSource(HttpClient client, String baseUrl, DownloadProgress progress) {
         this.client = client;
         this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+        this.progress = progress;
     }
 
     @Override
@@ -97,7 +104,8 @@ public final class NovaTiersSource implements TierSource {
                 .GET()
                 .build();
 
-        return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+        progress.started();
+        return client.sendAsync(request, new ProgressBodyHandler(progress::advanced))
                 .thenApply(response -> {
                     if (response.statusCode() != 200) {
                         throw new TierLookupException(
@@ -112,6 +120,16 @@ public final class NovaTiersSource implements TierSource {
                     JustTiers.LOGGER.info("Indexed {} NovaTiers players", parsed.size());
                     indexedPlayerCount = parsed.size();
                     return parsed;
+                })
+                // whenComplete passes the result and the failure straight through, so the
+                // caller's error handling - including loadIndex keeping the previous index -
+                // is untouched.
+                .whenComplete((parsed, error) -> {
+                    if (error != null) {
+                        progress.failed();
+                    } else {
+                        progress.finished();
+                    }
                 });
     }
 }
