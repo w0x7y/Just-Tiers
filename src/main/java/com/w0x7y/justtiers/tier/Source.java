@@ -1,9 +1,18 @@
 package com.w0x7y.justtiers.tier;
 
+import java.util.List;
+
 public enum Source {
     MCTIERS("MCTiers", "https://mctiers.com/api", "https://mctiers.com", 0xFFFF55),
     SUBTIERS("SubTiers", "https://subtiers.net/api", "https://subtiers.net", 0x55FFFF),
     NOVATIERS("NovaTiers", "https://novatiers.com", "https://novatiers.com", 0xAA55FF);
+
+    /**
+     * Every site, in declaration order. {@code values()} clones its array on every
+     * call, and this is iterated per nametag and per frame; the order is the one every
+     * caller already relied on.
+     */
+    public static final List<Source> ALL = List.of(values());
 
     private final String displayName;
     private final String baseUrl;

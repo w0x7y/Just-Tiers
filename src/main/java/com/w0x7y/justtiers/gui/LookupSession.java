@@ -76,7 +76,7 @@ public final class LookupSession {
         player = found;
         PlayerSkins.resolve(found).thenAccept(loaded -> onClient(() -> skin = loaded));
 
-        for (Source site : Source.values()) {
+        for (Source site : Source.ALL) {
             JustTiersClient.cache().load(site, found.uuid()).handle((tiers, failure) -> {
                 Optional<Map<String, Tier>> answer;
                 if (failure != null) {
@@ -115,7 +115,7 @@ public final class LookupSession {
 
     /** True once every site has either answered or failed. */
     public boolean complete() {
-        return sections.size() == Source.values().length;
+        return sections.size() == Source.ALL.size();
     }
 
     /**

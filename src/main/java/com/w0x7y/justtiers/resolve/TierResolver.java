@@ -77,12 +77,12 @@ public final class TierResolver {
         }
 
         // Not ranked in the selected mode: fall back to their best on this same site.
-        return highestOn(source, tiers).map(List::of).orElseGet(List::of);
+        return highestOn(source, tiers).map(List::of).orElse(List.of());
     }
 
     private static List<ResolvedTier> resolveAll(Map<Source, Map<String, Tier>> tiersBySource) {
-        List<ResolvedTier> result = new ArrayList<>(Source.values().length);
-        for (Source source : Source.values()) {
+        List<ResolvedTier> result = new ArrayList<>(Source.ALL.size());
+        for (Source source : Source.ALL) {
             highestOn(source, tiersBySource.getOrDefault(source, Map.of())).ifPresent(result::add);
         }
         return List.copyOf(result);

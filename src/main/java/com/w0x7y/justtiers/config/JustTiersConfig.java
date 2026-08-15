@@ -151,7 +151,7 @@ public class JustTiersConfig {
 
     public Map<Source, String> selectedGamemodesBySource() {
         Map<Source, String> result = new EnumMap<>(Source.class);
-        for (Source source : Source.values()) {
+        for (Source source : Source.ALL) {
             result.put(source, selectedGamemode(source));
         }
         return result;

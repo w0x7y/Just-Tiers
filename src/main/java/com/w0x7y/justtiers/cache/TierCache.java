@@ -38,7 +38,7 @@ public final class TierCache {
         for (TierSource source : sources) {
             this.sources.put(source.source(), source);
         }
-        for (Source source : Source.values()) {
+        for (Source source : Source.ALL) {
             this.entries.put(source, new ConcurrentHashMap<>());
             this.retryAfter.put(source, new ConcurrentHashMap<>());
         }

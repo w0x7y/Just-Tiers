@@ -25,7 +25,7 @@ public record ControlAvailability(boolean displayMode,
 
     public static ControlAvailability of(boolean enabled, DisplayMode mode) {
         Map<Source, Reason> reasons = new EnumMap<>(Source.class);
-        for (Source source : Source.values()) {
+        for (Source source : Source.ALL) {
             reasons.put(source, reasonFor(enabled, mode, source));
         }
         // The badge's shape - its side, its icons, its brackets - means the same thing in

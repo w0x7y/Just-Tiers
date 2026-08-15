@@ -90,8 +90,8 @@ public final class PreviewSample {
             return List.of(gamemodeOf(single.get(), selectedGamemodes));
         }
 
-        List<Gamemode> all = new ArrayList<>(Source.values().length);
-        for (Source source : Source.values()) {
+        List<Gamemode> all = new ArrayList<>(Source.ALL.size());
+        for (Source source : Source.ALL) {
             all.add(gamemodeOf(source, ALL_MODE_GAMEMODES));
         }
         return List.copyOf(all);
