@@ -30,6 +30,7 @@ public class JustTiersClient implements ClientModInitializer {
     private static Path configPath;
     private static ScheduledExecutorService scheduler;
     private static ScheduledFuture<?> refreshTask;
+    private static int scheduledRefreshMinutes;
 
     @Override
     public void onInitializeClient() {
@@ -87,7 +88,7 @@ public class JustTiersClient implements ClientModInitializer {
     public static void saveConfig() {
         config.save(configPath);
         // The interval is a live setting, so a changed slider takes effect now rather
-        // than at next launch. Harmless when the interval did not actually change.
+        // than at next launch.
         scheduleNovaRefresh(config.getNovaRefreshMinutes());
     }
 
@@ -100,9 +101,17 @@ public class JustTiersClient implements ClientModInitializer {
         if (scheduler == null) {
             return;
         }
+        // Rescheduling restarts the countdown from zero. Every saved setting comes
+        // through here, so rescheduling unconditionally meant a player who toggled
+        // anything more often than the interval pushed the refresh back indefinitely
+        // and never got one. Only an actual change to the interval is worth a restart.
+        if (refreshTask != null && minutes == scheduledRefreshMinutes) {
+            return;
+        }
         if (refreshTask != null) {
             refreshTask.cancel(false);
         }
+        scheduledRefreshMinutes = minutes;
         refreshTask = scheduler.scheduleWithFixedDelay(
                 () -> {
                     try {
