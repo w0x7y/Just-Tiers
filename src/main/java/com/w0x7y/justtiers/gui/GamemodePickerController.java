@@ -1,7 +1,6 @@
 package com.w0x7y.justtiers.gui;
 
 import com.w0x7y.justtiers.gui.state.PreviewState;
-import com.w0x7y.justtiers.tier.Gamemode;
 import com.w0x7y.justtiers.tier.Gamemodes;
 import com.w0x7y.justtiers.tier.Source;
 import dev.isxander.yacl3.api.Controller;

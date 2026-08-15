@@ -69,23 +69,9 @@ public final class PreviewSample {
 
     public static List<Segment> segments(DisplayMode mode,
                                          Map<Source, String> selectedGamemodes,
-                                         boolean retired) {
-        return segments(mode, selectedGamemodes, retired, NametagStyle.DEFAULT);
-    }
-
-    public static List<Segment> segments(DisplayMode mode,
-                                         Map<Source, String> selectedGamemodes,
                                          boolean retired,
                                          NametagStyle style) {
         return NametagModel.build(resolve(mode, selectedGamemodes, retired), style);
-    }
-
-    /** Convenience for callers holding a clock rather than a phase. */
-    public static List<Segment> segments(DisplayMode mode,
-                                         Map<Source, String> selectedGamemodes,
-                                         boolean showRetired,
-                                         long timeMillis) {
-        return segments(mode, selectedGamemodes, showRetired, timeMillis, NametagStyle.DEFAULT);
     }
 
     public static List<Segment> segments(DisplayMode mode,
