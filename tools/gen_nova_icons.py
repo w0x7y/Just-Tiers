@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# THE ICONS NOW ARE NOT AI GENERATED AND THIS IS A OLD SCRIPT
 """Generate the 12 original NovaTiers gamemode icons as 8x8 RGBA PNGs."""
 import struct, zlib, os, sys
 
