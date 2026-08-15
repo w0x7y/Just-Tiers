@@ -13,7 +13,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.PlayerSkin;
 
 import java.util.EnumMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -127,8 +126,8 @@ public final class LookupSession {
         if (!complete()) {
             return false;
         }
-        List<LookupSection> all = List.copyOf(sections.values());
-        return LookupReport.anySiteAnswered(all) && LookupReport.nothingRanked(all);
+        return LookupReport.anySiteAnswered(sections.values())
+                && LookupReport.nothingRanked(sections.values());
     }
 
     private static void onClient(Runnable action) {

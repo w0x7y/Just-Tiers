@@ -252,6 +252,15 @@ class TierResolverTest {
     }
 
     @Test
+    void hidingRetiredChangesNothingWhenNothingIsRetired() {
+        Map<Source, Map<String, Tier>> tiers =
+                Map.of(Source.MCTIERS, Map.of("vanilla", ht(3), "axe", lt(2)));
+
+        assertEquals(TierResolver.resolve(DisplayMode.ALL, tiers, SELECTED, true),
+                TierResolver.resolve(DisplayMode.ALL, tiers, SELECTED, false));
+    }
+
+    @Test
     void theThreeArgOverloadStillShowsRetiredTiers() {
         List<ResolvedTier> result = TierResolver.resolve(
                 DisplayMode.ALL,

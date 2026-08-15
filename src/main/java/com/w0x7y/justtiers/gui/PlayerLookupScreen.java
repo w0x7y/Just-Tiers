@@ -82,6 +82,7 @@ public final class PlayerLookupScreen extends Screen {
     private int tiersY;
     private int noteY;
     private int footerY;
+    private int creditX;
     private int firstSeparatorY;
     private int secondSeparatorY;
     private int thirdSeparatorY;
@@ -242,7 +243,8 @@ public final class PlayerLookupScreen extends Screen {
             }
         }
 
-        int x = panelX + (panelWidth - total) / 2 + font.width(prefix) + font.width(" ");
+        creditX = panelX + (panelWidth - total) / 2;
+        int x = creditX + font.width(prefix) + font.width(" ");
         for (int i = 0; i < Source.ALL.size(); i++) {
             if (i > 0) {
                 x += font.width(SITE_SEPARATOR);
@@ -391,12 +393,8 @@ public final class PlayerLookupScreen extends Screen {
     }
 
     private void drawFooter(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
-        Component prefix = Component.translatable("justtiers.lookup.credit");
-        if (!links.isEmpty()) {
-            graphics.text(font, prefix,
-                    links.get(0).x() - font.width(" ") - font.width(prefix), footerY,
-                    Colors.SECONDARY);
-        }
+        graphics.text(font, Component.translatable("justtiers.lookup.credit"),
+                creditX, footerY, Colors.SECONDARY);
         for (int i = 1; i < links.size(); i++) {
             Link link = links.get(i);
             graphics.text(font, SITE_SEPARATOR,

@@ -1,5 +1,7 @@
 package com.w0x7y.justtiers.tier;
 
+import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -74,11 +76,29 @@ public final class Gamemodes {
         };
     }
 
+    /**
+     * Indexed rather than searched: {@link #find} is on the nametag path, which runs per
+     * player per frame, and a stream over a twelve-element list there is not free.
+     */
+    private static final Map<Source, Map<String, Gamemode>> BY_SLUG = bySlug();
+
+    private static Map<Source, Map<String, Gamemode>> bySlug() {
+        Map<Source, Map<String, Gamemode>> index = new EnumMap<>(Source.class);
+        for (Source source : Source.ALL) {
+            Map<String, Gamemode> slugs = new LinkedHashMap<>();
+            for (Gamemode gamemode : of(source)) {
+                slugs.put(gamemode.slug(), gamemode);
+            }
+            index.put(source, Map.copyOf(slugs));
+        }
+        return Map.copyOf(index);
+    }
+
     public static Optional<Gamemode> find(Source source, String slug) {
         if (slug == null) {
             return Optional.empty();
         }
-        return of(source).stream().filter(m -> m.slug().equals(slug)).findFirst();
+        return Optional.ofNullable(BY_SLUG.get(source).get(slug));
     }
 
     /** "Spear Mace" / "spear_mace" / "SPEARMACE" all collapse to "spearmace". */
