@@ -29,7 +29,7 @@ Just-Tiers supports all three leaderboards, and adds an **All** mode that shows 
 - **Automatic fallback** — not ranked in your chosen gamemode? It shows that player's highest tier on that same site instead.
 - **Gamemode icons** — a small icon shows *which* gamemode earned the tier.
 - **Colour-coded by site** — you can always tell where a tier came from.
-- **Look anyone up** — `/justtiers lookup <player>` prints every gamemode a player is ranked in, on all three sites, without them being anywhere near you. See [Looking a player up](#looking-a-player-up).
+- **Look anyone up** — `/justtiers lookup <player>` opens a screen with that player's skin and every gamemode all three sites run, tier by tier, without them being anywhere near you. See [Looking a player up](#looking-a-player-up).
 - **Shape the badge** — put it before or after the name, and turn the icons or the brackets off to make it as short as you like. The config screen previews every combination live.
 - **Retired tiers handled properly** — shown with an `R` prefix in their site's colour, still counted when finding a player's highest tier, and hideable entirely with one setting.
 - **Non-blocking** — all lookups are asynchronous and cached; the mod never stalls your frame rate waiting on a web request.
@@ -162,31 +162,65 @@ the other side of the lobby.
 /justtiers lookup Notch
 ```
 
+It opens a screen rather than printing to chat: three sites' worth of placements is more than a
+chat line can hold, and a duel is a bad time to scroll.
+
 ```
-[Just-Tiers] Tiers for Notch
-  MCTiers    HT2  LT3  RHT1
-  SubTiers   not ranked
-  NovaTiers  site unavailable
+┌───────────────────────────────────────────────────────┐
+│                        Notch                          │
+├───────────────────────────────────────────────────────┤
+│                     (their skin)                      │
+├───────────────────────────────────────────────────────┤
+│                         Tiers                         │
+│   MCTiers  ┌───────────────────────────────────────┐  │
+│            │ ⛏HT3 ⚒LT4 ⛏--- ⚔--- 🏹HT2 ⚔HT3 ⛏LT5 │  │  ← yellow
+│            └───────────────────────────────────────┘  │
+│  SubTiers  ┌───────────────────────────────────────┐  │
+│            │ 🛏HT2 🏹HT3 💥--- 🧪LT5 💎HT2 ...      │  │  ← cyan
+│            └───────────────────────────────────────┘  │
+│ NovaTiers  ┌───────────────────────────────────────┐  │
+│            │ ⛏HT1 🛒LT2 💎--- 🪶--- ...            │  │  ← purple
+│            └───────────────────────────────────────┘  │
+├───────────────────────────────────────────────────────┤
+│      Tier data from MCTiers · SubTiers · NovaTiers    │
+└───────────────────────────────────────────────────────┘
 ```
 
+Every gamemode each site runs gets a cell, in that site's own order, so the columns stay put from
+one lookup to the next. A cell is either a tier in its site's colour or `---`, which means that
+site has never tested this player in that gamemode. Hover a cell to see which gamemode it is.
+
+The rows fill in one at a time, the moment each site answers, rather than the screen waiting on the
+slowest of the three — a cold NovaTiers list is a ~1.7 MB download, and a screen that showed
+nothing until it landed would look broken. A row that is still waiting says `Looking up...`.
+
 A lookup deliberately ignores your display mode and your gamemode selections: those settings exist
-to keep a nametag short, and the reason to ask about a player by name is to see everything. Every
-site is listed, every gamemode that site ranked them in, best first, retired placements included.
-The one setting it does follow is **Show gamemode icons** — turning icons off shortens the lookup
-too.
+to keep a nametag short, and the reason to ask about a player by name is to see everything. Retired
+placements are included, with their usual `R` prefix. Gamemode icons are always drawn here even if
+you have turned them off for nametags — on a nametag an icon says which gamemode earned a tier, but
+here it is the only thing naming the column.
 
 The three answers a site can give are kept distinct, because they mean different things:
 
-| Line | Meaning |
+| Row | Meaning |
 |---|---|
-| a list of tiers | The site has placed this player |
-| `not ranked` | The site answered, and has never placed them |
+| cells, some with tiers | The site has placed this player |
+| every cell `---` | The site answered, and has never placed them |
 | `site unavailable` | The site could not be reached — it has said nothing either way |
+
+**The skin.** Drawn flat and face on, straight out of the skin texture: no world, no entity, so the
+screen works the same on a server, in singleplayer and from the title screen. A player on the
+server already has their skin loaded; anyone else has their profile fetched from Mojang first. If
+that fetch fails — Mojang rate-limits it like anything else — you get the default skin for that
+account and the tiers are unaffected.
+
+**The credit.** The three site names at the bottom are links to the leaderboards the data came
+from, and open in your browser through Minecraft's usual confirmation prompt.
 
 **Finding the player.** Names are resolved from the tab list first, which covers everyone on the
 server whether or not they are in render distance, and costs nothing. A name that is not on the
 server is resolved through Mojang's public profile API instead, so you can look up someone who is
-not even online. Results are remembered for the session; a name nobody owns is reported as such,
+not even online. Results are remembered for the session; a name nobody owns says so on the screen,
 and a Mojang that does not answer is reported as a failure rather than as a player who does not
 exist.
 
