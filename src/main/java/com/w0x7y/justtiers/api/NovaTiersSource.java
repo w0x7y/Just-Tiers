@@ -107,8 +107,9 @@ public final class NovaTiersSource implements TierSource {
                         throw new TierLookupException(
                                 "NovaTiers returned HTTP " + response.statusCode());
                     }
-                    Map<UUID, Map<String, Tier>> parsed = NovaParser.parseUsers(response.body());
-                    if (parsed.isEmpty() && response.body() != null && response.body().length() > 2) {
+                    String body = response.body();
+                    Map<UUID, Map<String, Tier>> parsed = NovaParser.parseUsers(body);
+                    if (TierSource.nothingUnderstood(parsed, body)) {
                         JustTiers.LOGGER.warn(
                                 "NovaTiers answered HTTP 200 but nothing was understood; "
                                         + "the response schema may have changed");
