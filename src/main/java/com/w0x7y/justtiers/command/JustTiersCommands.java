@@ -37,20 +37,19 @@ public final class JustTiersCommands {
                         .executes(JustTiersCommands::status)
                         .then(literal("toggle").executes(context -> toggle(context,
                                 JustTiersConfig::isEnabled, JustTiersConfig::setEnabled,
-                                "Enabled", "Disabled",
+                                "justtiers.command.toggle.on", "justtiers.command.toggle.off",
                                 ChatFormatting.RED)))
                         .then(literal("retired").executes(context -> toggle(context,
                                 JustTiersConfig::isShowRetired, JustTiersConfig::setShowRetired,
-                                "Showing retired tiers", "Hiding retired tiers",
+                                "justtiers.command.retired.on", "justtiers.command.retired.off",
                                 ChatFormatting.YELLOW)))
                         .then(literal("icons").executes(context -> toggle(context,
                                 JustTiersConfig::isShowIcons, JustTiersConfig::setShowIcons,
-                                "Showing gamemode icons",
-                                "Hiding gamemode icons — sites are told apart by colour",
+                                "justtiers.command.icons.on", "justtiers.command.icons.off",
                                 ChatFormatting.YELLOW)))
                         .then(literal("brackets").executes(context -> toggle(context,
                                 JustTiersConfig::isShowBrackets, JustTiersConfig::setShowBrackets,
-                                "Showing brackets", "Hiding brackets",
+                                "justtiers.command.brackets.on", "justtiers.command.brackets.off",
                                 ChatFormatting.YELLOW)))
                         .then(literal("refresh").executes(JustTiersCommands::refresh))
                         .then(literal("gui").executes(JustTiersCommands::openGui))
@@ -60,7 +59,10 @@ public final class JustTiersCommands {
                                         .executes(context -> setEnum(context, "mode",
                                                 DisplayMode.values(), DisplayMode::id,
                                                 JustTiersConfig::setDisplayMode,
-                                                mode -> "Mode set to " + mode.id()))))
+                                                mode -> Component.translatable(
+                                                        "justtiers.command.modeSet",
+                                                        Component.translatable(
+                                                                "justtiers.mode." + mode.id()))))))
                         .then(literal("badge")
                                 .then(argument("position", StringArgumentType.word())
                                         .suggests(suggestIds(BadgePosition.values(),
@@ -68,8 +70,11 @@ public final class JustTiersCommands {
                                         .executes(context -> setEnum(context, "position",
                                                 BadgePosition.values(), BadgePosition::id,
                                                 JustTiersConfig::setBadgePosition,
-                                                position -> "Badge drawn " + position.id()
-                                                        + " the name"))))
+                                                position -> Component.translatable(
+                                                        "justtiers.command.badgeSet",
+                                                        Component.translatable(
+                                                                "justtiers.badge."
+                                                                        + position.id()))))))
                         .then(literal("lookup")
                                 .then(argument("player", StringArgumentType.word())
                                         .suggests((context, builder) -> {
@@ -102,8 +107,18 @@ public final class JustTiersCommands {
     }
 
     private static void reply(CommandContext<FabricClientCommandSource> context,
-                              String message, ChatFormatting color) {
-        reply(context.getSource(), Component.literal(message).withStyle(color));
+                              ChatFormatting color, Component message) {
+        reply(context.getSource(), message.copy().withStyle(color));
+    }
+
+    private static void reply(CommandContext<FabricClientCommandSource> context,
+                              ChatFormatting color, String key, Object... args) {
+        reply(context, color, Component.translatable(key, args));
+    }
+
+    /** The on/off wording the status lines share. */
+    private static Component onOff(boolean on) {
+        return Component.translatable(on ? "justtiers.command.on" : "justtiers.command.off");
     }
 
     private static void reply(FabricClientCommandSource source, Component message) {
@@ -113,22 +128,25 @@ public final class JustTiersCommands {
 
     private static int status(CommandContext<FabricClientCommandSource> context) {
         var config = JustTiersClient.config();
-        reply(context, "Enabled: " + config.isEnabled(), ChatFormatting.WHITE);
-        reply(context, "Mode: " + config.getDisplayMode().id(), ChatFormatting.WHITE);
-        reply(context, "Retired tiers: " + (config.isShowRetired() ? "shown" : "hidden"),
-                ChatFormatting.WHITE);
-        reply(context, "Badge: " + config.getBadgePosition().id() + " the name, icons "
-                        + (config.isShowIcons() ? "on" : "off") + ", brackets "
-                        + (config.isShowBrackets() ? "on" : "off"),
-                ChatFormatting.WHITE);
+        reply(context, ChatFormatting.WHITE, "justtiers.command.status.enabled",
+                onOff(config.isEnabled()));
+        reply(context, ChatFormatting.WHITE, "justtiers.command.status.mode",
+                Component.translatable("justtiers.mode." + config.getDisplayMode().id()));
+        reply(context, ChatFormatting.WHITE, "justtiers.command.status.retired",
+                Component.translatable(config.isShowRetired()
+                        ? "justtiers.command.status.retired.shown"
+                        : "justtiers.command.status.retired.hidden"));
+        reply(context, ChatFormatting.WHITE, "justtiers.command.status.badge",
+                Component.translatable("justtiers.badge." + config.getBadgePosition().id()),
+                onOff(config.isShowIcons()), onOff(config.isShowBrackets()));
         for (Source source : Source.ALL) {
             String slug = config.selectedGamemode(source);
             String title = Gamemodes.find(source, slug).map(Gamemode::displayName).orElse(slug);
-            reply(context, "  " + source.displayName() + " gamemode: " + title,
-                    ChatFormatting.WHITE);
+            reply(context, ChatFormatting.WHITE, "justtiers.command.status.gamemode",
+                    source.displayName(), title);
         }
-        reply(context, "NovaTiers players indexed: "
-                + JustTiersClient.novaSource().indexedPlayerCount(), ChatFormatting.WHITE);
+        reply(context, ChatFormatting.WHITE, "justtiers.data.indexed",
+                JustTiersClient.novaSource().indexedPlayerCount());
         return 1;
     }
 
@@ -136,12 +154,12 @@ public final class JustTiersCommands {
     private static int toggle(CommandContext<FabricClientCommandSource> context,
                               Predicate<JustTiersConfig> get,
                               BiConsumer<JustTiersConfig, Boolean> set,
-                              String on, String off, ChatFormatting offColor) {
+                              String onKey, String offKey, ChatFormatting offColor) {
         JustTiersConfig config = JustTiersClient.config();
         boolean now = !get.test(config);
         set.accept(config, now);
         JustTiersClient.saveConfig();
-        reply(context, now ? on : off, now ? ChatFormatting.GREEN : offColor);
+        reply(context, now ? ChatFormatting.GREEN : offColor, now ? onKey : offKey);
         return 1;
     }
 
@@ -155,7 +173,7 @@ public final class JustTiersCommands {
     private static int refresh(CommandContext<FabricClientCommandSource> context) {
         JustTiersClient.cache().invalidateAll();
         JustTiersClient.novaSource().refresh();
-        reply(context, "Refreshing tier data...", ChatFormatting.YELLOW);
+        reply(context, ChatFormatting.YELLOW, "justtiers.command.refreshing");
         return 1;
     }
 
@@ -184,42 +202,41 @@ public final class JustTiersCommands {
     private static <E> int setEnum(CommandContext<FabricClientCommandSource> context,
                                    String argument, E[] values, Function<E, String> id,
                                    BiConsumer<JustTiersConfig, E> apply,
-                                   Function<E, String> confirmation) {
+                                   Function<E, Component> confirmation) {
         String raw = StringArgumentType.getString(context, argument);
         for (E value : values) {
             if (id.apply(value).equalsIgnoreCase(raw)) {
                 apply.accept(JustTiersClient.config(), value);
                 JustTiersClient.saveConfig();
-                reply(context, confirmation.apply(value), ChatFormatting.GREEN);
+                reply(context, ChatFormatting.GREEN, confirmation.apply(value));
                 return 1;
             }
         }
-        reply(context, "Unknown " + argument + " '" + raw + "'. Valid: "
-                        + Arrays.stream(values).map(id).collect(Collectors.joining(", ")),
-                ChatFormatting.RED);
+        reply(context, ChatFormatting.RED, "justtiers.command.unknown", argument, raw,
+                Arrays.stream(values).map(id).collect(Collectors.joining(", ")));
         return 0;
     }
 
     private static int setGamemode(CommandContext<FabricClientCommandSource> context) {
         Optional<Source> source = currentSource();
         if (source.isEmpty()) {
-            reply(context, "'all' mode always shows each site's highest tier, so there is no "
-                    + "gamemode to pick. Switch mode first.", ChatFormatting.RED);
+            // The same sentence the config screen shows on a greyed gamemode row.
+            reply(context, ChatFormatting.RED, "justtiers.option.gamemode.inactive");
             return 0;
         }
 
         String slug = StringArgumentType.getString(context, "gamemode");
         Optional<Gamemode> gamemode = Gamemodes.find(source.get(), slug);
         if (gamemode.isEmpty()) {
-            reply(context, "'" + slug + "' is not a " + source.get().displayName()
-                    + " gamemode.", ChatFormatting.RED);
+            reply(context, ChatFormatting.RED, "justtiers.command.gamemode.unknown",
+                    slug, source.get().displayName());
             return 0;
         }
 
         JustTiersClient.config().setSelectedGamemode(source.get(), slug);
         JustTiersClient.saveConfig();
-        reply(context, source.get().displayName() + " gamemode set to "
-                + gamemode.get().displayName(), ChatFormatting.GREEN);
+        reply(context, ChatFormatting.GREEN, "justtiers.command.gamemode.set",
+                source.get().displayName(), gamemode.get().displayName());
         return 1;
     }
 
