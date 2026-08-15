@@ -47,8 +47,9 @@ public final class MctiersLikeSource implements TierSource {
                         throw new TierLookupException(
                                 source + " returned HTTP " + status + " for " + uuid);
                     }
-                    Map<String, Tier> parsed = MctiersParser.parseRankings(response.body());
-                    if (parsed.isEmpty() && response.body() != null && response.body().length() > 2) {
+                    String body = response.body();
+                    Map<String, Tier> parsed = MctiersParser.parseRankings(body);
+                    if (TierSource.nothingUnderstood(parsed, body)) {
                         JustTiers.LOGGER.warn(
                                 "{} answered HTTP 200 but nothing was understood for {}; "
                                         + "the response schema may have changed",
