@@ -1,10 +1,14 @@
 package com.w0x7y.justtiers.tier;
 
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public final class Gamemodes {
 
@@ -47,37 +51,22 @@ public final class Gamemodes {
             new Gamemode(Source.NOVATIERS, "vanilla", "Vanilla", '\uE30C'));
 
     public static final List<Gamemode> ALL =
-            java.util.stream.Stream.of(MCTIERS, SUBTIERS, NOVATIERS)
-                    .flatMap(List::stream)
-                    .toList();
+            Stream.of(MCTIERS, SUBTIERS, NOVATIERS).flatMap(List::stream).toList();
 
     /**
-     * Maps a squashed NovaTiers key to our slug. Mirrors the alias table in
-     * novatiers.com/js/script.js so historical key spellings keep resolving.
+     * Maps a squashed NovaTiers key to our slug. Every slug maps to itself; listed here
+     * are only the historical spellings that do not, mirroring the alias table in
+     * novatiers.com/js/script.js so old key spellings keep resolving.
      */
-    private static final Map<String, String> NOVA_ALIASES = buildNovaAliases();
+    private static final Map<String, String> NOVA_ALIASES = Map.of(
+            "spear", "elytraspear",
+            "elytrasword", "elytraspear",
+            "mace", "spearmace",
+            "spearmacekit", "spearmace",
+            "modern", "modernsmp");
 
-    private static Map<String, String> buildNovaAliases() {
-        Map<String, String> map = new LinkedHashMap<>();
-        map.put("spear", "elytraspear");
-        map.put("elytraspear", "elytraspear");
-        map.put("elytrasword", "elytraspear");
-        map.put("mace", "spearmace");
-        map.put("spearmace", "spearmace");
-        map.put("spearmacekit", "spearmace");
-        map.put("modern", "modernsmp");
-        map.put("modernsmp", "modernsmp");
-        map.put("smp", "smp");
-        map.put("diamondop", "diamondop");
-        map.put("diamondcart", "diamondcart");
-        map.put("spleef", "spleef");
-        map.put("pufferfish", "pufferfish");
-        map.put("uhc", "uhc");
-        map.put("vanilla", "vanilla");
-        map.put("axe", "axe");
-        map.put("elytra", "elytra");
-        return Map.copyOf(map);
-    }
+    private static final Set<String> NOVA_SLUGS =
+            NOVATIERS.stream().map(Gamemode::slug).collect(Collectors.toUnmodifiableSet());
 
     public static List<Gamemode> of(Source source) {
         return switch (source) {
@@ -87,11 +76,29 @@ public final class Gamemodes {
         };
     }
 
+    /**
+     * Indexed rather than searched: {@link #find} is on the nametag path, which runs per
+     * player per frame, and a stream over a twelve-element list there is not free.
+     */
+    private static final Map<Source, Map<String, Gamemode>> BY_SLUG = bySlug();
+
+    private static Map<Source, Map<String, Gamemode>> bySlug() {
+        Map<Source, Map<String, Gamemode>> index = new EnumMap<>(Source.class);
+        for (Source source : Source.ALL) {
+            Map<String, Gamemode> slugs = new LinkedHashMap<>();
+            for (Gamemode gamemode : of(source)) {
+                slugs.put(gamemode.slug(), gamemode);
+            }
+            index.put(source, Map.copyOf(slugs));
+        }
+        return Map.copyOf(index);
+    }
+
     public static Optional<Gamemode> find(Source source, String slug) {
         if (slug == null) {
             return Optional.empty();
         }
-        return of(source).stream().filter(m -> m.slug().equals(slug)).findFirst();
+        return Optional.ofNullable(BY_SLUG.get(source).get(slug));
     }
 
     /** "Spear Mace" / "spear_mace" / "SPEARMACE" all collapse to "spearmace". */
@@ -100,6 +107,9 @@ public final class Gamemodes {
             return Optional.empty();
         }
         String squashed = apiKey.trim().toLowerCase(Locale.ROOT).replaceAll("[_\\s-]+", "");
+        if (NOVA_SLUGS.contains(squashed)) {
+            return Optional.of(squashed);
+        }
         return Optional.ofNullable(NOVA_ALIASES.get(squashed));
     }
 

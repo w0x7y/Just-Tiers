@@ -13,7 +13,9 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundEvents;
 
 import java.util.EnumMap;
 import java.util.List;
@@ -209,8 +211,8 @@ public final class GamemodeGridScreen extends Screen {
 
     private void pick(int index) {
         onPick.accept(gamemodes.get(index).slug());
-        minecraft.getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance
-                .forUI(net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK, 1.0f));
+        minecraft.getSoundManager().play(
+                SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f));
         minecraft.setScreenAndShow(parent);
     }
 

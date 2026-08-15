@@ -5,7 +5,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
 import java.time.Duration;
 import java.util.Properties;
 import java.util.concurrent.Executors;
@@ -47,6 +49,21 @@ public final class JustTiers {
 
     public static HttpClient httpClient() {
         return HTTP_CLIENT;
+    }
+
+    /** A JSON GET carrying the mod's User-Agent. Every request this mod makes is one. */
+    public static HttpRequest jsonRequest(String url, Duration timeout) {
+        return HttpRequest.newBuilder(URI.create(url))
+                .header("User-Agent", USER_AGENT)
+                .header("Accept", "application/json")
+                .timeout(timeout)
+                .GET()
+                .build();
+    }
+
+    /** Trims one trailing slash, so callers can append "/path" without doubling it. */
+    public static String trimTrailingSlash(String baseUrl) {
+        return baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
     }
 
     private JustTiers() {

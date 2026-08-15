@@ -2,6 +2,7 @@ package com.w0x7y.justtiers.command;
 
 import com.w0x7y.justtiers.JustTiersClient;
 import com.w0x7y.justtiers.api.OnlinePlayers;
+import com.w0x7y.justtiers.config.JustTiersConfig;
 import com.w0x7y.justtiers.gui.JustTiersKeybinds;
 import com.w0x7y.justtiers.gui.PlayerLookupScreen;
 import com.w0x7y.justtiers.render.model.BadgePosition;
@@ -11,13 +12,19 @@ import com.w0x7y.justtiers.tier.Gamemodes;
 import com.w0x7y.justtiers.tier.Source;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommands.argument;
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal;
@@ -28,30 +35,41 @@ public final class JustTiersCommands {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
                 dispatcher.register(literal("justtiers")
                         .executes(JustTiersCommands::status)
-                        .then(literal("toggle").executes(JustTiersCommands::toggle))
-                        .then(literal("retired").executes(JustTiersCommands::toggleRetired))
-                        .then(literal("icons").executes(JustTiersCommands::toggleIcons))
-                        .then(literal("brackets").executes(JustTiersCommands::toggleBrackets))
+                        .then(literal("toggle").executes(context -> toggle(context,
+                                JustTiersConfig::isEnabled, JustTiersConfig::setEnabled,
+                                "Enabled", "Disabled",
+                                ChatFormatting.RED)))
+                        .then(literal("retired").executes(context -> toggle(context,
+                                JustTiersConfig::isShowRetired, JustTiersConfig::setShowRetired,
+                                "Showing retired tiers", "Hiding retired tiers",
+                                ChatFormatting.YELLOW)))
+                        .then(literal("icons").executes(context -> toggle(context,
+                                JustTiersConfig::isShowIcons, JustTiersConfig::setShowIcons,
+                                "Showing gamemode icons",
+                                "Hiding gamemode icons — sites are told apart by colour",
+                                ChatFormatting.YELLOW)))
+                        .then(literal("brackets").executes(context -> toggle(context,
+                                JustTiersConfig::isShowBrackets, JustTiersConfig::setShowBrackets,
+                                "Showing brackets", "Hiding brackets",
+                                ChatFormatting.YELLOW)))
                         .then(literal("refresh").executes(JustTiersCommands::refresh))
                         .then(literal("gui").executes(JustTiersCommands::openGui))
                         .then(literal("mode")
                                 .then(argument("mode", StringArgumentType.word())
-                                        .suggests((context, builder) -> {
-                                            for (DisplayMode mode : DisplayMode.values()) {
-                                                builder.suggest(mode.id());
-                                            }
-                                            return builder.buildFuture();
-                                        })
-                                        .executes(JustTiersCommands::setMode)))
+                                        .suggests(suggestIds(DisplayMode.values(), DisplayMode::id))
+                                        .executes(context -> setEnum(context, "mode",
+                                                DisplayMode.values(), DisplayMode::id,
+                                                JustTiersConfig::setDisplayMode,
+                                                mode -> "Mode set to " + mode.id()))))
                         .then(literal("badge")
                                 .then(argument("position", StringArgumentType.word())
-                                        .suggests((context, builder) -> {
-                                            for (BadgePosition position : BadgePosition.values()) {
-                                                builder.suggest(position.id());
-                                            }
-                                            return builder.buildFuture();
-                                        })
-                                        .executes(JustTiersCommands::setBadgePosition)))
+                                        .suggests(suggestIds(BadgePosition.values(),
+                                                BadgePosition::id))
+                                        .executes(context -> setEnum(context, "position",
+                                                BadgePosition.values(), BadgePosition::id,
+                                                JustTiersConfig::setBadgePosition,
+                                                position -> "Badge drawn " + position.id()
+                                                        + " the name"))))
                         .then(literal("lookup")
                                 .then(argument("player", StringArgumentType.word())
                                         .suggests((context, builder) -> {
@@ -103,7 +121,7 @@ public final class JustTiersCommands {
                         + (config.isShowIcons() ? "on" : "off") + ", brackets "
                         + (config.isShowBrackets() ? "on" : "off"),
                 ChatFormatting.WHITE);
-        for (Source source : Source.values()) {
+        for (Source source : Source.ALL) {
             String slug = config.selectedGamemode(source);
             String title = Gamemodes.find(source, slug).map(Gamemode::displayName).orElse(slug);
             reply(context, "  " + source.displayName() + " gamemode: " + title,
@@ -114,43 +132,16 @@ public final class JustTiersCommands {
         return 1;
     }
 
-    private static int toggle(CommandContext<FabricClientCommandSource> context) {
-        var config = JustTiersClient.config();
-        config.setEnabled(!config.isEnabled());
+    /** Flips a boolean setting, saves it and reports the state it landed in. */
+    private static int toggle(CommandContext<FabricClientCommandSource> context,
+                              Predicate<JustTiersConfig> get,
+                              BiConsumer<JustTiersConfig, Boolean> set,
+                              String on, String off, ChatFormatting offColor) {
+        JustTiersConfig config = JustTiersClient.config();
+        boolean now = !get.test(config);
+        set.accept(config, now);
         JustTiersClient.saveConfig();
-        reply(context, config.isEnabled() ? "Enabled" : "Disabled",
-                config.isEnabled() ? ChatFormatting.GREEN : ChatFormatting.RED);
-        return 1;
-    }
-
-    private static int toggleRetired(CommandContext<FabricClientCommandSource> context) {
-        var config = JustTiersClient.config();
-        config.setShowRetired(!config.isShowRetired());
-        JustTiersClient.saveConfig();
-        reply(context, config.isShowRetired()
-                        ? "Showing retired tiers"
-                        : "Hiding retired tiers",
-                config.isShowRetired() ? ChatFormatting.GREEN : ChatFormatting.YELLOW);
-        return 1;
-    }
-
-    private static int toggleIcons(CommandContext<FabricClientCommandSource> context) {
-        var config = JustTiersClient.config();
-        config.setShowIcons(!config.isShowIcons());
-        JustTiersClient.saveConfig();
-        reply(context, config.isShowIcons()
-                        ? "Showing gamemode icons"
-                        : "Hiding gamemode icons — sites are told apart by colour",
-                config.isShowIcons() ? ChatFormatting.GREEN : ChatFormatting.YELLOW);
-        return 1;
-    }
-
-    private static int toggleBrackets(CommandContext<FabricClientCommandSource> context) {
-        var config = JustTiersClient.config();
-        config.setShowBrackets(!config.isShowBrackets());
-        JustTiersClient.saveConfig();
-        reply(context, config.isShowBrackets() ? "Showing brackets" : "Hiding brackets",
-                config.isShowBrackets() ? ChatFormatting.GREEN : ChatFormatting.YELLOW);
+        reply(context, now ? on : off, now ? ChatFormatting.GREEN : offColor);
         return 1;
     }
 
@@ -168,36 +159,45 @@ public final class JustTiersCommands {
         return 1;
     }
 
-    private static int setMode(CommandContext<FabricClientCommandSource> context) {
-        String raw = StringArgumentType.getString(context, "mode");
-        DisplayMode mode;
-        try {
-            mode = DisplayMode.valueOf(raw.toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            reply(context, "Unknown mode '" + raw + "'. Valid: mctiers_only, subtiers_only, "
-                    + "novatiers_only, all", ChatFormatting.RED);
-            return 0;
-        }
-        JustTiersClient.config().setDisplayMode(mode);
-        JustTiersClient.saveConfig();
-        reply(context, "Mode set to " + mode.id(), ChatFormatting.GREEN);
-        return 1;
+    /**
+     * Looks an enum argument up by its {@code id()} — the spelling the tab suggestions
+     * offer. The valid values are read off the enum rather than written out here, so
+     * adding a constant cannot leave this message stale.
+     */
+    /** Tab suggestions for an enum argument: exactly the ids {@link #setEnum} accepts. */
+    private static <E> SuggestionProvider<FabricClientCommandSource> suggestIds(
+            E[] values, Function<E, String> id) {
+        return (context, builder) -> {
+            for (E value : values) {
+                builder.suggest(id.apply(value));
+            }
+            return builder.buildFuture();
+        };
     }
 
-    private static int setBadgePosition(CommandContext<FabricClientCommandSource> context) {
-        String raw = StringArgumentType.getString(context, "position");
-        BadgePosition position;
-        try {
-            position = BadgePosition.valueOf(raw.toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            reply(context, "Unknown position '" + raw + "'. Valid: before, after",
-                    ChatFormatting.RED);
-            return 0;
+    /**
+     * Applies an enum argument matched by its {@code id()} — the spelling the tab
+     * suggestions offer — then saves and reports. The valid values in the rejection are
+     * read off the enum rather than written out, so adding a constant cannot leave that
+     * message stale.
+     */
+    private static <E> int setEnum(CommandContext<FabricClientCommandSource> context,
+                                   String argument, E[] values, Function<E, String> id,
+                                   BiConsumer<JustTiersConfig, E> apply,
+                                   Function<E, String> confirmation) {
+        String raw = StringArgumentType.getString(context, argument);
+        for (E value : values) {
+            if (id.apply(value).equalsIgnoreCase(raw)) {
+                apply.accept(JustTiersClient.config(), value);
+                JustTiersClient.saveConfig();
+                reply(context, confirmation.apply(value), ChatFormatting.GREEN);
+                return 1;
+            }
         }
-        JustTiersClient.config().setBadgePosition(position);
-        JustTiersClient.saveConfig();
-        reply(context, "Badge drawn " + position.id() + " the name", ChatFormatting.GREEN);
-        return 1;
+        reply(context, "Unknown " + argument + " '" + raw + "'. Valid: "
+                        + Arrays.stream(values).map(id).collect(Collectors.joining(", ")),
+                ChatFormatting.RED);
+        return 0;
     }
 
     private static int setGamemode(CommandContext<FabricClientCommandSource> context) {

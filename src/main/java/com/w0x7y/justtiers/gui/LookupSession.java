@@ -13,7 +13,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.PlayerSkin;
 
 import java.util.EnumMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -76,7 +75,7 @@ public final class LookupSession {
         player = found;
         PlayerSkins.resolve(found).thenAccept(loaded -> onClient(() -> skin = loaded));
 
-        for (Source site : Source.values()) {
+        for (Source site : Source.ALL) {
             JustTiersClient.cache().load(site, found.uuid()).handle((tiers, failure) -> {
                 Optional<Map<String, Tier>> answer;
                 if (failure != null) {
@@ -115,7 +114,7 @@ public final class LookupSession {
 
     /** True once every site has either answered or failed. */
     public boolean complete() {
-        return sections.size() == Source.values().length;
+        return sections.size() == Source.ALL.size();
     }
 
     /**
@@ -127,8 +126,8 @@ public final class LookupSession {
         if (!complete()) {
             return false;
         }
-        List<LookupSection> all = List.copyOf(sections.values());
-        return LookupReport.anySiteAnswered(all) && LookupReport.nothingRanked(all);
+        return LookupReport.anySiteAnswered(sections.values())
+                && LookupReport.nothingRanked(sections.values());
     }
 
     private static void onClient(Runnable action) {

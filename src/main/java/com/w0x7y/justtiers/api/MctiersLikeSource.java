@@ -4,7 +4,6 @@ import com.w0x7y.justtiers.JustTiers;
 import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
 
-import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -23,7 +22,7 @@ public final class MctiersLikeSource implements TierSource {
     public MctiersLikeSource(Source source, HttpClient client, String baseUrl) {
         this.source = source;
         this.client = client;
-        this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+        this.baseUrl = JustTiers.trimTrailingSlash(baseUrl);
     }
 
     @Override
@@ -33,13 +32,8 @@ public final class MctiersLikeSource implements TierSource {
 
     @Override
     public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) {
-        HttpRequest request = HttpRequest.newBuilder(
-                        URI.create(baseUrl + "/v2/profile/" + uuid + "/rankings"))
-                .header("User-Agent", JustTiers.USER_AGENT)
-                .header("Accept", "application/json")
-                .timeout(Duration.ofSeconds(10))
-                .GET()
-                .build();
+        HttpRequest request = JustTiers.jsonRequest(
+                baseUrl + "/v2/profile/" + uuid + "/rankings", Duration.ofSeconds(10));
 
         return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenApply(response -> {

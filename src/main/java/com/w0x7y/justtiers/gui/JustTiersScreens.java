@@ -26,6 +26,7 @@ import net.minecraft.network.chat.MutableComponent;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
@@ -44,12 +45,8 @@ public final class JustTiersScreens {
     public static Screen create(Screen parent) {
         JustTiersConfig config = JustTiersClient.config();
 
-        Option<Boolean> enabled = Option.<Boolean>createBuilder()
-                .name(Component.translatable("justtiers.option.enabled"))
-                .description(description("justtiers.option.enabled.desc"))
-                .binding(true, config::isEnabled, config::setEnabled)
-                .controller(TickBoxControllerBuilder::create)
-                .build();
+        Option<Boolean> enabled = tickBox("justtiers.option.enabled",
+                config::isEnabled, config::setEnabled);
 
         Option<DisplayMode> displayMode = Option.<DisplayMode>createBuilder()
                 .name(Component.translatable("justtiers.option.displayMode"))
@@ -60,12 +57,8 @@ public final class JustTiersScreens {
                         .valueFormatter(JustTiersScreens::formatMode))
                 .build();
 
-        Option<Boolean> showRetired = Option.<Boolean>createBuilder()
-                .name(Component.translatable("justtiers.option.showRetired"))
-                .description(description("justtiers.option.showRetired.desc"))
-                .binding(true, config::isShowRetired, config::setShowRetired)
-                .controller(TickBoxControllerBuilder::create)
-                .build();
+        Option<Boolean> showRetired = tickBox("justtiers.option.showRetired",
+                config::isShowRetired, config::setShowRetired);
 
         Option<BadgePosition> badgePosition = Option.<BadgePosition>createBuilder()
                 .name(Component.translatable("justtiers.option.badgePosition"))
@@ -77,19 +70,11 @@ public final class JustTiersScreens {
                                 Component.translatable("justtiers.badge." + position.id())))
                 .build();
 
-        Option<Boolean> showIcons = Option.<Boolean>createBuilder()
-                .name(Component.translatable("justtiers.option.showIcons"))
-                .description(description("justtiers.option.showIcons.desc"))
-                .binding(true, config::isShowIcons, config::setShowIcons)
-                .controller(TickBoxControllerBuilder::create)
-                .build();
+        Option<Boolean> showIcons = tickBox("justtiers.option.showIcons",
+                config::isShowIcons, config::setShowIcons);
 
-        Option<Boolean> showBrackets = Option.<Boolean>createBuilder()
-                .name(Component.translatable("justtiers.option.showBrackets"))
-                .description(description("justtiers.option.showBrackets.desc"))
-                .binding(true, config::isShowBrackets, config::setShowBrackets)
-                .controller(TickBoxControllerBuilder::create)
-                .build();
+        Option<Boolean> showBrackets = tickBox("justtiers.option.showBrackets",
+                config::isShowBrackets, config::setShowBrackets);
 
         // Read lazily, so the pickers can hand this supplier to the grid screen even
         // though the map they live in is still being filled in below.
@@ -102,7 +87,7 @@ public final class JustTiersScreens {
                 new NametagStyle(badgePosition.pendingValue(),
                         showIcons.pendingValue(), showBrackets.pendingValue()));
 
-        for (Source source : Source.values()) {
+        for (Source source : Source.ALL) {
             pickers.put(source, Option.<String>createBuilder()
                     .name(Component.translatable("justtiers.option.gamemode",
                             source.displayName()))
@@ -193,12 +178,8 @@ public final class JustTiersScreens {
                                         String.valueOf(minutes))))
                 .build();
 
-        Option<Boolean> showProgress = Option.<Boolean>createBuilder()
-                .name(Component.translatable("justtiers.option.downloadProgress"))
-                .description(description("justtiers.option.downloadProgress.desc"))
-                .binding(true, config::isShowDownloadProgress, config::setShowDownloadProgress)
-                .controller(TickBoxControllerBuilder::create)
-                .build();
+        Option<Boolean> showProgress = tickBox("justtiers.option.downloadProgress",
+                config::isShowDownloadProgress, config::setShowDownloadProgress);
 
         ButtonOption refresh = ButtonOption.createBuilder()
                 .name(Component.translatable("justtiers.option.refresh"))
@@ -225,7 +206,7 @@ public final class JustTiersScreens {
                 .name(Component.translatable("justtiers.config.category.about"))
                 .option(LabelOption.create(Component.translatable("justtiers.about.version",
                         JustTiers.VERSION)));
-        for (Source source : Source.values()) {
+        for (Source source : Source.ALL) {
             about.option(LabelOption.create(Component.literal(source.displayName())
                     .withStyle(style -> style.withColor(source.color()))));
         }
@@ -247,6 +228,20 @@ public final class JustTiersScreens {
                         Component.empty(),
                         Component.translatable("justtiers.option.gamemode.inactive"),
                         Component.translatable("justtiers.option.gamemode.disabled"))
+                .build();
+    }
+
+    /**
+     * A tick box named and described by one translation key, defaulting to on. Every
+     * boolean on this screen is that shape.
+     */
+    private static Option<Boolean> tickBox(String key, Supplier<Boolean> get,
+                                           Consumer<Boolean> set) {
+        return Option.<Boolean>createBuilder()
+                .name(Component.translatable(key))
+                .description(description(key + ".desc"))
+                .binding(true, get, set)
+                .controller(TickBoxControllerBuilder::create)
                 .build();
     }
 
