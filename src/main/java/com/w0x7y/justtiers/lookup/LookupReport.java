@@ -6,6 +6,7 @@ import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -30,8 +31,8 @@ public final class LookupReport {
      * of dashes would be saying something.
      */
     public static List<LookupSection> build(Map<Source, Optional<Map<String, Tier>>> answers) {
-        List<LookupSection> sections = new ArrayList<>(Source.values().length);
-        for (Source source : Source.values()) {
+        List<LookupSection> sections = new ArrayList<>(Source.ALL.size());
+        for (Source source : Source.ALL) {
             sections.add(section(source, answers.getOrDefault(source, Optional.empty())));
         }
         return List.copyOf(sections);
@@ -69,9 +70,13 @@ public final class LookupReport {
     }
 
     /** True when not one site had a placement to show. */
-    public static boolean nothingRanked(List<LookupSection> sections) {
-        return sections.stream()
-                .noneMatch(section -> section.status() == LookupSection.Status.RANKED);
+    public static boolean nothingRanked(Collection<LookupSection> sections) {
+        for (LookupSection section : sections) {
+            if (section.status() == LookupSection.Status.RANKED) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -79,9 +84,13 @@ public final class LookupReport {
      * unavailable a lookup has collected no evidence about the player at all, so
      * {@link #nothingRanked} is only worth saying out loud when this is true.
      */
-    public static boolean anySiteAnswered(List<LookupSection> sections) {
-        return sections.stream()
-                .anyMatch(section -> section.status() != LookupSection.Status.UNAVAILABLE);
+    public static boolean anySiteAnswered(Collection<LookupSection> sections) {
+        for (LookupSection section : sections) {
+            if (section.status() != LookupSection.Status.UNAVAILABLE) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private LookupReport() {

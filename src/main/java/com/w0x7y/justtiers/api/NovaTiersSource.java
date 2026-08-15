@@ -6,7 +6,6 @@ import com.w0x7y.justtiers.download.ProgressBodyHandler;
 import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
 
-import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.time.Duration;
@@ -34,7 +33,7 @@ public final class NovaTiersSource implements TierSource {
 
     public NovaTiersSource(HttpClient client, String baseUrl, DownloadProgress progress) {
         this.client = client;
-        this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+        this.baseUrl = JustTiers.trimTrailingSlash(baseUrl);
         this.progress = progress;
     }
 
@@ -97,12 +96,8 @@ public final class NovaTiersSource implements TierSource {
 
 
     private CompletableFuture<Map<UUID, Map<String, Tier>>> download() {
-        HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl + "/users"))
-                .header("User-Agent", JustTiers.USER_AGENT)
-                .header("Accept", "application/json")
-                .timeout(Duration.ofSeconds(30))
-                .GET()
-                .build();
+        HttpRequest request =
+                JustTiers.jsonRequest(baseUrl + "/users", Duration.ofSeconds(30));
 
         long token = progress.started();
         return client.sendAsync(request,

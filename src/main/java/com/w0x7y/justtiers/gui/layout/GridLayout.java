@@ -55,14 +55,6 @@ public final class GridLayout {
         return rows;
     }
 
-    public int tileWidth() {
-        return tileWidth;
-    }
-
-    public int tileHeight() {
-        return tileHeight;
-    }
-
     public int contentWidth() {
         return columns * tileWidth + (columns - 1) * gap;
     }

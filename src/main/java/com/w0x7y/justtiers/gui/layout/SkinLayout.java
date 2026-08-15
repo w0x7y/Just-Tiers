@@ -50,6 +50,13 @@ public final class SkinLayout {
      * over by the arm, so the split is not cosmetic.
      */
     public static List<Piece> pieces(boolean slim) {
+        return slim ? SLIM : WIDE;
+    }
+
+    private static final List<Piece> WIDE = build(false);
+    private static final List<Piece> SLIM = build(true);
+
+    private static List<Piece> build(boolean slim) {
         int arm = armWidth(slim);
         int bodyX = arm;
         int armY = 8;

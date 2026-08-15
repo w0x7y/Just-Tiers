@@ -46,6 +46,11 @@ public final class TierResolver {
 
     private static Map<Source, Map<String, Tier>> withoutRetired(
             Map<Source, Map<String, Tier>> tiersBySource) {
+        if (!anyRetired(tiersBySource)) {
+            // Nothing to strip, so nothing to copy. This runs per player per frame for
+            // anyone who has turned retired tiers off, and most players hold none.
+            return tiersBySource;
+        }
         Map<Source, Map<String, Tier>> filtered = new EnumMap<>(Source.class);
         tiersBySource.forEach((source, tiers) -> {
             Map<String, Tier> active = new LinkedHashMap<>();
@@ -57,6 +62,17 @@ public final class TierResolver {
             filtered.put(source, active);
         });
         return filtered;
+    }
+
+    private static boolean anyRetired(Map<Source, Map<String, Tier>> tiersBySource) {
+        for (Map<String, Tier> tiers : tiersBySource.values()) {
+            for (Tier tier : tiers.values()) {
+                if (tier.retired()) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private static List<ResolvedTier> resolveSingleSite(Source source,
@@ -77,12 +93,12 @@ public final class TierResolver {
         }
 
         // Not ranked in the selected mode: fall back to their best on this same site.
-        return highestOn(source, tiers).map(List::of).orElseGet(List::of);
+        return highestOn(source, tiers).map(List::of).orElse(List.of());
     }
 
     private static List<ResolvedTier> resolveAll(Map<Source, Map<String, Tier>> tiersBySource) {
-        List<ResolvedTier> result = new ArrayList<>(Source.values().length);
-        for (Source source : Source.values()) {
+        List<ResolvedTier> result = new ArrayList<>(Source.ALL.size());
+        for (Source source : Source.ALL) {
             highestOn(source, tiersBySource.getOrDefault(source, Map.of())).ifPresent(result::add);
         }
         return List.copyOf(result);
@@ -116,9 +132,11 @@ public final class TierResolver {
         }
         // Gamemodes the site added after this build are skipped rather than guessed at.
 
+        // Candidates were appended while walking `order`, so they are already in the
+        // site's declared order; List.sort is stable, which settles the last tiebreak
+        // without a third comparator doing a linear indexOf on every comparison.
         candidates.sort(Comparator.comparingInt((ResolvedTier r) -> r.tier().rank())
-                .thenComparing(r -> r.tier().retired())
-                .thenComparingInt(r -> order.indexOf(r.gamemode())));
+                .thenComparing(r -> r.tier().retired()));
         return List.copyOf(candidates);
     }
 

@@ -35,7 +35,7 @@ public final class NametagRenderer {
         // Sources still in flight are simply left out, so a badge appears as soon as the
         // first site answers instead of waiting on the slowest one. It fills in over the
         // next few frames as the others land.
-        for (Source source : sourcesFor(mode)) {
+        for (Source source : SOURCES_BY_MODE.get(mode)) {
             JustTiersClient.cache().peek(source, uuid)
                     .ifPresent(tiers -> tiersBySource.put(source, tiers));
         }
@@ -54,8 +54,18 @@ public final class NametagRenderer {
         return Segments.compose(segments, original, style.position());
     }
 
-    private static List<Source> sourcesFor(DisplayMode mode) {
-        return mode.singleSource().map(List::of).orElseGet(() -> List.of(Source.values()));
+    /**
+     * Precomputed: this is read per player per frame, and the Optional and the
+     * singleton list it used to build were allocated every one of those times.
+     */
+    private static final Map<DisplayMode, List<Source>> SOURCES_BY_MODE = sourcesByMode();
+
+    private static Map<DisplayMode, List<Source>> sourcesByMode() {
+        Map<DisplayMode, List<Source>> byMode = new EnumMap<>(DisplayMode.class);
+        for (DisplayMode mode : DisplayMode.values()) {
+            byMode.put(mode, mode.singleSource().map(List::of).orElse(Source.ALL));
+        }
+        return Map.copyOf(byMode);
     }
 
     private NametagRenderer() {

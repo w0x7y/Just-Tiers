@@ -69,23 +69,9 @@ public final class PreviewSample {
 
     public static List<Segment> segments(DisplayMode mode,
                                          Map<Source, String> selectedGamemodes,
-                                         boolean retired) {
-        return segments(mode, selectedGamemodes, retired, NametagStyle.DEFAULT);
-    }
-
-    public static List<Segment> segments(DisplayMode mode,
-                                         Map<Source, String> selectedGamemodes,
                                          boolean retired,
                                          NametagStyle style) {
         return NametagModel.build(resolve(mode, selectedGamemodes, retired), style);
-    }
-
-    /** Convenience for callers holding a clock rather than a phase. */
-    public static List<Segment> segments(DisplayMode mode,
-                                         Map<Source, String> selectedGamemodes,
-                                         boolean showRetired,
-                                         long timeMillis) {
-        return segments(mode, selectedGamemodes, showRetired, timeMillis, NametagStyle.DEFAULT);
     }
 
     public static List<Segment> segments(DisplayMode mode,
@@ -104,8 +90,8 @@ public final class PreviewSample {
             return List.of(gamemodeOf(single.get(), selectedGamemodes));
         }
 
-        List<Gamemode> all = new ArrayList<>(Source.values().length);
-        for (Source source : Source.values()) {
+        List<Gamemode> all = new ArrayList<>(Source.ALL.size());
+        for (Source source : Source.ALL) {
             all.add(gamemodeOf(source, ALL_MODE_GAMEMODES));
         }
         return List.copyOf(all);
