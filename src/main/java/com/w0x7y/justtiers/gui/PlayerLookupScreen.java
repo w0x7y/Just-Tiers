@@ -69,8 +69,8 @@ public final class PlayerLookupScreen extends Screen {
 
     private final LookupSession session;
 
-    private final List<Row> rows = new ArrayList<>(Source.values().length);
-    private final List<Link> links = new ArrayList<>(Source.values().length);
+    private final List<Row> rows = new ArrayList<>(Source.ALL.size());
+    private final List<Link> links = new ArrayList<>(Source.ALL.size());
 
     private int panelX;
     private int panelY;
@@ -124,9 +124,9 @@ public final class PlayerLookupScreen extends Screen {
         int available = Math.max(cellWidth,
                 width - 2 * SCREEN_MARGIN - 2 * PANEL_PADDING - labelWidth - 2 * BOX_PADDING);
 
-        List<GridLayout> grids = new ArrayList<>(Source.values().length);
+        List<GridLayout> grids = new ArrayList<>(Source.ALL.size());
         int widest = 0;
-        for (Source source : Source.values()) {
+        for (Source source : Source.ALL) {
             int count = Gamemodes.of(source).size();
             GridLayout grid = GridLayout.of(count, available, cellWidth, cellHeight,
                     CELL_GAP, count);
@@ -187,10 +187,10 @@ public final class PlayerLookupScreen extends Screen {
         rows.clear();
         int boxX = panelX + PANEL_PADDING + labelWidth;
         int boxWidth = panelWidth - 2 * PANEL_PADDING - labelWidth;
-        for (int i = 0; i < Source.values().length; i++) {
+        for (int i = 0; i < Source.ALL.size(); i++) {
             GridLayout grid = grids.get(i);
             int boxHeight = grid.contentHeight() + 2 * BOX_PADDING;
-            rows.add(new Row(Source.values()[i], grid, boxX, y, boxWidth, boxHeight));
+            rows.add(new Row(Source.ALL.get(i), grid, boxX, y, boxWidth, boxHeight));
             y += boxHeight + ROW_GAP;
         }
         y -= ROW_GAP;
@@ -221,7 +221,7 @@ public final class PlayerLookupScreen extends Screen {
 
     private int labelWidth() {
         int widest = 0;
-        for (Source source : Source.values()) {
+        for (Source source : Source.ALL) {
             widest = Math.max(widest, font.width(source.displayName()));
         }
         return widest + LABEL_GAP;
@@ -235,19 +235,19 @@ public final class PlayerLookupScreen extends Screen {
         links.clear();
         Component prefix = Component.translatable("justtiers.lookup.credit");
         int total = font.width(prefix) + font.width(" ");
-        for (int i = 0; i < Source.values().length; i++) {
-            total += font.width(Source.values()[i].displayName());
+        for (int i = 0; i < Source.ALL.size(); i++) {
+            total += font.width(Source.ALL.get(i).displayName());
             if (i > 0) {
                 total += font.width(SITE_SEPARATOR);
             }
         }
 
         int x = panelX + (panelWidth - total) / 2 + font.width(prefix) + font.width(" ");
-        for (int i = 0; i < Source.values().length; i++) {
+        for (int i = 0; i < Source.ALL.size(); i++) {
             if (i > 0) {
                 x += font.width(SITE_SEPARATOR);
             }
-            Source source = Source.values()[i];
+            Source source = Source.ALL.get(i);
             int textWidth = font.width(source.displayName());
             links.add(new Link(source, x, textWidth));
             x += textWidth;

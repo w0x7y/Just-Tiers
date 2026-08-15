@@ -55,7 +55,7 @@ public final class NametagRenderer {
     }
 
     private static List<Source> sourcesFor(DisplayMode mode) {
-        return mode.singleSource().map(List::of).orElseGet(() -> List.of(Source.values()));
+        return mode.singleSource().map(List::of).orElse(Source.ALL);
     }
 
     private NametagRenderer() {

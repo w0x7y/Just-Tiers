@@ -5,7 +5,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.w0x7y.justtiers.JustTiers;
 
-import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -49,7 +48,7 @@ public final class MojangNameSource {
 
     public MojangNameSource(HttpClient client, String baseUrl) {
         this.client = client;
-        this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+        this.baseUrl = JustTiers.trimTrailingSlash(baseUrl);
     }
 
     /**
@@ -94,13 +93,8 @@ public final class MojangNameSource {
     }
 
     private CompletableFuture<Optional<PlayerRef>> request(String name) {
-        HttpRequest request = HttpRequest.newBuilder(
-                        URI.create(baseUrl + "/users/profiles/minecraft/" + name))
-                .header("User-Agent", JustTiers.USER_AGENT)
-                .header("Accept", "application/json")
-                .timeout(Duration.ofSeconds(10))
-                .GET()
-                .build();
+        HttpRequest request = JustTiers.jsonRequest(
+                baseUrl + "/users/profiles/minecraft/" + name, Duration.ofSeconds(10));
 
         return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenApply(response -> {

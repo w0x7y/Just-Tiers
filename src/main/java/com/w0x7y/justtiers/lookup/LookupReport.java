@@ -30,8 +30,8 @@ public final class LookupReport {
      * of dashes would be saying something.
      */
     public static List<LookupSection> build(Map<Source, Optional<Map<String, Tier>>> answers) {
-        List<LookupSection> sections = new ArrayList<>(Source.values().length);
-        for (Source source : Source.values()) {
+        List<LookupSection> sections = new ArrayList<>(Source.ALL.size());
+        for (Source source : Source.ALL) {
             sections.add(section(source, answers.getOrDefault(source, Optional.empty())));
         }
         return List.copyOf(sections);
