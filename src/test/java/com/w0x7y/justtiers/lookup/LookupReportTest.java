@@ -1,5 +1,7 @@
 package com.w0x7y.justtiers.lookup;
 
+import com.w0x7y.justtiers.tier.Gamemode;
+import com.w0x7y.justtiers.tier.Gamemodes;
 import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
 import org.junit.jupiter.api.Test;
@@ -25,6 +27,16 @@ class LookupReportTest {
         return sections.stream().filter(s -> s.source() == source).findFirst().orElseThrow();
     }
 
+    private static List<String> slugs(LookupSection section) {
+        return section.cells().stream().map(cell -> cell.gamemode().slug()).toList();
+    }
+
+    private static Optional<Tier> tierOf(LookupSection section, String slug) {
+        return section.cells().stream()
+                .filter(cell -> cell.gamemode().slug().equals(slug))
+                .findFirst().orElseThrow().tier();
+    }
+
     @Test
     void everySiteGetsASectionInDeclarationOrder() {
         List<LookupSection> sections = LookupReport.build(answers());
@@ -34,7 +46,9 @@ class LookupReportTest {
     }
 
     @Test
-    void aRankedSiteListsEveryPlacementBestFirst() {
+    void aRankedSiteGetsOneCellPerGamemodeInSiteOrder() {
+        // The screen draws a fixed row of columns, so the cells must line up with the
+        // site's own gamemode order however few placements came back.
         var answers = answers();
         answers.put(Source.MCTIERS, Optional.of(Map.of(
                 "axe", ht(3), "vanilla", ht(1), "sword", lt(1))));
@@ -42,17 +56,54 @@ class LookupReportTest {
         LookupSection section = sectionFor(LookupReport.build(answers), Source.MCTIERS);
 
         assertEquals(LookupSection.Status.RANKED, section.status());
-        assertEquals(List.of("vanilla", "sword", "axe"),
-                section.tiers().stream().map(t -> t.gamemode().slug()).toList());
+        assertEquals(Gamemodes.of(Source.MCTIERS).stream().map(Gamemode::slug).toList(),
+                slugs(section));
     }
 
     @Test
-    void aSiteThatAnsweredWithNothingIsUnrankedNotUnavailable() {
+    void aGamemodeThePlayerHasNotPlacedInHasAnEmptyCell() {
+        var answers = answers();
+        answers.put(Source.MCTIERS, Optional.of(Map.of("axe", ht(3))));
+
+        LookupSection section = sectionFor(LookupReport.build(answers), Source.MCTIERS);
+
+        assertEquals(Optional.of(ht(3)), tierOf(section, "axe"));
+        assertTrue(tierOf(section, "sword").isEmpty(), "sword was never placed in");
+    }
+
+    @Test
+    void aGamemodeTheSiteAddedAfterThisBuildIsIgnored() {
+        // Same rule TierResolver.rankAll follows: a slug we have no icon or name for is
+        // skipped rather than guessed at, so it must not become a nameless column.
+        var answers = answers();
+        answers.put(Source.MCTIERS, Optional.of(Map.of("trident_but_on_fire", ht(2))));
+
+        LookupSection section = sectionFor(LookupReport.build(answers), Source.MCTIERS);
+
+        assertEquals(Gamemodes.of(Source.MCTIERS).size(), section.cells().size());
+        assertFalse(slugs(section).contains("trident_but_on_fire"));
+    }
+
+    @Test
+    void aSiteWithOnlyUnknownGamemodesIsUnranked() {
+        var answers = answers();
+        answers.put(Source.MCTIERS, Optional.of(Map.of("trident_but_on_fire", ht(2))));
+
+        assertEquals(LookupSection.Status.UNRANKED,
+                sectionFor(LookupReport.build(answers), Source.MCTIERS).status());
+    }
+
+    @Test
+    void anUnrankedSiteStillGetsItsFullRowOfEmptyCells() {
+        // The row is drawn as dashes rather than left out: "we asked, nothing here".
         var answers = answers();
         answers.put(Source.SUBTIERS, Optional.of(Map.of()));
 
-        assertEquals(LookupSection.Status.UNRANKED,
-                sectionFor(LookupReport.build(answers), Source.SUBTIERS).status());
+        LookupSection section = sectionFor(LookupReport.build(answers), Source.SUBTIERS);
+
+        assertEquals(LookupSection.Status.UNRANKED, section.status());
+        assertEquals(Gamemodes.of(Source.SUBTIERS).size(), section.cells().size());
+        assertTrue(section.cells().stream().allMatch(cell -> cell.tier().isEmpty()));
     }
 
     @Test
@@ -62,7 +113,16 @@ class LookupReportTest {
 
         LookupSection section = sectionFor(LookupReport.build(answers), Source.NOVATIERS);
         assertEquals(LookupSection.Status.UNAVAILABLE, section.status());
-        assertTrue(section.tiers().isEmpty());
+    }
+
+    @Test
+    void anUnavailableSiteHasNoCellsAtAll() {
+        // Dashes would claim the player is not ranked in any of them; the site said
+        // nothing, so the row has nothing to draw and says so instead.
+        var answers = answers();
+        answers.put(Source.NOVATIERS, Optional.empty());
+
+        assertTrue(sectionFor(LookupReport.build(answers), Source.NOVATIERS).cells().isEmpty());
     }
 
     @Test
@@ -94,7 +154,24 @@ class LookupReportTest {
 
         LookupSection section = sectionFor(LookupReport.build(answers), Source.MCTIERS);
         assertEquals(LookupSection.Status.RANKED, section.status());
-        assertEquals("RHT1", section.tiers().get(0).tier().label());
+        assertEquals("RHT1", tierOf(section, "axe").orElseThrow().label());
+    }
+
+    @Test
+    void oneSitesSectionCanBeBuiltOnItsOwnAsItsAnswerArrives() {
+        // The screen fills a row in the moment its site answers rather than waiting for
+        // the slowest one, so a section has to be buildable from a single answer.
+        var answers = answers();
+        answers.put(Source.MCTIERS, Optional.of(Map.of("axe", ht(2))));
+
+        assertEquals(sectionFor(LookupReport.build(answers), Source.MCTIERS),
+                LookupReport.section(Source.MCTIERS, Optional.of(Map.of("axe", ht(2)))));
+    }
+
+    @Test
+    void aSectionBuiltFromNoAnswerAtAllIsUnavailable() {
+        assertEquals(LookupSection.Status.UNAVAILABLE,
+                LookupReport.section(Source.NOVATIERS, Optional.empty()).status());
     }
 
     @Test
@@ -149,6 +226,6 @@ class LookupReportTest {
         answers.put(Source.MCTIERS, Optional.of(Map.of("axe", ht(2))));
         LookupSection section = sectionFor(LookupReport.build(answers), Source.MCTIERS);
 
-        assertThrows(UnsupportedOperationException.class, () -> section.tiers().clear());
+        assertThrows(UnsupportedOperationException.class, () -> section.cells().clear());
     }
 }

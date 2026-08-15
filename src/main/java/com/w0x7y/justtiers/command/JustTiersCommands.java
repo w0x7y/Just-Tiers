@@ -1,36 +1,23 @@
 package com.w0x7y.justtiers.command;
 
-import com.w0x7y.justtiers.JustTiers;
 import com.w0x7y.justtiers.JustTiersClient;
-import com.w0x7y.justtiers.api.MojangNameSource;
-import com.w0x7y.justtiers.api.PlayerRef;
+import com.w0x7y.justtiers.api.OnlinePlayers;
 import com.w0x7y.justtiers.gui.JustTiersKeybinds;
-import com.w0x7y.justtiers.lookup.LookupReport;
-import com.w0x7y.justtiers.lookup.LookupSection;
-import com.w0x7y.justtiers.render.Segments;
+import com.w0x7y.justtiers.gui.PlayerLookupScreen;
 import com.w0x7y.justtiers.render.model.BadgePosition;
-import com.w0x7y.justtiers.render.model.NametagModel;
 import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Gamemode;
 import com.w0x7y.justtiers.tier.Gamemodes;
 import com.w0x7y.justtiers.tier.Source;
-import com.w0x7y.justtiers.tier.Tier;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommands.argument;
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal;
@@ -237,120 +224,16 @@ public final class JustTiersCommands {
     }
 
     /**
-     * Looks a player up by name and prints every site's placements. Online players are
-     * resolved out of the tab list; anyone else costs one request to Mojang first.
+     * Opens the lookup screen for a name. Everything else — who that name belongs to,
+     * what each site says about them, what their skin looks like — happens on the
+     * screen, so nothing about a lookup goes to chat any more.
      */
     private static int lookup(CommandContext<FabricClientCommandSource> context) {
         String name = StringArgumentType.getString(context, "player");
-        FabricClientCommandSource source = context.getSource();
-
-        Optional<PlayerRef> online = OnlinePlayers.find(name);
-        if (online.isPresent()) {
-            searching(source, online.get().name());
-            report(source, online.get());
-            return 1;
-        }
-
-        if (!MojangNameSource.isAskable(name)) {
-            // Said before "Looking up X...", and worded as a fact about the name rather
-            // than about accounts: nothing has been asked, so nothing is known yet.
-            reply(source, Component.translatable("justtiers.lookup.invalidName", name)
-                    .withStyle(ChatFormatting.RED));
-            return 0;
-        }
-
-        searching(source, name);
-        JustTiersClient.names().resolve(name).whenComplete((profile, error) -> onClient(() -> {
-            if (error != null) {
-                reply(source, Component.translatable("justtiers.lookup.nameFailed", name)
-                        .withStyle(ChatFormatting.RED));
-            } else if (profile.isEmpty()) {
-                reply(source, Component.translatable("justtiers.lookup.unknown", name)
-                        .withStyle(ChatFormatting.RED));
-            } else {
-                report(source, profile.get());
-            }
-        }));
+        // Opened on the next tick for the same reason /justtiers gui is: the chat screen
+        // is still closing right now, and its setScreen(null) would overwrite this.
+        JustTiersKeybinds.requestOpen(() -> new PlayerLookupScreen(name));
         return 1;
-    }
-
-    private static void searching(FabricClientCommandSource source, String name) {
-        // Said up front on purpose: a cold NovaTiers index is a ~1.7 MB download, and a
-        // command that printed nothing for several seconds would look broken.
-        reply(source, Component.translatable("justtiers.lookup.searching", name)
-                .withStyle(ChatFormatting.YELLOW));
-    }
-
-    /** Asks every site at once and prints when the slowest one has answered. */
-    private static void report(FabricClientCommandSource source, PlayerRef player) {
-        Map<Source, Optional<Map<String, Tier>>> answers = new ConcurrentHashMap<>();
-        List<CompletableFuture<?>> pending = new ArrayList<>(Source.values().length);
-
-        for (Source site : Source.values()) {
-            pending.add(JustTiersClient.cache().load(site, player.uuid())
-                    .handle((tiers, error) -> {
-                        if (error != null) {
-                            // The cache keeps a failure like any other answer, and nothing
-                            // will peek at an offline player to clear it, so drop it here:
-                            // running the command again should retry rather than replay.
-                            JustTiersClient.cache().forgetFailed(site, player.uuid());
-                            answers.put(site, Optional.empty());
-                        } else {
-                            answers.put(site, Optional.of(tiers));
-                        }
-                        return null;
-                    }));
-        }
-
-        // whenComplete rather than thenRun: should a handler above throw, allOf completes
-        // exceptionally and thenRun would never run, leaving the command silent forever
-        // after "Looking up X...". Whatever did answer is still in the map, and every
-        // site that did not prints as unavailable, which is the honest report either way.
-        CompletableFuture.allOf(pending.toArray(CompletableFuture[]::new))
-                .whenComplete((ignored, error) -> {
-                    if (error != null) {
-                        JustTiers.LOGGER.warn("Lookup for {} did not finish cleanly",
-                                player.name(), error);
-                    }
-                    onClient(() -> print(source, player, LookupReport.build(answers)));
-                });
-    }
-
-    private static void print(FabricClientCommandSource source, PlayerRef player,
-                              List<LookupSection> sections) {
-        reply(source, Component.translatable("justtiers.lookup.header", player.name())
-                .withStyle(ChatFormatting.WHITE));
-        for (LookupSection section : sections) {
-            source.sendFeedback(Component.literal("  ")
-                    .append(Component.literal(section.source().displayName() + " ")
-                            .withStyle(style -> style.withColor(section.source().color())))
-                    .append(body(section)));
-        }
-        // Only a site that answered can support this verdict: with every site down the
-        // rows above have already said so, and "not ranked anywhere" on top of them
-        // would be the conflation UNAVAILABLE exists to prevent.
-        if (LookupReport.anySiteAnswered(sections) && LookupReport.nothingRanked(sections)) {
-            reply(source, Component.translatable("justtiers.lookup.none", player.name())
-                    .withStyle(ChatFormatting.GRAY));
-        }
-    }
-
-    private static MutableComponent body(LookupSection section) {
-        return switch (section.status()) {
-            // The badge's own icon setting is honoured here too, so a player who turned
-            // icons off does not get them back in a different corner of the same mod.
-            case RANKED -> Segments.toComponent(NametagModel.entries(
-                    section.tiers(), JustTiersClient.config().isShowIcons()));
-            case UNRANKED -> Component.translatable("justtiers.lookup.unranked")
-                    .withStyle(ChatFormatting.DARK_GRAY);
-            case UNAVAILABLE -> Component.translatable("justtiers.lookup.unavailable")
-                    .withStyle(ChatFormatting.RED);
-        };
-    }
-
-    /** Lookups finish on an HTTP thread; chat may only be touched from the client one. */
-    private static void onClient(Runnable action) {
-        Minecraft.getInstance().execute(action);
     }
 
     private JustTiersCommands() {
