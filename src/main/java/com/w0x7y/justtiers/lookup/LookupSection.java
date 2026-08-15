@@ -1,18 +1,17 @@
 package com.w0x7y.justtiers.lookup;
 
-import com.w0x7y.justtiers.resolve.ResolvedTier;
 import com.w0x7y.justtiers.tier.Source;
 
 import java.util.List;
 
 /**
- * One site's contribution to a {@code /justtiers lookup}: every gamemode the player is
- * ranked in on that site, best first, or the reason there is nothing to list.
+ * One site's row in the lookup screen: a cell for every gamemode that site runs, in the
+ * site's own order, or the reason there is no row to draw.
  */
-public record LookupSection(Source source, Status status, List<ResolvedTier> tiers) {
+public record LookupSection(Source source, Status status, List<LookupCell> cells) {
 
     public enum Status {
-        /** At least one placement, listed in {@link #tiers}. */
+        /** The site answered and placed the player in at least one of its gamemodes. */
         RANKED,
         /** The site answered, and has never placed this player. */
         UNRANKED,
@@ -21,6 +20,6 @@ public record LookupSection(Source source, Status status, List<ResolvedTier> tie
     }
 
     public LookupSection {
-        tiers = List.copyOf(tiers);
+        cells = List.copyOf(cells);
     }
 }

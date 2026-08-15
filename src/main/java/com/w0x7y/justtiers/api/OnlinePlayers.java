@@ -1,7 +1,6 @@
-package com.w0x7y.justtiers.command;
+package com.w0x7y.justtiers.api;
 
 import com.mojang.authlib.GameProfile;
-import com.w0x7y.justtiers.api.PlayerRef;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.PlayerInfo;
@@ -15,7 +14,7 @@ import java.util.Optional;
  * anywhere near render distance, which is exactly the set {@code /justtiers lookup} is
  * for. Resolving a name here costs nothing and never touches the network.
  */
-final class OnlinePlayers {
+public final class OnlinePlayers {
 
     /**
      * @return the account behind an online name, matched case-insensitively. Empty for a
@@ -24,7 +23,7 @@ final class OnlinePlayers {
      *         not what the leaderboards are keyed by, so those fall through to Mojang
      *         rather than being looked up as a player who will never be found.
      */
-    static Optional<PlayerRef> find(String name) {
+    public static Optional<PlayerRef> find(String name) {
         if (name == null) {
             return Optional.empty();
         }
@@ -39,7 +38,7 @@ final class OnlinePlayers {
     }
 
     /** Every online name, for tab-completion. Empty on the title screen. */
-    static List<String> names() {
+    public static List<String> names() {
         List<String> names = new ArrayList<>();
         for (GameProfile profile : profiles()) {
             if (profile.name() != null && !profile.name().isBlank()) {
