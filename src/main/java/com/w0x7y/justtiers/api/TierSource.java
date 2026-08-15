@@ -18,4 +18,15 @@ public interface TierSource {
     Source source();
 
     CompletableFuture<Map<String, Tier>> fetch(UUID uuid);
+
+    /**
+     * Whether a site answered with a body that carried something but parsed to nothing.
+     * That is the signature of a response schema having changed under us, as opposed to
+     * a site legitimately answering "no placements" — worth a warning, but not worth
+     * failing a lookup over. Two characters is the shortest an empty JSON object or
+     * array can be, so anything longer had content we did not understand.
+     */
+    static boolean nothingUnderstood(Map<?, ?> parsed, String body) {
+        return parsed.isEmpty() && body != null && body.length() > 2;
+    }
 }

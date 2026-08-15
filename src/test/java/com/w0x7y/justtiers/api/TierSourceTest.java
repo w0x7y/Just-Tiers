@@ -225,4 +225,26 @@ class TierSourceTest {
         // A failed download is not a measurement, so it must not calibrate the next one.
         assertFalse(snapshot.determinate());
     }
+
+    // --- nothingUnderstood ---
+
+    @Test
+    void aBodyThatParsedToNothingButCarriedSomethingIsReported() {
+        // The schema changed under us: content arrived, none of it was understood.
+        assertTrue(TierSource.nothingUnderstood(Map.of(), "{\"axe\":{\"grade\":3}}"));
+    }
+
+    @Test
+    void anEmptyAnswerIsNotAParseFailure() {
+        // A site legitimately saying "no placements" must stay silent.
+        assertFalse(TierSource.nothingUnderstood(Map.of(), "{}"));
+        assertFalse(TierSource.nothingUnderstood(Map.of(), "[]"));
+        assertFalse(TierSource.nothingUnderstood(Map.of(), ""));
+        assertFalse(TierSource.nothingUnderstood(Map.of(), null));
+    }
+
+    @Test
+    void anythingParsedIsNeverAParseFailure() {
+        assertFalse(TierSource.nothingUnderstood(Map.of("axe", 1), "{\"axe\":{\"tier\":1}}"));
+    }
 }
