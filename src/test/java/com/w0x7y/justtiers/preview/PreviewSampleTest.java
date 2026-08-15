@@ -30,7 +30,7 @@ class PreviewSampleTest {
     }
 
     private String text(DisplayMode mode, Map<Source, String> selected, boolean retired) {
-        return NametagModel.plainText(PreviewSample.segments(mode, selected, retired));
+        return NametagModel.plainText(PreviewSample.segments(mode, selected, retired, NametagStyle.DEFAULT));
     }
 
     private static Gamemode gamemode(Source source, String slug) {
@@ -107,10 +107,12 @@ class PreviewSampleTest {
         long retiredTime = PreviewSample.RETIRED_CYCLE_MILLIS;
         assertEquals(text(DisplayMode.ALL, DEFAULTS, true),
                 NametagModel.plainText(
-                        PreviewSample.segments(DisplayMode.ALL, DEFAULTS, true, retiredTime)));
+                        PreviewSample.segments(DisplayMode.ALL, DEFAULTS, true, retiredTime,
+                                NametagStyle.DEFAULT)));
         assertEquals(text(DisplayMode.ALL, DEFAULTS, false),
                 NametagModel.plainText(
-                        PreviewSample.segments(DisplayMode.ALL, DEFAULTS, true, 0)));
+                        PreviewSample.segments(DisplayMode.ALL, DEFAULTS, true, 0,
+                                NametagStyle.DEFAULT)));
     }
 
     @Test

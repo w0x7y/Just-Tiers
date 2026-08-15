@@ -1,7 +1,6 @@
 package com.w0x7y.justtiers.gui;
 
 import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.yggdrasil.ProfileResult;
 import com.w0x7y.justtiers.JustTiers;
 import com.w0x7y.justtiers.api.PlayerRef;
 import net.minecraft.client.Minecraft;
