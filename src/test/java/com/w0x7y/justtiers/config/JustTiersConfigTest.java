@@ -33,6 +33,16 @@ class JustTiersConfigTest {
     }
 
     @Test
+    void aLaterSelectionReplacesAnAlreadyReadOne() {
+        JustTiersConfig config = new JustTiersConfig();
+        config.setSelectedGamemode(Source.MCTIERS, "axe");
+        assertEquals("axe", config.selectedGamemodesBySource().get(Source.MCTIERS));
+
+        config.setSelectedGamemode(Source.MCTIERS, "sword");
+        assertEquals("sword", config.selectedGamemodesBySource().get(Source.MCTIERS));
+    }
+
+    @Test
     void roundTripsThroughDisk(@TempDir Path dir) {
         Path file = dir.resolve("justtiers.json");
         JustTiersConfig config = new JustTiersConfig();

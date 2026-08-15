@@ -44,6 +44,13 @@ public class JustTiersConfig {
     private boolean showIcons = true;
     private boolean showBrackets = true;
 
+    /**
+     * Cache for {@link #selectedGamemodesBySource()}, dropped whenever a selection
+     * changes. Transient so it never reaches the config file, and volatile because the
+     * render thread reads it.
+     */
+    private transient volatile Map<Source, String> resolvedSelection;
+
     public boolean isEnabled() {
         return enabled;
     }
@@ -147,14 +154,26 @@ public class JustTiersConfig {
             selectedGamemodes = new HashMap<>();
         }
         selectedGamemodes.put(source.name(), slug);
+        resolvedSelection = null;
     }
 
+    /**
+     * Every site's selection, resolved once. The nametag asks for this per player per
+     * frame, and resolving it means three validity checks and a fresh map each time;
+     * only a setter can change the answer, so it is held until one does.
+     */
     public Map<Source, String> selectedGamemodesBySource() {
+        Map<Source, String> cached = resolvedSelection;
+        if (cached != null) {
+            return cached;
+        }
         Map<Source, String> result = new EnumMap<>(Source.class);
         for (Source source : Source.ALL) {
             result.put(source, selectedGamemode(source));
         }
-        return result;
+        cached = Map.copyOf(result);
+        resolvedSelection = cached;
+        return cached;
     }
 
     public static JustTiersConfig load(Path path) {
