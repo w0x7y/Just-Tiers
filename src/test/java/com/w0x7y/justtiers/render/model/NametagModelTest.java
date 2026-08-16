@@ -8,7 +8,9 @@ import com.w0x7y.justtiers.tier.Tier;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -221,5 +223,62 @@ class NametagModelTest {
     void entriesOfNothingIsNothing() {
         assertTrue(NametagModel.entries(List.of(), true).isEmpty());
         assertTrue(NametagModel.entries(null, true).isEmpty());
+    }
+
+    // --- colours from the style ---
+
+    private static Map<Source, Integer> colorMap(int mctiers, int subtiers, int novatiers) {
+        Map<Source, Integer> colors = new EnumMap<>(Source.class);
+        colors.put(Source.MCTIERS, mctiers);
+        colors.put(Source.SUBTIERS, subtiers);
+        colors.put(Source.NOVATIERS, novatiers);
+        return colors;
+    }
+
+    @Test
+    void tierTextTakesItsColourFromTheStyle() {
+        NametagStyle style = new NametagStyle(BadgePosition.BEFORE, false, false,
+                colorMap(0xAA0000, 0x00AA00, 0x0000AA));
+
+        List<Segment> segments = NametagModel.build(PAIR, style);
+
+        assertEquals(0xAA0000, colourOfText(segments, "HT2"));
+        assertEquals(0x00AA00, colourOfText(segments, "LT3"));
+    }
+
+    @Test
+    void theThreeArgumentStyleStillUsesTheSitesOwnColours() {
+        NametagStyle style = new NametagStyle(BadgePosition.BEFORE, false, false);
+        for (Source source : Source.ALL) {
+            assertEquals(source.defaultColor(), style.colorOf(source));
+        }
+        assertEquals(Source.MCTIERS.defaultColor(),
+                colourOfText(NametagModel.build(PAIR, style), "HT2"));
+    }
+
+    @Test
+    void aStyleWithNoColoursFallsBackToTheSiteDefaults() {
+        NametagStyle style = new NametagStyle(BadgePosition.BEFORE, false, false, null);
+        assertEquals(Source.SUBTIERS.defaultColor(), style.colorOf(Source.SUBTIERS));
+    }
+
+    @Test
+    void entriesColourEachTierByItsOwnSite() {
+        List<Segment> segments = NametagModel.entries(PAIR, false,
+                colorMap(0xAA0000, 0x00AA00, 0x0000AA));
+
+        assertEquals(0xAA0000, colourOfText(segments, "HT2"));
+        assertEquals(0x00AA00, colourOfText(segments, "LT3"));
+    }
+
+    @Test
+    void bracketsAndIconsAreNotSiteColoured() {
+        NametagStyle style = new NametagStyle(BadgePosition.BEFORE, true, true,
+                colorMap(0xAA0000, 0x00AA00, 0x0000AA));
+
+        List<Segment> segments = NametagModel.build(PAIR, style);
+
+        assertEquals(NametagModel.BRACKET_COLOR, segments.get(0).color());
+        assertEquals(NametagModel.BRACKET_COLOR, segments.get(segments.size() - 1).color());
     }
 }

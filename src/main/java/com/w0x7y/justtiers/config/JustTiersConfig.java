@@ -199,7 +199,7 @@ public class JustTiersConfig {
     }
 
     public NametagStyle nametagStyle() {
-        return new NametagStyle(getBadgePosition(), showIcons, showBrackets);
+        return new NametagStyle(getBadgePosition(), showIcons, showBrackets, colors());
     }
 
     /** The out-of-the-box gamemode for a site, and the config screen's reset target. */
