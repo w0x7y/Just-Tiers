@@ -36,8 +36,9 @@ Just-Tiers supports all three leaderboards, and adds an **All** mode that shows 
 - **Hide your own badge** — leave your own nametag undecorated while everyone else's keeps its tiers.
 - **Retired tiers handled properly** — shown with an `R` prefix in their site's colour, still counted when finding a player's highest tier, and hideable entirely with one setting.
 - **Non-blocking** — all lookups are asynchronous and cached; the mod never stalls your frame rate waiting on a web request.
+- **Keeps up with the leaderboards** — a cached tier is re-checked every hour, so a player tested or re-ranked mid-session stops showing the wrong thing without a restart.
 - **Shows up as it arrives** — a nametag gains its badge the moment the first site answers, then fills in as the others land, rather than waiting on the slowest one.
-- **Fails safe** — a site that is down, rate-limiting or unreachable is retried; it is never mistaken for "this player is unranked".
+- **Fails safe** — a site that is down, rate-limiting or unreachable is retried; it is never mistaken for "this player is unranked". Repeated failures back off, and a site that keeps failing is left alone entirely rather than being asked once a minute per player.
 - **In-game config screen** — every setting in one place, with a live nametag preview and an
   icon grid for picking gamemodes. See [Configuration screen](#configuration-screen).
 - **Visible downloads** — the NovaTiers list has to be fetched in full, so a small progress bar
@@ -457,7 +458,7 @@ One more endpoint is contacted, and only by `/justtiers lookup`: Mojang's
 account UUID the leaderboards are keyed by. Nothing else in the mod ever calls it — every other
 lookup already has a UUID in hand.
 
-NovaTiers offers no per-player route, so its full list (roughly 6,500 players, about 1.7 MB) is downloaded once, indexed by UUID in memory, and refreshed on a timer. MCTiers and SubTiers are queried per player, with results cached for the session and concurrent requests for the same player coalesced into one.
+NovaTiers offers no per-player route, so its full list (roughly 6,500 players, about 1.7 MB) is downloaded once, indexed by UUID in memory, and refreshed on a timer. MCTiers and SubTiers are queried per player, with results cached for `tierCacheMinutes` — an hour by default — and concurrent requests for the same player coalesced into one. See [How long an answer is kept](#how-long-an-answer-is-kept).
 
 Every lookup is asynchronous. A player whose data has not arrived yet simply renders with their
 normal nametag until it does, and each site is drawn independently — the badge appears as soon as
