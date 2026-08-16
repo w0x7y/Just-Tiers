@@ -1,5 +1,6 @@
 package com.w0x7y.justtiers.gui;
 
+import com.w0x7y.justtiers.render.Icons;
 import com.w0x7y.justtiers.render.SiteColors;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.w0x7y.justtiers.gui.layout.GridLayout;
@@ -179,7 +180,7 @@ public final class GamemodeGridScreen extends Screen {
             graphics.outline(x, y, TILE, TILE, Colors.opaque(SiteColors.of(source)));
         }
 
-        String icon = String.valueOf(gamemode.icon());
+        Component icon = Icons.of(gamemode.icon());
         int iconWidth = Math.round(font.width(icon) * ICON_SCALE);
         graphics.pose().pushMatrix();
         graphics.pose().translate(x + (TILE - iconWidth) / 2f, y + 16f);

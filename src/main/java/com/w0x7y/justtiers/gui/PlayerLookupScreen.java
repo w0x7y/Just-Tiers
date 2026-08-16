@@ -1,5 +1,6 @@
 package com.w0x7y.justtiers.gui;
 
+import com.w0x7y.justtiers.render.Icons;
 import com.w0x7y.justtiers.render.SiteColors;
 import com.w0x7y.justtiers.gui.layout.GridLayout;
 import com.w0x7y.justtiers.gui.layout.SkinLayout;
@@ -234,7 +235,7 @@ public final class PlayerLookupScreen extends Screen {
     private void measureCells() {
         iconWidth = 0;
         for (Gamemode gamemode : Gamemodes.ALL) {
-            iconWidth = Math.max(iconWidth, font.width(String.valueOf(gamemode.icon())));
+            iconWidth = Math.max(iconWidth, font.width(Icons.of(gamemode.icon())));
         }
         cellWidth = iconWidth + CELL_TEXT_GAP + font.width(WIDEST_LABEL)
                 + 2 * CELL_SIDE_PADDING;
@@ -392,7 +393,7 @@ public final class PlayerLookupScreen extends Screen {
 
         Optional<Tier> tier = cell.tier();
         String label = tier.map(Tier::label).orElse(NOT_TESTED);
-        String icon = String.valueOf(cell.gamemode().icon());
+        Component icon = Icons.of(cell.gamemode().icon());
         int contentWidth = iconWidth + CELL_TEXT_GAP + font.width(label);
         int textX = x + (cellWidth - contentWidth) / 2;
         int textY = y + (cellHeight - font.lineHeight) / 2 + 1;
