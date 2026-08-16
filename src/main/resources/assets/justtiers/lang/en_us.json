@@ -86,6 +86,10 @@
   "justtiers.command.gamemode.unknown": "'%s' is not a %s gamemode.",
   "justtiers.command.gamemode.set": "%s gamemode set to %s",
 
+  "justtiers.option.tierCache": "Re-check tiers every",
+  "justtiers.option.tierCache.desc": "How long a fetched tier is trusted before it is looked up again. Shorter picks up a player who has just been tested, or has just changed tier, sooner; longer means fewer requests. Applies to MCTiers and SubTiers lookups.",
+  "justtiers.option.tierCache.value": "%s minutes",
+
   "justtiers.data.indexed": "NovaTiers players indexed: %s",
   "justtiers.about.version": "Just-Tiers %s",
   "justtiers.about.commands": "Most settings are also available via /justtiers",

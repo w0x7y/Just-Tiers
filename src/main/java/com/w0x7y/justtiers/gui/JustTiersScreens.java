@@ -241,6 +241,18 @@ public final class JustTiersScreens {
                                         String.valueOf(minutes))))
                 .build();
 
+        Option<Integer> tierCacheMinutes = Option.<Integer>createBuilder()
+                .name(Component.translatable("justtiers.option.tierCache"))
+                .description(description("justtiers.option.tierCache.desc"))
+                .binding(60, config::getTierCacheMinutes, config::setTierCacheMinutes)
+                .controller(opt -> IntegerSliderControllerBuilder.create(opt)
+                        .range(REFRESH_MIN_MINUTES, REFRESH_MAX_MINUTES)
+                        .step(REFRESH_STEP_MINUTES)
+                        .valueFormatter(minutes ->
+                                Component.translatable("justtiers.option.tierCache.value",
+                                        String.valueOf(minutes))))
+                .build();
+
         Option<Boolean> showProgress = tickBox("justtiers.option.downloadProgress",
                 config::isShowDownloadProgress, config::setShowDownloadProgress);
 
@@ -257,6 +269,7 @@ public final class JustTiersScreens {
         return ConfigCategory.createBuilder()
                 .name(Component.translatable("justtiers.config.category.data"))
                 .option(refreshMinutes)
+                .option(tierCacheMinutes)
                 .option(showProgress)
                 .option(refresh)
                 .option(LabelOption.create(Component.translatable("justtiers.data.indexed",

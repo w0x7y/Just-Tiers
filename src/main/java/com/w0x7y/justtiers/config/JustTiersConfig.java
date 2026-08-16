@@ -42,6 +42,7 @@ public class JustTiersConfig {
     private Map<String, String> selectedGamemodes = new HashMap<>();
     private int novaRefreshMinutes = 30;
     private boolean showDownloadProgress = true;
+    private int tierCacheMinutes = 60;
     private BadgePosition badgePosition = BadgePosition.BEFORE;
     private boolean showIcons = true;
     private boolean showBrackets = true;
@@ -198,6 +199,15 @@ public class JustTiersConfig {
         return copy;
     }
 
+    /** How long a fetched tier is trusted before it is looked up again. */
+    public int getTierCacheMinutes() {
+        return tierCacheMinutes;
+    }
+
+    public void setTierCacheMinutes(int minutes) {
+        this.tierCacheMinutes = Math.clamp(minutes, 5, 1440);
+    }
+
     public NametagStyle nametagStyle() {
         return new NametagStyle(getBadgePosition(), showIcons, showBrackets, colors());
     }
@@ -257,6 +267,7 @@ public class JustTiersConfig {
             }
             // clamp bypassed by reflection during deserialization
             config.setNovaRefreshMinutes(config.getNovaRefreshMinutes());
+            config.setTierCacheMinutes(config.getTierCacheMinutes());
             // Deserialization also bypasses the setters that would have dropped this, so
             // a cache built before the file was read must not survive into it.
             config.resolvedColors = null;
