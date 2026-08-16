@@ -1,5 +1,6 @@
 package com.w0x7y.justtiers.gui;
 
+import com.w0x7y.justtiers.render.SiteColors;
 import com.w0x7y.justtiers.gui.layout.GridLayout;
 import com.w0x7y.justtiers.gui.layout.ScanLayout;
 import com.w0x7y.justtiers.gui.layout.SkinLayout;
@@ -190,7 +191,7 @@ public final class ScanScreen extends Screen {
             int left = ScanLayout.columnLeft(columnsLeft, columnWidth, COLUMN_GAP, i);
             String name = source.displayName();
             graphics.text(font, name, left + (columnWidth - font.width(name)) / 2, labelY,
-                    Colors.opaque(source.defaultColor()));
+                    Colors.opaque(SiteColors.of(source)));
         }
     }
 
@@ -299,7 +300,7 @@ public final class ScanScreen extends Screen {
         graphics.text(font, icon, textX + (iconWidth - font.width(icon)) / 2, textY,
                 0xFFFFFFFF, false);
         graphics.text(font, label, textX + iconWidth + CELL_TEXT_GAP, textY,
-                tier.isPresent() ? Colors.opaque(source.defaultColor()) : Colors.DISABLED, false);
+                tier.isPresent() ? Colors.opaque(SiteColors.of(source)) : Colors.DISABLED, false);
     }
 
     private void drawScrollbar(GuiGraphicsExtractor graphics) {

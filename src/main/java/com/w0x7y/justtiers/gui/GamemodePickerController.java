@@ -1,5 +1,6 @@
 package com.w0x7y.justtiers.gui;
 
+import com.w0x7y.justtiers.render.SiteColors;
 import com.w0x7y.justtiers.gui.state.PreviewState;
 import com.w0x7y.justtiers.tier.Gamemodes;
 import com.w0x7y.justtiers.tier.Source;
@@ -75,7 +76,7 @@ public final class GamemodePickerController implements Controller<String> {
 
         @Override
         protected int getValueColor() {
-            return isAvailable() ? Colors.opaque(control.source().defaultColor()) : inactiveColor;
+            return isAvailable() ? Colors.opaque(SiteColors.of(control.source())) : inactiveColor;
         }
 
         @Override
