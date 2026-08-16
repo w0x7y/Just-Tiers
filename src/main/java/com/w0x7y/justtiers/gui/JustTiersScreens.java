@@ -1,5 +1,6 @@
 package com.w0x7y.justtiers.gui;
 
+import com.w0x7y.justtiers.render.SiteColors;
 import com.w0x7y.justtiers.JustTiers;
 import com.w0x7y.justtiers.JustTiersClient;
 import com.w0x7y.justtiers.config.JustTiersConfig;
@@ -208,7 +209,7 @@ public final class JustTiersScreens {
                         JustTiers.VERSION)));
         for (Source source : Source.ALL) {
             about.option(LabelOption.create(Component.literal(source.displayName())
-                    .withStyle(style -> style.withColor(source.defaultColor()))));
+                    .withStyle(style -> style.withColor(SiteColors.of(source)))));
         }
         return about
                 .option(LabelOption.create(Component.translatable("justtiers.about.commands")))
@@ -256,7 +257,7 @@ public final class JustTiersScreens {
         MutableComponent text = Component.translatable("justtiers.mode." + mode.id());
         return mode.singleSource()
                 .<Component>map(source -> text.withStyle(
-                        style -> style.withColor(source.defaultColor())))
+                        style -> style.withColor(SiteColors.of(source))))
                 .orElse(text);
     }
 
