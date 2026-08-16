@@ -13,3 +13,5 @@
 10. `/justtiers debug`. Per-site last-success timestamp, last error, latency, cache size and retry-backoff state. Every bug report will be "it doesn't show tiers for X"; this turns that into one paste.
 
 11. CI. There is no .github/ at all. A workflow running `./gradlew test` on pull requests, plus a tagged release job publishing to Modrinth with Minotaur, removes all release friction — which matters much more once the version matrix in 7 exists.
+
+12. A tiny public API. A Fabric entrypoint or static facade letting other mods ask "what's this UUID's tier?" would get Just-Tiers embedded into PvP HUD/overlay mods rather than competing with them.
