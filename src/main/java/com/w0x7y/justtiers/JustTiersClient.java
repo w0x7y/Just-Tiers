@@ -3,6 +3,7 @@ package com.w0x7y.justtiers;
 import com.w0x7y.justtiers.api.MctiersLikeSource;
 import com.w0x7y.justtiers.api.MojangNameSource;
 import com.w0x7y.justtiers.api.NovaTiersSource;
+import com.w0x7y.justtiers.cache.CachePolicy;
 import com.w0x7y.justtiers.cache.TierCache;
 import com.w0x7y.justtiers.command.JustTiersCommands;
 import com.w0x7y.justtiers.config.JustTiersConfig;
@@ -14,6 +15,7 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -43,7 +45,8 @@ public class JustTiersClient implements ClientModInitializer {
         cache = new TierCache(List.of(
                 new MctiersLikeSource(Source.MCTIERS, JustTiers.httpClient(), Source.MCTIERS.baseUrl()),
                 new MctiersLikeSource(Source.SUBTIERS, JustTiers.httpClient(), Source.SUBTIERS.baseUrl()),
-                novaSource));
+                novaSource),
+                CachePolicy.DEFAULT.withTtl(Duration.ofMinutes(config.getTierCacheMinutes())));
         // Only ever asked about names /justtiers lookup could not find on the server.
         nameSource = new MojangNameSource(
                 JustTiers.httpClient(), MojangNameSource.DEFAULT_BASE_URL);
@@ -90,6 +93,8 @@ public class JustTiersClient implements ClientModInitializer {
         // The interval is a live setting, so a changed slider takes effect now rather
         // than at next launch.
         scheduleNovaRefresh(config.getNovaRefreshMinutes());
+        // Live too, and applied without discarding what is already cached.
+        cache.setTtl(Duration.ofMinutes(config.getTierCacheMinutes()));
     }
 
     /**
