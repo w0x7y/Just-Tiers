@@ -26,12 +26,12 @@ Just-Tiers supports all three leaderboards, and adds an **All** mode that shows 
 - **Per-site gamemode selection** - pick the gamemode you care about on each site.
 - **Automatic fallback** - not ranked in your chosen gamemode? It shows that player's highest tier on that same site instead.
 - **Gamemode icons** - a small icon shows *which* gamemode earned the tier.
-- **Colour-coded by site** - you can always tell where a tier came from.
+- **Color-coded by site** - you can always tell where a tier came from.
 - **Scan the whole lobby** - `/justtiers scan` scores everyone on the server out of every placement they hold on all three sites and sorts them best first, so you know who is dangerous before the fight starts.
 - **Look anyone up** - `/justtiers lookup <player>` opens a screen with that player's skin and every gamemode all three sites run, tier by tier, without them being anywhere near you.
-- **Colour palettes** - swap the three site colours for a colourblind-safe or high-contrast preset, or pick three of your own.
+- **Color palettes** - swap the three site colors for a colorblind-safe or high-contrast preset, or pick three of your own.
 - **Shape the badge** - before or after the name, brackets and icons on or off, and your own nametag left plain if you prefer. The config screen previews every combination live.
-- **Retired tiers handled properly** - shown with an `R` prefix in their site's colour, still counted when finding a player's highest tier, and hideable entirely with one setting.
+- **Retired tiers handled properly** - shown with an `R` prefix in their site's color, still counted when finding a player's highest tier, and hideable entirely with one setting.
 - **In-game config screen** - every setting in one place, with a live nametag preview and an icon grid for picking gamemodes.
 - **Non-blocking** - all lookups are asynchronous and cached; the mod never stalls your frame rate waiting on a web request.
 - **Shows up as it arrives** - a nametag gains its badge the moment the first site answers, then fills in as the others land, rather than waiting on the slowest one.
@@ -56,19 +56,19 @@ Example nametag in `all` mode, where a player is LT3 in NetheriteOP on MCTiers, 
 
 Each icon shows the gamemode that earned the tier, so you know a tier came from Axe rather than Vanilla.
 
-### Colours
+### Colors
 
 These are the default palette:
 
-| Source | Colour | Hex |
+| Source | Color | Hex |
 |---|---|---|
 | MCTiers | Yellow | `#FFFF55` |
 | SubTiers | Cyan | `#55FFFF` |
 | NovaTiers | Purple | `#AA55FF` |
 
-All three can be changed. The config screen offers a **Colourblind-safe** palette (orange,
+All three can be changed. The config screen offers a **Colorblind-safe** palette (orange,
 sky blue, white — separated by brightness as well as hue, so it works for red-green
-colour blindness) and a **High contrast** one, or you can pick three colours of your own.
+color blindness) and a **High contrast** one, or you can pick three colors of your own.
 Whichever you choose applies everywhere at once: nametags, lookup, scan and the config
 screen itself.
 
@@ -188,7 +188,7 @@ All commands are client-side and start with `/justtiers`. Everything they change
 | `/justtiers icons` | Show or hide the gamemode icons inside the badge |
 | `/justtiers brackets` | Show or hide the `[ ]` around the badge |
 | `/justtiers ownbadge` | Show or hide the badge on your own nametag |
-| `/justtiers palette <palette>` | Set the colour palette: `default`, `colorblind`, `high_contrast`, `custom` |
+| `/justtiers palette <palette>` | Set the color palette: `default`, `colorblind`, `high_contrast`, `custom` |
 | `/justtiers retired` | Show or hide retired tiers, across every display mode |
 | `/justtiers refresh` | Clear the cache and re-download tier data |
 

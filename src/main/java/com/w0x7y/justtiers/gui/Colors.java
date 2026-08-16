@@ -1,7 +1,7 @@
 package com.w0x7y.justtiers.gui;
 
 /**
- * Colour carries exactly one meaning in this UI: which leaderboard something belongs
+ * Color carries exactly one meaning in this UI: which leaderboard something belongs
  * to. Everything else is neutral, which is why there are so few constants here.
  */
 final class Colors {

@@ -7,14 +7,14 @@ import java.util.Map;
 
 /**
  * The purely cosmetic half of the nametag: where the badge sits, how much chrome it
- * carries, and what colour each site is drawn in. None of it changes <em>which</em> tiers
+ * carries, and what color each site is drawn in. None of it changes <em>which</em> tiers
  * are shown — that is {@link com.w0x7y.justtiers.resolve.DisplayMode}'s job — so the same
  * resolved tiers can be drawn in any of these shapes.
  *
- * <p>The colours travel in the style rather than being looked up where they are drawn,
+ * <p>The colors travel in the style rather than being looked up where they are drawn,
  * which is what keeps {@link NametagModel} free of both Minecraft and the config.
  *
- * <p>With icons off, the sites are told apart by tier colour alone, which is the legend
+ * <p>With icons off, the sites are told apart by tier color alone, which is the legend
  * the config screen already teaches on its display-mode row.
  */
 public record NametagStyle(BadgePosition position, boolean icons, boolean brackets,
@@ -30,7 +30,7 @@ public record NametagStyle(BadgePosition position, boolean icons, boolean bracke
         colors = colors == null || colors.isEmpty() ? defaultColors() : Map.copyOf(colors);
     }
 
-    /** The shape alone, drawn in the sites' own colours. */
+    /** The shape alone, drawn in the sites' own colors. */
     public NametagStyle(BadgePosition position, boolean icons, boolean brackets) {
         this(position, icons, brackets, defaultColors());
     }

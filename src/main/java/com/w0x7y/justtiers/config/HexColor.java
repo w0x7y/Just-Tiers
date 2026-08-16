@@ -4,7 +4,7 @@ import java.util.Locale;
 import java.util.OptionalInt;
 
 /**
- * The on-disk spelling of a colour: {@code #RRGGBB}, with or without the hash, in either
+ * The on-disk spelling of a color: {@code #RRGGBB}, with or without the hash, in either
  * case. Alpha is deliberately not accepted — every consumer supplies its own, and a
  * four-byte value read as three would be wrong in a way nobody could see coming.
  *

@@ -30,7 +30,7 @@ class PaletteTest {
     }
 
     @Test
-    void presetsCarryTheirDocumentedColours() {
+    void presetsCarryTheirDocumentedColors() {
         assertEquals(0xE69F00, Palette.COLORBLIND.colorOf(Source.MCTIERS, Map.of()));
         assertEquals(0x56B4E9, Palette.COLORBLIND.colorOf(Source.SUBTIERS, Map.of()));
         assertEquals(0xFFFFFF, Palette.COLORBLIND.colorOf(Source.NOVATIERS, Map.of()));
@@ -55,14 +55,14 @@ class PaletteTest {
     }
 
     @Test
-    void aPresetIgnoresTheCustomColours() {
+    void aPresetIgnoresTheCustomColors() {
         Map<String, String> colors = custom("#111111", "#222222", "#333333");
         assertEquals(0xFFFF55, Palette.DEFAULT.colorOf(Source.MCTIERS, colors));
         assertEquals(0xE69F00, Palette.COLORBLIND.colorOf(Source.MCTIERS, colors));
     }
 
     @Test
-    void customUsesTheSuppliedColours() {
+    void customUsesTheSuppliedColors() {
         Map<String, String> colors = custom("#111111", "#222222", "#333333");
         assertEquals(0x111111, Palette.CUSTOM.colorOf(Source.MCTIERS, colors));
         assertEquals(0x222222, Palette.CUSTOM.colorOf(Source.SUBTIERS, colors));
@@ -70,8 +70,8 @@ class PaletteTest {
     }
 
     @Test
-    void aBadCustomColourCostsOnlyItsOwnSite() {
-        Map<String, String> colors = custom("#111111", "not a colour", null);
+    void aBadCustomColorCostsOnlyItsOwnSite() {
+        Map<String, String> colors = custom("#111111", "not a color", null);
         assertEquals(0x111111, Palette.CUSTOM.colorOf(Source.MCTIERS, colors));
         assertEquals(Source.SUBTIERS.defaultColor(),
                 Palette.CUSTOM.colorOf(Source.SUBTIERS, colors));

@@ -7,11 +7,11 @@ import java.util.Map;
 import java.util.OptionalInt;
 
 /**
- * The colour scheme telling the three leaderboards apart. Colour carries exactly one
+ * The color scheme telling the three leaderboards apart. Color carries exactly one
  * meaning in this UI — which site something came from — so a palette answers for all
  * three sites or it is not a palette.
  *
- * <p>There is one colourblind preset rather than one per condition. Its colours separate
+ * <p>There is one colorblind preset rather than one per condition. Its colors separate
  * by luminance as well as by hue, so the same three work for protanopia, deuteranopia and
  * tritanopia; a second preset differing only slightly would be a worse answer than one
  * that works for everybody.
@@ -21,7 +21,7 @@ public enum Palette {
     DEFAULT("default", 0xFFFF55, 0x55FFFF, 0xAA55FF),
     COLORBLIND("colorblind", 0xE69F00, 0x56B4E9, 0xFFFFFF),
     HIGH_CONTRAST("high_contrast", 0xFFFFFF, 0xFFAA00, 0x00FFFF),
-    /** Whatever the user picked; colours come from the config rather than from here. */
+    /** Whatever the user picked; colors come from the config rather than from here. */
     CUSTOM("custom");
 
     private final String id;
@@ -56,9 +56,9 @@ public enum Palette {
     }
 
     /**
-     * This palette's colour for a site. {@code customColors} is consulted only by
+     * This palette's color for a site. {@code customColors} is consulted only by
      * {@link #CUSTOM}, and a missing or unparseable entry falls back to that site's own
-     * default — per site, so one typo costs one colour rather than three.
+     * default — per site, so one typo costs one color rather than three.
      */
     public int colorOf(Source source, Map<String, String> customColors) {
         if (!isCustom()) {
