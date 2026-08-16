@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -305,5 +306,265 @@ class TierCacheTest {
     void forgettingAPlayerWhoWasNeverLookedUpIsHarmless() {
         TierCache cache = new TierCache(List.of());
         assertDoesNotThrow(() -> cache.forgetFailed(Source.NOVATIERS, PLAYER));
+    }
+
+    // --- freshness, growing delays and the site gate ---
+
+    /** A cache whose clock we drive by hand, with jitter pinned to the middle. */
+    private static final class Controlled {
+        final AtomicLong clock = new AtomicLong();
+        final FakeSource fake;
+        final TierCache cache;
+
+        Controlled(Map<String, Tier> result, CachePolicy policy) {
+            this.fake = new FakeSource(Source.MCTIERS, result);
+            this.cache = new TierCache(List.of(fake), policy, clock::get, () -> 0.5);
+        }
+
+        void advance(Duration by) {
+            clock.addAndGet(by.toNanos());
+        }
+    }
+
+    private static CachePolicy policy() {
+        return CachePolicy.DEFAULT;
+    }
+
+    @Test
+    void aFreshAnswerIsNotFetchedAgain() {
+        Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
+
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.fake.complete();
+        it.advance(Duration.ofMinutes(59));
+
+        assertTrue(it.cache.peek(Source.MCTIERS, PLAYER).isPresent());
+        assertEquals(1, it.fake.calls.get());
+    }
+
+    @Test
+    void anAnswerIsFetchedAgainOnceItIsStale() {
+        Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
+
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.fake.complete();
+        it.advance(Duration.ofMinutes(60));
+
+        assertEquals(Optional.empty(), it.cache.peek(Source.MCTIERS, PLAYER),
+                "a stale answer is not an answer");
+        assertEquals(2, it.fake.calls.get(), "it must be asked again");
+    }
+
+    @Test
+    void anUnrankedAnswerGoesStaleTooSoATestedPlayerAppears() {
+        // The whole point of the TTL: a player nobody had tested at login must not read
+        // as untested all session once they have been.
+        Controlled it = new Controlled(Map.of(), policy());
+
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.fake.complete();
+        assertEquals(Optional.of(Map.of()), it.cache.peek(Source.MCTIERS, PLAYER));
+
+        it.advance(Duration.ofMinutes(60));
+        assertEquals(Optional.empty(), it.cache.peek(Source.MCTIERS, PLAYER));
+        assertEquals(2, it.fake.calls.get());
+    }
+
+    @Test
+    void aZeroTtlKeepsAnswersForTheWholeSession() {
+        Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)),
+                policy().withTtl(Duration.ZERO));
+
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.fake.complete();
+        it.advance(Duration.ofDays(30));
+
+        assertTrue(it.cache.peek(Source.MCTIERS, PLAYER).isPresent());
+        assertEquals(1, it.fake.calls.get());
+    }
+
+    @Test
+    void loadAlsoRefusesToServeAStaleAnswer() {
+        Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
+
+        it.cache.load(Source.MCTIERS, PLAYER);
+        it.fake.complete();
+        it.advance(Duration.ofMinutes(60));
+
+        it.cache.load(Source.MCTIERS, PLAYER);
+        assertEquals(2, it.fake.calls.get());
+    }
+
+    @Test
+    void eachConsecutiveFailureWaitsLongerThanTheLast() {
+        Controlled it = new Controlled(Map.of(), policy());
+
+        // First failure: a minute.
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.fake.pending.completeExceptionally(new RuntimeException("down"));
+        it.cache.peek(Source.MCTIERS, PLAYER);
+
+        it.advance(Duration.ofSeconds(59));
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        assertEquals(1, it.fake.calls.get(), "a minute has not passed");
+
+        it.advance(Duration.ofSeconds(1));
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        assertEquals(2, it.fake.calls.get());
+
+        // Second failure: two minutes, so the minute that sufficed before does not.
+        it.fake.pending.completeExceptionally(new RuntimeException("still down"));
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.advance(Duration.ofSeconds(60));
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        assertEquals(2, it.fake.calls.get(), "the wait must have grown");
+
+        it.advance(Duration.ofSeconds(60));
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        assertEquals(3, it.fake.calls.get());
+    }
+
+    @Test
+    void aSuccessResetsTheGrowthSoTheNextFailureWaitsAMinuteAgain() {
+        Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
+
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.fake.pending.completeExceptionally(new RuntimeException("down"));
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.advance(Duration.ofSeconds(60));
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.fake.complete();
+        it.advance(Duration.ofMinutes(60));
+
+        // Stale, so it is asked again, and this time it fails.
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.fake.pending.completeExceptionally(new RuntimeException("down again"));
+        it.cache.peek(Source.MCTIERS, PLAYER);
+
+        int before = it.fake.calls.get();
+        it.advance(Duration.ofSeconds(60));
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        assertEquals(before + 1, it.fake.calls.get(),
+                "the run of failures was broken, so this is a first failure again");
+    }
+
+    @Test
+    void enoughFailuresInARowStopTheSiteBeingAskedAtAll() {
+        Controlled it = new Controlled(Map.of(), policy());
+
+        // Eight different players, each failing once: no single player's delay is up,
+        // but the site has now failed eight times in a row.
+        for (int i = 0; i < 8; i++) {
+            UUID player = UUID.randomUUID();
+            it.cache.peek(Source.MCTIERS, player);
+            it.fake.pending.completeExceptionally(new RuntimeException("down"));
+            it.cache.peek(Source.MCTIERS, player);
+        }
+        assertEquals(8, it.fake.calls.get());
+
+        // A ninth player, never seen before, is not asked either: the site is closed.
+        assertEquals(Optional.empty(), it.cache.peek(Source.MCTIERS, UUID.randomUUID()));
+        assertEquals(8, it.fake.calls.get(), "a closed site must not be asked");
+    }
+
+    @Test
+    void aClosedSiteFailsALoadImmediatelyRatherThanAskingIt() {
+        Controlled it = new Controlled(Map.of(), policy());
+
+        for (int i = 0; i < 8; i++) {
+            UUID player = UUID.randomUUID();
+            it.cache.peek(Source.MCTIERS, player);
+            it.fake.pending.completeExceptionally(new RuntimeException("down"));
+            it.cache.peek(Source.MCTIERS, player);
+        }
+
+        // A scan of two hundred players must not wave them all past the gate.
+        CompletableFuture<Map<String, Tier>> future = it.cache.load(Source.MCTIERS, UUID.randomUUID());
+        assertTrue(future.isCompletedExceptionally());
+        assertEquals(8, it.fake.calls.get());
+    }
+
+    @Test
+    void aClosedSiteReopensWithOneProbe() {
+        Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
+
+        for (int i = 0; i < 8; i++) {
+            UUID player = UUID.randomUUID();
+            it.cache.peek(Source.MCTIERS, player);
+            it.fake.pending.completeExceptionally(new RuntimeException("down"));
+            it.cache.peek(Source.MCTIERS, player);
+        }
+        it.advance(Duration.ofSeconds(30));
+
+        // Exactly one request goes out, however many players are on screen.
+        for (int i = 0; i < 20; i++) {
+            it.cache.peek(Source.MCTIERS, UUID.randomUUID());
+        }
+        assertEquals(9, it.fake.calls.get(), "the pause must end with a single probe");
+
+        // It answers, so the site is open for business again.
+        it.fake.complete();
+        it.cache.peek(Source.MCTIERS, UUID.randomUUID());
+        assertEquals(10, it.fake.calls.get());
+    }
+
+    @Test
+    void refreshingReopensAClosedSite() {
+        Controlled it = new Controlled(Map.of(), policy());
+
+        for (int i = 0; i < 8; i++) {
+            UUID player = UUID.randomUUID();
+            it.cache.peek(Source.MCTIERS, player);
+            it.fake.pending.completeExceptionally(new RuntimeException("down"));
+            it.cache.peek(Source.MCTIERS, player);
+        }
+        assertEquals(Optional.empty(), it.cache.peek(Source.MCTIERS, UUID.randomUUID()));
+        assertEquals(8, it.fake.calls.get());
+
+        // /justtiers refresh is the user saying "try again now".
+        it.cache.invalidateAll();
+        it.cache.peek(Source.MCTIERS, UUID.randomUUID());
+        assertEquals(9, it.fake.calls.get());
+    }
+
+    @Test
+    void changingTheTtlKeepsWhatIsAlreadyCached() {
+        // The setting is a slider; nudging it must not blank every badge on screen.
+        Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
+
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.fake.complete();
+        assertTrue(it.cache.peek(Source.MCTIERS, PLAYER).isPresent());
+
+        it.cache.setTtl(Duration.ofMinutes(120));
+        assertTrue(it.cache.peek(Source.MCTIERS, PLAYER).isPresent(),
+                "the answer was still fresh and must have survived");
+        assertEquals(1, it.fake.calls.get());
+    }
+
+    @Test
+    void aLongerTtlKeepsAnAnswerThatWouldHaveGoneStale() {
+        Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
+
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.fake.complete();
+        it.cache.setTtl(Duration.ofMinutes(120));
+        it.advance(Duration.ofMinutes(90));
+
+        assertTrue(it.cache.peek(Source.MCTIERS, PLAYER).isPresent());
+        assertEquals(1, it.fake.calls.get());
+    }
+
+    @Test
+    void aShorterTtlCanMakeACachedAnswerStaleAtOnce() {
+        Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
+
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.fake.complete();
+        it.advance(Duration.ofMinutes(30));
+        it.cache.setTtl(Duration.ofMinutes(10));
+
+        assertEquals(Optional.empty(), it.cache.peek(Source.MCTIERS, PLAYER));
+        assertEquals(2, it.fake.calls.get());
     }
 }
