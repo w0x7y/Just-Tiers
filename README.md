@@ -399,6 +399,7 @@ Settings are stored in `config/justtiers.json` and are written automatically whe
     "NOVATIERS": "vanilla"
   },
   "novaRefreshMinutes": 30,
+  "tierCacheMinutes": 60,
   "showDownloadProgress": true,
   "badgePosition": "before",
   "showIcons": true,
@@ -413,6 +414,7 @@ Settings are stored in `config/justtiers.json` and are written automatically whe
 | `displayMode` | `mctiers_only`, `subtiers_only`, `novatiers_only` or `all` |
 | `selectedGamemodes` | The chosen gamemode slug per site |
 | `novaRefreshMinutes` | How often to re-download the NovaTiers list (clamped to 5–1440) |
+| `tierCacheMinutes` | How long a fetched tier is trusted before it is looked up again (clamped to 5–1440) |
 | `showDownloadProgress` | Whether a progress bar is shown in the bottom-right while the NovaTiers list downloads |
 | `badgePosition` | `before` or `after` — which side of the player's name the badge sits on |
 | `showIcons` | Whether each tier carries its gamemode glyph |
@@ -486,12 +488,52 @@ successful one.
 Set `showDownloadProgress` to `false`, or untick **Show download progress** on the config screen's
 **Data** category, to turn it off entirely.
 
+### How long an answer is kept
+
+A tier fetched from MCTiers or SubTiers is trusted for `tierCacheMinutes` — an hour by
+default — and then looked up again.
+
+The expiry applies to **"unranked" as much as to a tier**, which is the point of it. A
+player nobody had tested when you logged in would otherwise read as untested for your
+whole session, however long that is, and a player who ranks up mid-session would keep
+their old tier just as long. An hour is short enough that neither outlives your evening
+and long enough that nothing is re-fetched often.
+
+The slider is on the config screen's **Data** category and takes effect as soon as you
+press Save, without discarding what is already cached — nudging a slider should not blank
+every badge on screen while they are all fetched again.
+
+Set it to its lowest for a testing session, or leave it alone; `/justtiers refresh` still
+drops everything immediately whatever it is set to.
+
+### Backing off
+
+A failing lookup is held off twice over, because one of the two is not enough on its own.
+
+**Per player**, the wait after a failure doubles each time — a minute, two, four, up to
+sixteen — with ±25% of random jitter. The jitter matters more than it looks: without it, a
+lobby whose lookups all failed in the same frame would retry in the same frame too, for as
+long as the outage lasted, turning one bad moment into a repeating stampede. A successful
+answer resets the run, so the next failure starts from a minute again.
+
+**Per site**, eight consecutive failures across *any* players stop that leaderboard being
+asked at all for thirty seconds. Then exactly one request is let through to test the
+water: if it answers, the site is open again; if it fails, the pause doubles, up to four
+minutes. This is the half that actually protects a full lobby — a per-player delay alone
+still means one request per player per period, which for two hundred players is precisely
+the flood a struggling site does not need.
+
+While a site is closed, `/justtiers lookup` and `/justtiers scan` report it as
+unavailable rather than quietly queueing behind it, because that is the truth of the
+situation. `/justtiers refresh` reopens it immediately — that command is you saying *try
+again now*.
+
 ### When a site is down
 
 An empty answer and a failed request are deliberately different things:
 
 - **HTTP 404** on MCTiers or SubTiers means the site answered and the player is genuinely unranked. That is cached.
-- **Any other status, or a transport failure**, means the lookup did not complete. It is not cached as "unranked"; it is retried, at most once a minute per player, so a rate-limited or briefly unavailable site does not get hammered by a lookup that runs every frame.
+- **Any other status, or a transport failure**, means the lookup did not complete. It is not cached as "unranked"; it is retried, behind the two delays described in [Backing off](#backing-off), so a rate-limited or briefly unavailable site does not get hammered by a lookup that runs every frame.
 - **A failed NovaTiers refresh** keeps the index already in memory rather than replacing it with nothing, so one bad refresh cannot blank every NovaTiers badge until the next successful one.
 - **A refresh in progress** keeps serving the tiers already on screen. The cached entries are only dropped once the new list has finished downloading, so badges do not disappear for the length of a scheduled refresh.
 
