@@ -30,6 +30,7 @@ Just-Tiers supports all three leaderboards, and adds an **All** mode that shows 
 - **Gamemode icons** — a small icon shows *which* gamemode earned the tier.
 - **Colour-coded by site** — you can always tell where a tier came from.
 - **Look anyone up** — `/justtiers lookup <player>` opens a screen with that player's skin and every gamemode all three sites run, tier by tier, without them being anywhere near you. See [Looking a player up](#looking-a-player-up).
+- **Scan the whole lobby** — `/justtiers scan` scores everyone on the server out of every placement they hold on all three sites and sorts them best first, so you can see who is dangerous before the fight starts. See [Scanning a lobby](#scanning-a-lobby).
 - **Shape the badge** — put it before or after the name, and turn the icons or the brackets off to make it as short as you like. The config screen previews every combination live.
 - **Retired tiers handled properly** — shown with an `R` prefix in their site's colour, still counted when finding a player's highest tier, and hideable entirely with one setting.
 - **Non-blocking** — all lookups are asynchronous and cached; the mod never stalls your frame rate waiting on a web request.
@@ -138,6 +139,7 @@ All commands are client-side and start with `/justtiers`.
 |---|---|
 | `/justtiers` | Show current settings and cache status |
 | `/justtiers lookup <player>` | Print every tier a player holds, on all three sites |
+| `/justtiers scan` | Rank everyone on the server by their tiers across all three sites |
 | `/justtiers toggle` | Turn the nametag display on or off |
 | `/justtiers retired` | Show or hide retired tiers, across every display mode |
 | `/justtiers mode <mode>` | Set display mode: `mctiers_only`, `subtiers_only`, `novatiers_only`, `all` |
@@ -227,6 +229,53 @@ exist.
 On offline-mode servers the tab list hands out UUIDs that are not real account UUIDs, so those
 players go through Mojang as well rather than being looked up as someone the leaderboards will
 never have heard of.
+
+---
+
+## Scanning a lobby
+
+`/justtiers lookup` answers a question about one player. `/justtiers scan` answers the
+question you actually have when you join: *who here is dangerous?*
+
+It opens a scrollable screen listing everyone on the server, each with their head, their
+name, a points total, and the full grid of every gamemode all three sites run.
+
+### The points
+
+Every placement a player holds is worth points, best to worst:
+
+| Tier | HT1 | LT1 | HT2 | LT2 | HT3 | LT3 | HT4 | LT4 | HT5 | LT5 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Points | 10 | 9 | 8 | 7 | 6 | 5 | 4 | 3 | 2 | 1 |
+
+A player's total is the **sum across every gamemode on every site** — not their best, and
+not their average. Someone placed in eleven gamemodes really is more dangerous than
+someone placed in one at the same tier, and summing is the only rule that says so. The
+list is sorted by that total, highest first, with ties broken by name.
+
+**Retired tiers do not count here, and are not shown.** This is the one place in
+Just-Tiers where the `showRetired` setting is ignored on purpose: the nametag and the
+lookup screen answer "what has this player earned", while a scan answers "who is a threat
+right now", and nobody is defending a retired tier.
+
+### While it fills
+
+NovaTiers is already in memory, so the screen opens populated and sorted the moment you
+run the command. MCTiers and SubTiers have to be asked per player, so those columns say
+`Looking up...` until they answer, and the counter in the top right shows how many players
+are fully answered. Rows re-sort every time an answer lands — the list visibly moves for
+the first few seconds and then settles. A list that is correct for what is known beats one
+that is stable and wrong.
+
+At most six MCTiers/SubTiers requests are in flight at once, however large the lobby. A
+site that cannot be reached shows `site unavailable` for that player rather than an empty
+grid, because those mean different things, and re-opening the screen retries.
+
+**The roster is fixed when the screen opens.** Players joining or leaving mid-scan are not
+picked up; run the command again to rescan.
+
+**Clicking a row** opens that player's [lookup screen](#looking-a-player-up); Escape
+brings you back to the scan with its rows and its progress intact.
 
 ---
 

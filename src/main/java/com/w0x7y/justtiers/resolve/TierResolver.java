@@ -52,16 +52,39 @@ public final class TierResolver {
             return tiersBySource;
         }
         Map<Source, Map<String, Tier>> filtered = new EnumMap<>(Source.class);
-        tiersBySource.forEach((source, tiers) -> {
-            Map<String, Tier> active = new LinkedHashMap<>();
-            tiers.forEach((slug, tier) -> {
-                if (!tier.retired()) {
-                    active.put(slug, tier);
-                }
-            });
-            filtered.put(source, active);
-        });
+        tiersBySource.forEach((source, tiers) -> filtered.put(source, activeOnly(tiers)));
         return filtered;
+    }
+
+    /**
+     * One site's placements with the retired ones dropped. Returns the argument
+     * unchanged when it holds none, which is the common case and saves a copy on a path
+     * that runs per player.
+     *
+     * <p>Public because a lobby scan strips retired placements one site at a time, as
+     * each answer lands, rather than across a whole map of sites at once.
+     */
+    public static Map<String, Tier> activeOnly(Map<String, Tier> tiers) {
+        if (tiers == null || tiers.isEmpty()) {
+            return Map.of();
+        }
+        boolean anyRetired = false;
+        for (Tier tier : tiers.values()) {
+            if (tier.retired()) {
+                anyRetired = true;
+                break;
+            }
+        }
+        if (!anyRetired) {
+            return tiers;
+        }
+        Map<String, Tier> active = new LinkedHashMap<>();
+        tiers.forEach((slug, tier) -> {
+            if (!tier.retired()) {
+                active.put(slug, tier);
+            }
+        });
+        return active;
     }
 
     private static boolean anyRetired(Map<Source, Map<String, Tier>> tiersBySource) {
