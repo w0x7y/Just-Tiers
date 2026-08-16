@@ -31,7 +31,7 @@ The screen owns nothing but pixels, exactly as `PlayerLookupScreen` does today.
   the whole scan. NovaTiers is answered from the in-memory index and is not queued.
 - **The render thread never blocks.** Sorting happens when an answer lands, not per frame.
   The screen draws a pre-sorted, immutable list.
-- **Colour discipline.** Site colours keep their single meaning: MCTiers `0xFFFF55`,
+- **Color discipline.** Site colors keep their single meaning: MCTiers `0xFFFF55`,
   SubTiers `0x55FFFF`, NovaTiers `0xAA55FF`. The points number is white; secondary text
   `0xA0A0A0`; an unavailable site `0xFF5555`.
 

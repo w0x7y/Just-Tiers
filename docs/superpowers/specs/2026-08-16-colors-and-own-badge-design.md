@@ -1,15 +1,15 @@
-# Per-Site Colours and Hiding Your Own Badge — Design
+# Per-Site Colors and Hiding Your Own Badge — Design
 
 **Goal:** Two appearance settings the mod has no answer for today. **Hide my own badge**
-stops Just-Tiers decorating your own nametag. **Per-site colours** lets the three
-leaderboard colours be changed — from a short list of palettes, or by picking three
-colours outright — so that a colourblind player, or one whose HUD already uses yellow and
+stops Just-Tiers decorating your own nametag. **Per-site colors** lets the three
+leaderboard colors be changed — from a short list of palettes, or by picking three
+colors outright — so that a colorblind player, or one whose HUD already uses yellow and
 cyan for something else, can still tell the sites apart.
 
-**Architecture:** One facade, `SiteColors`, becomes the single answer to "what colour is
+**Architecture:** One facade, `SiteColors`, becomes the single answer to "what color is
 this site", and every existing call site routes through it. The palettes themselves are a
 Minecraft-free enum with the arithmetic and fallbacks unit-tested. `Source` keeps its
-colours as the defaults and nothing else.
+colors as the defaults and nothing else.
 
 **Tech Stack:** Java 25, Fabric Loom, Minecraft 26.2 (unobfuscated), Fabric API
 `0.157.0+26.2`, YetAnotherConfigLib 3.9.4, JUnit 5. No new dependencies.
@@ -18,7 +18,7 @@ colours as the defaults and nothing else.
 
 ## Global Constraints
 
-- **Colour still carries exactly one meaning.** A site's colour changes everywhere at
+- **Color still carries exactly one meaning.** A site's color changes everywhere at
   once — nametag, lookup screen, scan screen, gamemode grid, config previews — or the
   rule the whole UI is built on stops being true. There is no per-screen override.
 - **`config`, `tier`, `render.model`, `gui.state` stay Minecraft-free** and unit-tested.
@@ -51,7 +51,7 @@ Command: `/justtiers ownbadge`, toggling like the existing `icons` and `brackets
 
 ---
 
-## Per-Site Colours
+## Per-Site Colors
 
 ### The palettes
 
@@ -60,14 +60,14 @@ Command: `/justtiers ownbadge`, toggling like the existing `icons` and `brackets
 | Palette | `id` | MCTiers | SubTiers | NovaTiers |
 |---|---|---|---|---|
 | Default | `default` | `#FFFF55` yellow | `#55FFFF` cyan | `#AA55FF` purple |
-| Colourblind-safe | `colorblind` | `#E69F00` orange | `#56B4E9` sky blue | `#FFFFFF` white |
+| Colorblind-safe | `colorblind` | `#E69F00` orange | `#56B4E9` sky blue | `#FFFFFF` white |
 | High contrast | `high_contrast` | `#FFFFFF` white | `#FFAA00` amber | `#00FFFF` cyan |
 | Custom | `custom` | from `customColors` | | |
 
-**One colourblind preset, not several.** The trio above is derived from the Okabe-Ito
+**One colorblind preset, not several.** The trio above is derived from the Okabe-Ito
 palette and separates by luminance as well as by hue, so it survives red-green blindness —
 protanopia and deuteranopia, which together account for the overwhelming majority of
-colour vision deficiency — and tritanopia alike. Two near-identical presets, one labelled
+color vision deficiency — and tritanopia alike. Two near-identical presets, one labelled
 for a condition affecting roughly one person in ten thousand, would be a worse answer than
 one that works for everybody.
 
@@ -75,7 +75,7 @@ one that works for everybody.
 
 ### Where the answer comes from
 
-The colours are configuration, so the config object owns resolving them:
+The colors are configuration, so the config object owns resolving them:
 
 ```java
 // JustTiersConfig — Minecraft-free, and therefore unit-testable
@@ -92,7 +92,7 @@ public static int of(Source source) { return JustTiersClient.config().colorOf(so
 
 **`NametagModel` must not use either.** It is Minecraft-free *and* unit-tested, and
 reaching `JustTiersClient` from it would make it neither. It already receives a
-`NametagStyle`, so that record gains the colours:
+`NametagStyle`, so that record gains the colors:
 
 ```java
 public record NametagStyle(BadgePosition position, boolean showIcons, boolean showBrackets,
@@ -100,8 +100,8 @@ public record NametagStyle(BadgePosition position, boolean showIcons, boolean sh
 ```
 
 `config.nametagStyle()` fills them in, `NametagModel` reads `style.colors()` when building
-a segment, and its tests pass whatever colours they want to assert on — which is a better
-test than the one it has today, where the expected colour is a constant on `Source`.
+a segment, and its tests pass whatever colors they want to assert on — which is a better
+test than the one it has today, where the expected color is a constant on `Source`.
 
 The remaining twelve call sites — in `Segments`, `JustTiersScreens`,
 `GamemodePickerController`, `GamemodeGridScreen`, `NametagPreviewController`,
@@ -125,8 +125,8 @@ callers are `Palette.DEFAULT` and the per-site fallback for a malformed hex.
   identical to `displayMode`.
 - `customColors` is a `Map<String, String>` keyed by `Source.name()`, matching how
   `selectedGamemodes` is already stored. It is only consulted when `palette` is `custom`.
-- A missing, malformed or out-of-range hex falls back to **that site's default colour**,
-  per site rather than for the whole map: two good colours and one typo should cost the
+- A missing, malformed or out-of-range hex falls back to **that site's default color**,
+  per site rather than for the whole map: two good colors and one typo should cost the
   typo, not the other two.
 - Accepted spellings: `#RRGGBB` and `RRGGBB`, case-insensitive. Alpha is not accepted —
   every consumer supplies its own.
@@ -140,20 +140,20 @@ callers are `Palette.DEFAULT` and the per-site fallback for a malformed hex.
 The **Appearance** group in the Display category gains:
 
 - **Hide my own badge** — a tick box, beside Show gamemode icons and Show brackets.
-- **Colour palette** — a cycling control over the four palettes.
-- **MCTiers / SubTiers / NovaTiers colour** — three YACL `ColorControllerBuilder` pickers,
+- **Color palette** — a cycling control over the four palettes.
+- **MCTiers / SubTiers / NovaTiers color** — three YACL `ColorControllerBuilder` pickers,
   greyed unless the palette is Custom, each carrying a description saying so.
 
 `ControlAvailability` grows one field, `customColors`, true only when the mod is enabled
 *and* the pending palette is Custom. The three pickers read it. This keeps the greying
 rule in the tested, Minecraft-free class where the rest of it already lives.
 
-The live nametag preview picks up both settings immediately. Switching palettes recolours
+The live nametag preview picks up both settings immediately. Switching palettes recolors
 the preview in place, which is the whole point of previewing: a palette is chosen by
 looking at it.
 
 Selecting a preset does **not** overwrite `customColors`. Switching to Custom and back
-leaves the custom colours untouched, so the two are not a trap for each other.
+leaves the custom colors untouched, so the two are not a trap for each other.
 
 ---
 
@@ -164,9 +164,9 @@ leaves the custom colours untouched, so the two are not a trap for each other.
 | `/justtiers ownbadge` | Toggles hiding your own badge |
 | `/justtiers palette <id>` | Sets a palette, tab-completing the four ids |
 
-`/justtiers palette custom` is accepted and switches to whatever custom colours are
-stored, but the colours themselves are set only on the config screen. Three hex codes
-typed into chat is not an interface anybody wants, and a colour is chosen by looking at
+`/justtiers palette custom` is accepted and switches to whatever custom colors are
+stored, but the colors themselves are set only on the config screen. Three hex codes
+typed into chat is not an interface anybody wants, and a color is chosen by looking at
 it, which chat cannot do.
 
 `/justtiers` status output gains a line naming the current palette.
@@ -177,7 +177,7 @@ it, which chat cannot do.
 
 Minecraft-free, in the existing layout:
 
-- **`PaletteTest`** — every palette answers all three sites; every preset's three colours
+- **`PaletteTest`** — every palette answers all three sites; every preset's three colors
   are distinct; ids round-trip; `custom` reads the supplied map.
 - **`SiteColorsTest`** — a preset ignores `customColors`; `custom` uses them; a malformed
   hex falls back for that site alone and leaves its neighbours intact; both `#RRGGBB` and
@@ -186,7 +186,7 @@ Minecraft-free, in the existing layout:
   palette falls back to `default`; a malformed hex is corrected on load; both keys
   round-trip through save and load.
 - **`ControlAvailabilityTest`** — the pickers are live only when enabled and Custom.
-- **`NametagModelTest`** — segments carry the colours their style was given, not
+- **`NametagModelTest`** — segments carry the colors their style was given, not
   `Source`'s constants.
 - **Existing tests** asserting on `Source.color()` are updated to `defaultColor()`.
 
@@ -197,10 +197,10 @@ lookup screen and the scan screen all follow; toggle Hide my own badge in third 
 
 ## Out of Scope
 
-- Per-screen or per-mode colour overrides.
-- Colouring anything other than the three sites — tier text, icons, brackets and the
+- Per-screen or per-mode color overrides.
+- Coloring anything other than the three sites — tier text, icons, brackets and the
   progress bar are unchanged.
 - Alpha or gradient support.
-- Setting custom colours from chat.
+- Setting custom colors from chat.
 - The badge-scale idea, which needs the nametag render path replaced rather than the
   `getDisplayName` hook and is not attempted here.

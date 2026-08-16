@@ -25,7 +25,7 @@ fixed cell grid and the three-way answered/unranked/unavailable distinction come
   they are neither scored nor drawn. No other feature's retired behaviour changes.
 - At most **6** MCTiers/SubTiers requests in flight at once across the whole scan.
   NovaTiers is answered from the in-memory index and is never queued.
-- Site colours keep their one meaning: MCTiers `0xFFFF55`, SubTiers `0x55FFFF`,
+- Site colors keep their one meaning: MCTiers `0xFFFF55`, SubTiers `0x55FFFF`,
   NovaTiers `0xAA55FF`. Points white, secondary text `0xA0A0A0`, unavailable `0xFF5555`.
 - No new endpoints and no Mojang calls: every scanned player came from the tab list with a
   UUID already in hand.
@@ -1525,7 +1525,7 @@ public final class ScanScreen extends Screen {
         int textX = x + (cellWidth - contentWidth) / 2;
         int textY = y + (cellHeight - font.lineHeight) / 2 + 1;
 
-        // Bitmap glyphs are multiplied by the text colour, so the icon stays white.
+        // Bitmap glyphs are multiplied by the text color, so the icon stays white.
         graphics.text(font, icon, textX + (iconWidth - font.width(icon)) / 2, textY,
                 0xFFFFFFFF, false);
         graphics.text(font, label, textX + iconWidth + CELL_TEXT_GAP, textY,

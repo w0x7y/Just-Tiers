@@ -4,7 +4,7 @@
 
 **Goal:** A Fabric 26.2 client mod that displays a player's PvP tier in their nametag, sourced from MCTiers, SubTiers and NovaTiers, with a per-site gamemode selection and an "All" mode showing each site's best tier side by side.
 
-**Architecture:** Three `TierSource` implementations normalise three dissimilar HTTP APIs into one `Map<gamemodeSlug, Tier>` per player. A `TierCache` coalesces in-flight requests and caches negative results. A pure `TierResolver` applies the four display modes and produces a `NametagModel` (a Minecraft-free list of coloured segments). Only the final renderer and the mixin touch Minecraft classes, so the entire domain, HTTP-parsing and resolution layers are unit-testable with plain JUnit.
+**Architecture:** Three `TierSource` implementations normalise three dissimilar HTTP APIs into one `Map<gamemodeSlug, Tier>` per player. A `TierCache` coalesces in-flight requests and caches negative results. A pure `TierResolver` applies the four display modes and produces a `NametagModel` (a Minecraft-free list of colored segments). Only the final renderer and the mixin touch Minecraft classes, so the entire domain, HTTP-parsing and resolution layers are unit-testable with plain JUnit.
 
 **Tech Stack:** Java 25, Gradle 9.5.1, Fabric Loom 1.17, Fabric Loader 0.19.3, Fabric API 0.157.0+26.2, unobfuscated Minecraft (no mappings step), MixinExtras, Gson, JUnit 5.
 
@@ -17,8 +17,8 @@
 - Mod id is `justtiers`. Root package is `com.w0x7y.justtiers`. Resource namespace is `justtiers`.
 - Packages `tier`, `api`, `cache`, `resolve` and `render.model` **must not import any `net.minecraft.*` class.** This is what keeps them unit-testable. Only `render.NametagRenderer`, `mixin`, `command` and `JustTiersClient` may import Minecraft.
 - Tier ordering, lowest to highest: `LT5 < HT5 < LT4 < HT4 < LT3 < HT3 < LT2 < HT2 < LT1 < HT1`.
-- Site colours: MCTiers `0xFFFF55` (yellow), SubTiers `0x55FFFF` (cyan), NovaTiers `0xAA55FF` (purple).
-- Retired tiers **count** toward "highest tier" and render with an `R` prefix in their own site's colour — the `R` is the only marker. A `showRetired` config flag (default `true`) hides them entirely across **all four** display modes; when hidden, a player falls back to their best active tier rather than disappearing.
+- Site colors: MCTiers `0xFFFF55` (yellow), SubTiers `0x55FFFF` (cyan), NovaTiers `0xAA55FF` (purple).
+- Retired tiers **count** toward "highest tier" and render with an `R` prefix in their own site's color — the `R` is the only marker. A `showRetired` config flag (default `true`) hides them entirely across **all four** display modes; when hidden, a player falls back to their best active tier rather than disappearing.
 - **Peak tiers are parsed but never displayed.** Ignore `peak_tier`/`peak_pos`/`peakTiers` in all resolution and rendering.
 - Nametag format: `[` + entries joined by a single space + `] ` + original name. Brackets are dark grey `0x555555`. Each entry is the gamemode icon glyph followed immediately by the tier label.
 - Never block the render thread on HTTP. A cache miss returns "no tier" and schedules an async fetch.
@@ -83,7 +83,7 @@ src/main/java/com/w0x7y/justtiers/
   cache/TierCache.java           per-source async cache, request coalescing
   resolve/DisplayMode.java       MCTIERS_ONLY / SUBTIERS_ONLY / NOVATIERS_ONLY / ALL
   resolve/TierResolver.java      the four display modes
-  render/model/Segment.java      (icon, text, colour) — Minecraft-free
+  render/model/Segment.java      (icon, text, color) — Minecraft-free
   render/model/NametagModel.java list of Segments — Minecraft-free
   render/NametagRenderer.java    NametagModel -> Component
   config/JustTiersConfig.java    settings + Gson persistence
@@ -619,7 +619,7 @@ class GamemodesTest {
     }
 
     @Test
-    void sourcesCarryTheirBrandColours() {
+    void sourcesCarryTheirBrandColors() {
         assertEquals(0xFFFF55, Source.MCTIERS.color());
         assertEquals(0x55FFFF, Source.SUBTIERS.color());
         assertEquals(0xAA55FF, Source.NOVATIERS.color());
@@ -660,7 +660,7 @@ public enum Source {
         return baseUrl;
     }
 
-    /** Colour applied to tier text originating from this site. */
+    /** Color applied to tier text originating from this site. */
     public int color() {
         return color;
     }
@@ -2320,7 +2320,7 @@ git commit -m "feat: add tier resolver implementing the four display modes"
 
 The text layout lives here, deliberately free of Minecraft types so it can be asserted on directly. Task 12 converts it to a `Component` mechanically.
 
-**Important:** Minecraft multiplies bitmap font glyphs by the text colour, so **icon segments must be pure white** (`0xFFFFFF`) or the artwork will be tinted.
+**Important:** Minecraft multiplies bitmap font glyphs by the text color, so **icon segments must be pure white** (`0xFFFFFF`) or the artwork will be tinted.
 
 **Files:**
 - Create: `src/main/java/com/w0x7y/justtiers/render/model/Segment.java`
@@ -2375,7 +2375,7 @@ class NametagModelTest {
     }
 
     @Test
-    void tierTextTakesTheSiteColour() {
+    void tierTextTakesTheSiteColor() {
         List<Segment> segments = NametagModel.build(
                 List.of(resolved(Source.MCTIERS, "vanilla", new Tier(2, true, false))));
 
@@ -2384,20 +2384,20 @@ class NametagModelTest {
     }
 
     @Test
-    void eachSiteUsesItsOwnColour() {
-        assertEquals(0xFFFF55, colourOf(Source.MCTIERS, "vanilla"));
-        assertEquals(0x55FFFF, colourOf(Source.SUBTIERS, "bow"));
-        assertEquals(0xAA55FF, colourOf(Source.NOVATIERS, "spleef"));
+    void eachSiteUsesItsOwnColor() {
+        assertEquals(0xFFFF55, colorOf(Source.MCTIERS, "vanilla"));
+        assertEquals(0x55FFFF, colorOf(Source.SUBTIERS, "bow"));
+        assertEquals(0xAA55FF, colorOf(Source.NOVATIERS, "spleef"));
     }
 
-    private int colourOf(Source source, String slug) {
+    private int colorOf(Source source, String slug) {
         List<Segment> segments = NametagModel.build(
                 List.of(resolved(source, slug, new Tier(3, true, false))));
         return segments.stream().filter(s -> s.text().equals("HT3")).findFirst().orElseThrow().color();
     }
 
     @Test
-    void retiredTiersKeepTheirSiteColourAndAreMarkedOnlyByTheRPrefix() {
+    void retiredTiersKeepTheirSiteColorAndAreMarkedOnlyByTheRPrefix() {
         List<Segment> segments = NametagModel.build(
                 List.of(resolved(Source.MCTIERS, "vanilla", new Tier(1, true, true))));
 
@@ -2417,7 +2417,7 @@ class NametagModelTest {
     }
 
     @Test
-    void bracketsUseTheBracketColour() {
+    void bracketsUseTheBracketColor() {
         List<Segment> segments = NametagModel.build(
                 List.of(resolved(Source.MCTIERS, "vanilla", new Tier(2, true, false))));
 
@@ -2438,7 +2438,7 @@ class NametagModelTest {
     }
 
     @Test
-    void retiredAndActiveEntriesAreEachColouredBySite() {
+    void retiredAndActiveEntriesAreEachColoredBySite() {
         List<Segment> segments = NametagModel.build(List.of(
                 resolved(Source.MCTIERS, "axe", new Tier(1, true, true)),
                 resolved(Source.NOVATIERS, "uhc", new Tier(4, true, false))));
@@ -2462,7 +2462,7 @@ Expected: FAIL — `Segment` and `NametagModel` do not exist.
 ```java
 package com.w0x7y.justtiers.render.model;
 
-/** A run of nametag text with a single colour. Deliberately Minecraft-free. */
+/** A run of nametag text with a single color. Deliberately Minecraft-free. */
 public record Segment(String text, int color) {
 }
 ```
@@ -2479,13 +2479,13 @@ import java.util.List;
 
 /**
  * Lays out the tier prefix that goes in front of a player's name, as
- * {@code [<icon>HT2 <icon>LT3] }. Tier text is coloured by its source site, except
+ * {@code [<icon>HT2 <icon>LT3] }. Tier text is colored by its source site, except
  * retired tiers which are light red and carry an {@code R} prefix.
  */
 public final class NametagModel {
 
     public static final int BRACKET_COLOR = 0x555555;
-    /** Bitmap glyphs are multiplied by the text colour, so icons must be white. */
+    /** Bitmap glyphs are multiplied by the text color, so icons must be white. */
     public static final int ICON_COLOR = 0xFFFFFF;
 
     public static List<Segment> build(List<ResolvedTier> tiers) {
@@ -2510,7 +2510,7 @@ public final class NametagModel {
         return List.copyOf(segments);
     }
 
-    /** Concatenated text, ignoring colour. Used by tests and debug logging. */
+    /** Concatenated text, ignoring color. Used by tests and debug logging. */
     public static String plainText(List<Segment> segments) {
         StringBuilder builder = new StringBuilder();
         for (Segment segment : segments) {
@@ -3537,7 +3537,7 @@ Run before calling the mod done:
 - [ ] `./gradlew build` succeeds with all tests green: 9 test classes, 89 tests (Tier 7, Gamemodes 9, MctiersParser 8, NovaParser 13, TierSource 9, TierCache 8, TierResolver 15, NametagModel 9, JustTiersConfig 11).
 - [ ] `python3 tools/gen_font_provider.py` reports 32 providers and the texture-existence check in Task 11 Step 6 reports 0 missing.
 - [ ] Every codepoint in `Gamemodes.java` has a matching provider in `assets/minecraft/font/default.json`. These files are generated from the same ordering but are not mechanically linked, so eyeball them together after any gamemode change.
-- [ ] In game with `mode=all`, a player ranked on two sites shows exactly two entries, coloured yellow/cyan/purple by site.
+- [ ] In game with `mode=all`, a player ranked on two sites shows exactly two entries, colored yellow/cyan/purple by site.
 - [ ] In game with a single-site mode, an unranked-in-that-gamemode player falls back to their best tier **on that site only**.
 - [ ] A player unranked on the selected site shows a completely unmodified nametag.
 - [ ] `Marlowww` renders `RHT1` in light red, confirming retired handling.
