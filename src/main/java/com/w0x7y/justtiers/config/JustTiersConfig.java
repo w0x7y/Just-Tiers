@@ -27,6 +27,8 @@ public class JustTiersConfig {
             .registerTypeAdapter(BadgePosition.class, new IdEnumAdapter<>(
                     "badgePosition", BadgePosition.class, BadgePosition.BEFORE,
                     BadgePosition::id))
+            .registerTypeAdapter(Palette.class, new IdEnumAdapter<>(
+                    "palette", Palette.class, Palette.DEFAULT, Palette::id))
             .create();
 
     private static final Map<Source, String> DEFAULT_GAMEMODES = Map.of(
@@ -43,6 +45,9 @@ public class JustTiersConfig {
     private BadgePosition badgePosition = BadgePosition.BEFORE;
     private boolean showIcons = true;
     private boolean showBrackets = true;
+    private boolean hideOwnBadge = false;
+    private Palette palette = Palette.DEFAULT;
+    private Map<String, String> customColors = new HashMap<>();
 
     /**
      * Cache for {@link #selectedGamemodesBySource()}, dropped whenever a selection
@@ -50,6 +55,13 @@ public class JustTiersConfig {
      * render thread reads it.
      */
     private transient volatile Map<Source, String> resolvedSelection;
+
+    /**
+     * Cache for {@link #colors()}, dropped whenever the palette or a custom colour
+     * changes. Transient so it never reaches the config file, and volatile because the
+     * render thread reads it.
+     */
+    private transient volatile Map<Source, Integer> resolvedColors;
 
     public boolean isEnabled() {
         return enabled;
@@ -128,6 +140,64 @@ public class JustTiersConfig {
     }
 
     /** The three cosmetic settings as the one value the nametag layout takes. */
+    public boolean isHideOwnBadge() {
+        return hideOwnBadge;
+    }
+
+    public void setHideOwnBadge(boolean hideOwnBadge) {
+        this.hideOwnBadge = hideOwnBadge;
+    }
+
+    public Palette getPalette() {
+        return palette == null ? Palette.DEFAULT : palette;
+    }
+
+    public void setPalette(Palette palette) {
+        this.palette = palette == null ? Palette.DEFAULT : palette;
+        this.resolvedColors = null;
+    }
+
+    /**
+     * The stored custom colour for a site, whether or not the custom palette is in use.
+     * Selecting a preset does not discard these, so switching to Custom and back is not
+     * a way to lose them.
+     */
+    public int getCustomColor(Source source) {
+        return Palette.CUSTOM.colorOf(source, customColors);
+    }
+
+    public void setCustomColor(Source source, int rgb) {
+        if (customColors == null) {
+            customColors = new HashMap<>();
+        }
+        customColors.put(source.name(), HexColor.format(rgb));
+        this.resolvedColors = null;
+    }
+
+    /** What colour this site is drawn in, under the palette in force. */
+    public int colorOf(Source source) {
+        return colors().getOrDefault(source, source.defaultColor());
+    }
+
+    /**
+     * Every site's colour at once. Resolved on first use and cached: this is read per
+     * player per frame, and parsing three hex strings there would be three allocations a
+     * frame for an answer that only changes when the config does.
+     */
+    public Map<Source, Integer> colors() {
+        Map<Source, Integer> cached = resolvedColors;
+        if (cached != null) {
+            return cached;
+        }
+        Map<Source, Integer> resolved = new EnumMap<>(Source.class);
+        for (Source source : Source.ALL) {
+            resolved.put(source, getPalette().colorOf(source, customColors));
+        }
+        Map<Source, Integer> copy = Map.copyOf(resolved);
+        resolvedColors = copy;
+        return copy;
+    }
+
     public NametagStyle nametagStyle() {
         return new NametagStyle(getBadgePosition(), showIcons, showBrackets);
     }
@@ -187,6 +257,9 @@ public class JustTiersConfig {
             }
             // clamp bypassed by reflection during deserialization
             config.setNovaRefreshMinutes(config.getNovaRefreshMinutes());
+            // Deserialization also bypasses the setters that would have dropped this, so
+            // a cache built before the file was read must not survive into it.
+            config.resolvedColors = null;
             return config;
         } catch (IOException | RuntimeException e) {
             JustTiers.LOGGER.warn("Could not read config at {}, using defaults", path, e);
