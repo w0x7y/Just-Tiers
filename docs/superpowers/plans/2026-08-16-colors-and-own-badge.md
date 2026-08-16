@@ -1,29 +1,29 @@
-# Per-Site Colours and Hiding Your Own Badge — Implementation Plan
+# Per-Site Colors and Hiding Your Own Badge — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add two appearance settings — `hideOwnBadge`, and a per-site colour scheme
+**Goal:** Add two appearance settings — `hideOwnBadge`, and a per-site color scheme
 chosen from three presets or set by hand.
 
-**Architecture:** `JustTiersConfig` owns resolving a site's colour, because the colours
+**Architecture:** `JustTiersConfig` owns resolving a site's color, because the colors
 are configuration and the config class is already Minecraft-free and unit-tested. Screens
 read it through a one-line `SiteColors` facade; `NametagModel`, which must stay
-Minecraft-free, receives the colours in the `NametagStyle` it is already handed.
+Minecraft-free, receives the colors in the `NametagStyle` it is already handed.
 
 **Tech Stack:** Java 25, Fabric Loom, Minecraft 26.2 (unobfuscated), Fabric API
 `0.157.0+26.2`, YetAnotherConfigLib 3.9.4, JUnit 5. No new dependencies.
 
-**Spec:** `docs/superpowers/specs/2026-08-16-colours-and-own-badge-design.md`
+**Spec:** `docs/superpowers/specs/2026-08-16-colors-and-own-badge-design.md`
 
 ## Global Constraints
 
-- A site's colour changes everywhere at once — nametag, lookup screen, scan screen,
+- A site's color changes everywhere at once — nametag, lookup screen, scan screen,
   gamemode grid, config previews. No per-screen override.
 - `config`, `tier`, `render.model`, `preview`, `gui.state` must not import
   `net.minecraft.*`. `Palette` and `HexColor` join them.
 - Old config files load unchanged: both keys optional, absent means today's behaviour.
   Bad values are corrected on load with a logged warning, never rejected.
-- Colours are parsed once, on load and on save, into an `EnumMap<Source, Integer>`. The
+- Colors are parsed once, on load and on save, into an `EnumMap<Source, Integer>`. The
   render path reads that map and never parses a string.
 - Palette values, verbatim:
   - `default` — MCTiers `0xFFFF55`, SubTiers `0x55FFFF`, NovaTiers `0xAA55FF`
@@ -38,11 +38,11 @@ Minecraft-free, receives the colours in the `NametagStyle` it is already handed.
 | File | Responsibility |
 |---|---|
 | `config/HexColor.java` | Parse and format `#RRGGBB` |
-| `config/Palette.java` | The four palettes and their colours |
+| `config/Palette.java` | The four palettes and their colors |
 | `config/JustTiersConfig.java` | *(modify)* the two keys, `colorOf`, `colors` |
 | `tier/Source.java` | *(modify)* `color()` renamed `defaultColor()` |
-| `render/model/NametagStyle.java` | *(modify)* carries the colours |
-| `render/model/NametagModel.java` | *(modify)* colours segments from the style |
+| `render/model/NametagStyle.java` | *(modify)* carries the colors |
+| `render/model/NametagModel.java` | *(modify)* colors segments from the style |
 | `render/SiteColors.java` | One-line facade for screens |
 | `mixin/PlayerMixin.java` | *(modify)* skip your own nametag |
 | `command/JustTiersCommands.java` | *(modify)* `ownbadge`, `palette`, status line |
@@ -110,7 +110,7 @@ class HexColorTest {
     }
 
     @Test
-    void everyFormattedColourParsesBack() {
+    void everyFormattedColorParsesBack() {
         for (int rgb : new int[] {0x000000, 0xFFFFFF, 0xE69F00, 0x56B4E9, 0xAA55FF}) {
             assertEquals(OptionalInt.of(rgb), HexColor.parse(HexColor.format(rgb)));
         }
@@ -132,7 +132,7 @@ import java.util.Locale;
 import java.util.OptionalInt;
 
 /**
- * The on-disk spelling of a colour: {@code #RRGGBB}, with or without the hash, in either
+ * The on-disk spelling of a color: {@code #RRGGBB}, with or without the hash, in either
  * case. Alpha is deliberately not accepted — every consumer supplies its own, and a
  * four-byte value read as three would be wrong in a way nobody could see coming.
  *
@@ -183,14 +183,14 @@ Expected: PASS, 6 tests.
 ```bash
 git add src/main/java/com/w0x7y/justtiers/config/HexColor.java \
         src/test/java/com/w0x7y/justtiers/config/HexColorTest.java
-git commit -m "Parse and format colours as #RRGGBB"
+git commit -m "Parse and format colors as #RRGGBB"
 ```
 
 ---
 
 ### Task 2: Rename `Source.color()` to `defaultColor()`
 
-Mechanical, and done before anything reads a configured colour so that no call site is
+Mechanical, and done before anything reads a configured color so that no call site is
 written against the name that is about to change.
 
 **Files:**
@@ -211,7 +211,7 @@ In `Source.java`, rename the method (leave the private field named `color`):
 
 ```java
     /**
-     * The colour this site is drawn in when nothing else is configured. Read this only
+     * The color this site is drawn in when nothing else is configured. Read this only
      * as a fallback — {@link com.w0x7y.justtiers.config.JustTiersConfig#colorOf} is what
      * the user actually chose, and reaching past it is how a screen ends up ignoring
      * their palette.
@@ -298,7 +298,7 @@ class PaletteTest {
     }
 
     @Test
-    void presetsCarryTheirDocumentedColours() {
+    void presetsCarryTheirDocumentedColors() {
         assertEquals(0xE69F00, Palette.COLORBLIND.colorOf(Source.MCTIERS, Map.of()));
         assertEquals(0x56B4E9, Palette.COLORBLIND.colorOf(Source.SUBTIERS, Map.of()));
         assertEquals(0xFFFFFF, Palette.COLORBLIND.colorOf(Source.NOVATIERS, Map.of()));
@@ -323,14 +323,14 @@ class PaletteTest {
     }
 
     @Test
-    void aPresetIgnoresTheCustomColours() {
+    void aPresetIgnoresTheCustomColors() {
         Map<String, String> colors = custom("#111111", "#222222", "#333333");
         assertEquals(0xFFFF55, Palette.DEFAULT.colorOf(Source.MCTIERS, colors));
         assertEquals(0xE69F00, Palette.COLORBLIND.colorOf(Source.MCTIERS, colors));
     }
 
     @Test
-    void customUsesTheSuppliedColours() {
+    void customUsesTheSuppliedColors() {
         Map<String, String> colors = custom("#111111", "#222222", "#333333");
         assertEquals(0x111111, Palette.CUSTOM.colorOf(Source.MCTIERS, colors));
         assertEquals(0x222222, Palette.CUSTOM.colorOf(Source.SUBTIERS, colors));
@@ -338,8 +338,8 @@ class PaletteTest {
     }
 
     @Test
-    void aBadCustomColourCostsOnlyItsOwnSite() {
-        Map<String, String> colors = custom("#111111", "not a colour", null);
+    void aBadCustomColorCostsOnlyItsOwnSite() {
+        Map<String, String> colors = custom("#111111", "not a color", null);
         assertEquals(0x111111, Palette.CUSTOM.colorOf(Source.MCTIERS, colors));
         assertEquals(Source.SUBTIERS.defaultColor(),
                 Palette.CUSTOM.colorOf(Source.SUBTIERS, colors));
@@ -395,11 +395,11 @@ import java.util.Map;
 import java.util.OptionalInt;
 
 /**
- * The colour scheme telling the three leaderboards apart. Colour carries exactly one
+ * The color scheme telling the three leaderboards apart. Color carries exactly one
  * meaning in this UI — which site something came from — so a palette answers for all
  * three sites or it is not a palette.
  *
- * <p>There is one colourblind preset rather than one per condition. Its colours separate
+ * <p>There is one colorblind preset rather than one per condition. Its colors separate
  * by luminance as well as by hue, so the same three work for protanopia, deuteranopia and
  * tritanopia; a second preset differing only slightly would be a worse answer than one
  * that works for everybody.
@@ -409,7 +409,7 @@ public enum Palette {
     DEFAULT("default", 0xFFFF55, 0x55FFFF, 0xAA55FF),
     COLORBLIND("colorblind", 0xE69F00, 0x56B4E9, 0xFFFFFF),
     HIGH_CONTRAST("high_contrast", 0xFFFFFF, 0xFFAA00, 0x00FFFF),
-    /** Whatever the user picked; colours come from the config rather than from here. */
+    /** Whatever the user picked; colors come from the config rather than from here. */
     CUSTOM("custom");
 
     private final String id;
@@ -444,9 +444,9 @@ public enum Palette {
     }
 
     /**
-     * This palette's colour for a site. {@code customColors} is consulted only by
+     * This palette's color for a site. {@code customColors} is consulted only by
      * {@link #CUSTOM}, and a missing or unparseable entry falls back to that site's own
-     * default — per site, so one typo costs one colour rather than three.
+     * default — per site, so one typo costs one color rather than three.
      */
     public int colorOf(Source source, Map<String, String> customColors) {
         if (!isCustom()) {
@@ -471,7 +471,7 @@ Expected: PASS, 9 tests.
 ```bash
 git add src/main/java/com/w0x7y/justtiers/config/Palette.java \
         src/test/java/com/w0x7y/justtiers/config/PaletteTest.java
-git commit -m "Add the four site colour palettes"
+git commit -m "Add the four site color palettes"
 ```
 
 ---
@@ -497,7 +497,7 @@ adapted to the existing helpers rather than duplicating them.
 
 ```java
     @Test
-    void aFileWithoutTheColourKeysBehavesAsBefore() throws Exception {
+    void aFileWithoutTheColorKeysBehavesAsBefore() throws Exception {
         JustTiersConfig config = JustTiersConfig.load(write("""
                 { "enabled": true, "displayMode": "all" }
                 """));
@@ -510,7 +510,7 @@ adapted to the existing helpers rather than duplicating them.
     }
 
     @Test
-    void aPresetPaletteColoursEverySite() throws Exception {
+    void aPresetPaletteColorsEverySite() throws Exception {
         JustTiersConfig config = JustTiersConfig.load(write("""
                 { "palette": "colorblind" }
                 """));
@@ -539,7 +539,7 @@ adapted to the existing helpers rather than duplicating them.
     }
 
     @Test
-    void customColoursAreUsedOnlyByTheCustomPalette() throws Exception {
+    void customColorsAreUsedOnlyByTheCustomPalette() throws Exception {
         String json = """
                 { "palette": "%s", "customColors": { "MCTIERS": "#123456" } }
                 """;
@@ -551,7 +551,7 @@ adapted to the existing helpers rather than duplicating them.
     }
 
     @Test
-    void aMalformedCustomColourFallsBackForThatSiteAlone() throws Exception {
+    void aMalformedCustomColorFallsBackForThatSiteAlone() throws Exception {
         JustTiersConfig config = JustTiersConfig.load(write("""
                 { "palette": "custom",
                   "customColors": { "MCTIERS": "#123456", "SUBTIERS": "nonsense" } }
@@ -578,7 +578,7 @@ adapted to the existing helpers rather than duplicating them.
     }
 
     @Test
-    void switchingToAPresetKeepsTheCustomColours() throws Exception {
+    void switchingToAPresetKeepsTheCustomColors() throws Exception {
         Path file = write("{}");
         JustTiersConfig config = JustTiersConfig.load(file);
         config.setPalette(Palette.CUSTOM);
@@ -634,7 +634,7 @@ there:
 
 ```java
     /**
-     * Cache for {@link #colors()}, dropped whenever the palette or a custom colour
+     * Cache for {@link #colors()}, dropped whenever the palette or a custom color
      * changes. Transient so it never reaches the config file, and volatile because the
      * render thread reads it.
      */
@@ -662,7 +662,7 @@ Add the accessors:
     }
 
     /**
-     * The stored custom colour for a site, whether or not the custom palette is in use.
+     * The stored custom color for a site, whether or not the custom palette is in use.
      * Selecting a preset does not discard these, so switching to Custom and back is not
      * a way to lose them.
      */
@@ -678,13 +678,13 @@ Add the accessors:
         this.resolvedColors = null;
     }
 
-    /** What colour this site is drawn in, under the palette in force. */
+    /** What color this site is drawn in, under the palette in force. */
     public int colorOf(Source source) {
         return colors().getOrDefault(source, source.defaultColor());
     }
 
     /**
-     * Every site's colour at once. Resolved on first use and cached: this is read per
+     * Every site's color at once. Resolved on first use and cached: this is read per
      * player per frame, and parsing three hex strings there would be three allocations a
      * frame for an answer that only changes when the config does.
      */
@@ -704,7 +704,7 @@ Add the accessors:
 ```
 
 Find where the class already normalises values after loading — the same place
-`novaRefreshMinutes` is clamped and `selectedGamemodes` is validated — and drop the colour
+`novaRefreshMinutes` is clamped and `selectedGamemodes` is validated — and drop the color
 cache there too, so a freshly loaded config does not serve a cache built before the file
 was read:
 
@@ -722,12 +722,12 @@ Expected: PASS, including the pre-existing tests unchanged.
 ```bash
 git add src/main/java/com/w0x7y/justtiers/config/JustTiersConfig.java \
         src/test/java/com/w0x7y/justtiers/config/JustTiersConfigTest.java
-git commit -m "Store the palette, the custom colours and hideOwnBadge"
+git commit -m "Store the palette, the custom colors and hideOwnBadge"
 ```
 
 ---
 
-### Task 5: Colours through the nametag style
+### Task 5: Colors through the nametag style
 
 **Files:**
 - Modify: `src/main/java/com/w0x7y/justtiers/render/model/NametagStyle.java`
@@ -739,12 +739,12 @@ git commit -m "Store the palette, the custom colours and hideOwnBadge"
 - Produces:
   - `NametagStyle(BadgePosition, boolean icons, boolean brackets, Map<Source,Integer> colors)`
   - `NametagStyle(BadgePosition, boolean, boolean)` — unchanged three-argument form,
-    defaulting to the sites' own colours
+    defaulting to the sites' own colors
   - `NametagStyle.colors() -> Map<Source, Integer>`
   - `NametagModel.entries(List<ResolvedTier>, boolean icons, Map<Source,Integer> colors)`
 
 The three-argument constructor is kept deliberately: `NametagStyle` is built in around
-fifteen places across the tests, and none of them are about colour.
+fifteen places across the tests, and none of them are about color.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -752,7 +752,7 @@ Append to `NametagModelTest`:
 
 ```java
     @Test
-    void segmentsTakeTheirColourFromTheStyle() {
+    void segmentsTakeTheirColorFromTheStyle() {
         Map<Source, Integer> colors = new EnumMap<>(Source.class);
         for (Source source : Source.ALL) {
             colors.put(source, 0x123456);
@@ -766,7 +766,7 @@ Append to `NametagModelTest`:
     }
 
     @Test
-    void theThreeArgumentStyleStillUsesTheSitesOwnColours() {
+    void theThreeArgumentStyleStillUsesTheSitesOwnColors() {
         NametagStyle style = new NametagStyle(BadgePosition.BEFORE, false, false);
         for (Source source : Source.ALL) {
             assertEquals(source.defaultColor(), style.colors().get(source));
@@ -774,7 +774,7 @@ Append to `NametagModelTest`:
     }
 
     @Test
-    void entriesColourEachTierByItsOwnSite() {
+    void entriesColorEachTierByItsOwnSite() {
         Map<Source, Integer> colors = new EnumMap<>(Source.class);
         colors.put(Source.MCTIERS, 0xAA0000);
         colors.put(Source.SUBTIERS, 0x00AA00);
@@ -810,14 +810,14 @@ import java.util.Map;
 
 /**
  * The purely cosmetic half of the nametag: where the badge sits, how much chrome it
- * carries, and what colour each site is drawn in. None of it changes <em>which</em> tiers
+ * carries, and what color each site is drawn in. None of it changes <em>which</em> tiers
  * are shown — that is {@link com.w0x7y.justtiers.resolve.DisplayMode}'s job — so the same
  * resolved tiers can be drawn in any of these shapes.
  *
- * <p>The colours travel in the style rather than being looked up where they are drawn,
+ * <p>The colors travel in the style rather than being looked up where they are drawn,
  * which is what keeps {@link NametagModel} free of both Minecraft and the config.
  *
- * <p>With icons off, the sites are told apart by tier colour alone, which is the legend
+ * <p>With icons off, the sites are told apart by tier color alone, which is the legend
  * the config screen already teaches on its display-mode row.
  */
 public record NametagStyle(BadgePosition position, boolean icons, boolean brackets,
@@ -833,7 +833,7 @@ public record NametagStyle(BadgePosition position, boolean icons, boolean bracke
         colors = colors == null || colors.isEmpty() ? defaultColors() : Map.copyOf(colors);
     }
 
-    /** The shape alone, drawn in the sites' own colours. */
+    /** The shape alone, drawn in the sites' own colors. */
     public NametagStyle(BadgePosition position, boolean icons, boolean brackets) {
         this(position, icons, brackets, defaultColors());
     }
@@ -852,7 +852,7 @@ public record NametagStyle(BadgePosition position, boolean icons, boolean bracke
 }
 ```
 
-`NametagModel` — `build` passes the style's colours down, and `entries` gains the
+`NametagModel` — `build` passes the style's colors down, and `entries` gains the
 three-argument form while the two-argument one keeps working for callers with no opinion:
 
 ```java
@@ -862,7 +862,7 @@ three-argument form while the two-argument one keeps working for callers with no
 ```
 
 ```java
-    /** As {@link #entries(List, boolean, Map)}, in the sites' own colours. */
+    /** As {@link #entries(List, boolean, Map)}, in the sites' own colors. */
     public static List<Segment> entries(List<ResolvedTier> tiers, boolean icons) {
         return entries(tiers, icons, NametagStyle.DEFAULT.colors());
     }
@@ -906,7 +906,7 @@ Add `import com.w0x7y.justtiers.tier.Source;` and `import java.util.Map;` to
 
 Run: `./gradlew test`
 Expected: PASS. Every existing three-argument `NametagStyle` in the tests still compiles
-and still asserts the same colours, which is the check that this was additive.
+and still asserts the same colors, which is the check that this was additive.
 
 - [ ] **Step 5: Commit**
 
@@ -915,7 +915,7 @@ git add src/main/java/com/w0x7y/justtiers/render/model/NametagStyle.java \
         src/main/java/com/w0x7y/justtiers/render/model/NametagModel.java \
         src/main/java/com/w0x7y/justtiers/config/JustTiersConfig.java \
         src/test/java/com/w0x7y/justtiers/render/model/NametagModelTest.java
-git commit -m "Carry the site colours in the nametag style"
+git commit -m "Carry the site colors in the nametag style"
 ```
 
 ---
@@ -940,11 +940,11 @@ import com.w0x7y.justtiers.JustTiersClient;
 import com.w0x7y.justtiers.tier.Source;
 
 /**
- * What colour a site is drawn in, right now, under whatever palette is configured.
+ * What color a site is drawn in, right now, under whatever palette is configured.
  *
  * <p>Every screen goes through here rather than reading {@link Source#defaultColor()},
- * because colour carries exactly one meaning in this UI — which leaderboard this is — and
- * a screen that read the constant would keep saying it in a colour the user has changed.
+ * because color carries exactly one meaning in this UI — which leaderboard this is — and
+ * a screen that read the constant would keep saying it in a color the user has changed.
  */
 public final class SiteColors {
 
@@ -961,12 +961,12 @@ public final class SiteColors {
 
 Replace `source.defaultColor()` with `SiteColors.of(source)` at each of these, adding the
 import to each file. `NametagModel` and `NametagStyle` are **not** in this list — they get
-their colours from the style, and reaching `JustTiersClient` from them would make them
+their colors from the style, and reaching `JustTiersClient` from them would make them
 untestable.
 
 | File | What to change |
 |---|---|
-| `render/Segments.java` | the segment already carries its colour — **no change**; confirm it reads `segment.color()` and leave it |
+| `render/Segments.java` | the segment already carries its color — **no change**; confirm it reads `segment.color()` and leave it |
 | `gui/JustTiersScreens.java` | both `withColor(...)` calls |
 | `gui/GamemodePickerController.java` | the `Colors.opaque(...)` call |
 | `gui/GamemodeGridScreen.java` | both `Colors.opaque(source.defaultColor())` calls |
@@ -995,7 +995,7 @@ Expected: BUILD SUCCESSFUL, all tests pass.
 
 ```bash
 git add -A
-git commit -m "Draw every screen in the configured site colours"
+git commit -m "Draw every screen in the configured site colors"
 ```
 
 ---
@@ -1073,17 +1073,17 @@ git commit -m "Let the badge be hidden on your own nametag"
 ```json
   "justtiers.command.ownbadge.on": "Your own badge is hidden",
   "justtiers.command.ownbadge.off": "Your own badge is shown",
-  "justtiers.command.paletteSet": "Colour palette set to %s",
+  "justtiers.command.paletteSet": "Color palette set to %s",
   "justtiers.command.status.palette": "Palette: %s",
   "justtiers.palette.default": "Default",
-  "justtiers.palette.colorblind": "Colourblind-safe",
+  "justtiers.palette.colorblind": "Colorblind-safe",
   "justtiers.palette.high_contrast": "High contrast",
   "justtiers.palette.custom": "Custom",
   "justtiers.config.hideOwnBadge": "Hide my own badge",
   "justtiers.config.hideOwnBadge.desc": "Leaves your own nametag undecorated. /justtiers lookup and /justtiers scan still show you.",
-  "justtiers.config.palette": "Colour palette",
-  "justtiers.config.palette.desc": "Which colours tell the three leaderboards apart.",
-  "justtiers.config.customColor": "%s colour",
+  "justtiers.config.palette": "Color palette",
+  "justtiers.config.palette.desc": "Which colors tell the three leaderboards apart.",
+  "justtiers.config.customColor": "%s color",
   "justtiers.config.customColor.desc": "Only used while the palette is Custom.",
   "justtiers.config.customColor.inactive": "Set the palette to Custom to change this."
 ```
@@ -1164,14 +1164,14 @@ Append to `ControlAvailabilityTest`:
 
 ```java
     @Test
-    void theColourPickersAreLiveOnlyForTheCustomPalette() {
+    void theColorPickersAreLiveOnlyForTheCustomPalette() {
         assertTrue(ControlAvailability.of(true, DisplayMode.ALL, Palette.CUSTOM).customColors());
         assertFalse(ControlAvailability.of(true, DisplayMode.ALL, Palette.DEFAULT).customColors());
         assertFalse(ControlAvailability.of(true, DisplayMode.ALL, Palette.COLORBLIND).customColors());
     }
 
     @Test
-    void theColourPickersAreDeadWhileTheModIsOff() {
+    void theColorPickersAreDeadWhileTheModIsOff() {
         assertFalse(ControlAvailability.of(false, DisplayMode.ALL, Palette.CUSTOM).customColors());
     }
 
@@ -1222,7 +1222,7 @@ public record ControlAvailability(boolean displayMode,
         }
         // The badge's shape - its side, its icons, its brackets - means the same thing in
         // every display mode, so the master switch is the only thing that can grey it.
-        // The colour pickers additionally need the palette to be the one they feed.
+        // The color pickers additionally need the palette to be the one they feed.
         return new ControlAvailability(enabled, enabled, enabled,
                 enabled && palette != null && palette.isCustom(), reasons);
     }
@@ -1238,22 +1238,22 @@ gamemode icons and Show brackets, following the shape of those three exactly:
 1. A **Hide my own badge** boolean option bound to `isHideOwnBadge`/`setHideOwnBadge`,
    labelled `justtiers.config.hideOwnBadge` with description
    `justtiers.config.hideOwnBadge.desc`.
-2. A **Colour palette** option over `Palette.values()`, labelled
+2. A **Color palette** option over `Palette.values()`, labelled
    `justtiers.config.palette`, its formatter `palette -> Component.translatable(palette.displayKey())`.
    Use whatever cycling-enum controller the display-mode option in this file already uses.
-3. Three colour options, one per `Source.ALL`, labelled with
+3. Three color options, one per `Source.ALL`, labelled with
    `Component.translatable("justtiers.config.customColor", source.displayName())`, built
    with `ColorControllerBuilder.create(option)` over a `java.awt.Color` binding that reads
    `config.getCustomColor(source)` and writes `config.setCustomColor(source, color.getRGB())`.
 
-The three colour options and the palette option must be wired to the same pending-state
+The three color options and the palette option must be wired to the same pending-state
 mechanism the rest of the screen uses — nothing is written until Save. When the pending
 palette changes, refresh availability so the pickers grey or ungrey immediately, using the
 same listener the display-mode option already uses to grey the gamemode rows.
 
 The preview built at `JustTiersScreens.java:87` constructs a `NametagStyle` from pending
 values; give it a fourth argument built from the pending palette and pending custom
-colours, so the preview recolours as the palette changes:
+colors, so the preview recolors as the palette changes:
 
 ```java
                 new NametagStyle(badgePosition.pendingValue(),
@@ -1288,42 +1288,42 @@ git commit -m "Add the palette and own-badge controls to the config screen"
 Run: `./gradlew runClient`.
 
 Confirm each of these:
-- The config screen's Appearance group shows Hide my own badge, Colour palette and three
-  colour pickers; the pickers are greyed until the palette is Custom.
-- Changing the palette recolours the live preview immediately.
+- The config screen's Appearance group shows Hide my own badge, Color palette and three
+  color pickers; the pickers are greyed until the palette is Custom.
+- Changing the palette recolors the live preview immediately.
 - Save, then check the nametag, `/justtiers lookup`, `/justtiers scan` and the gamemode
-  grid are all in the new colours.
+  grid are all in the new colors.
 - Cancel discards a palette change; Undo reverts it.
-- Switching to Custom, setting a colour, switching to Default and back to Custom keeps the
-  colour.
+- Switching to Custom, setting a color, switching to Default and back to Custom keeps the
+  color.
 - `/justtiers palette colorblind` and `/justtiers ownbadge` work and tab-complete.
 - `/justtiers` prints the current palette.
 - With Hide my own badge on, your own tag has no badge in third person while other
   players' tags still do; `/justtiers scan` still lists you with your tiers.
 - Delete `config/justtiers.json`, relaunch: defaults are Default palette and badge shown.
-- Hand-edit the file to `"palette": "rainbow"` and to a malformed custom colour; both are
+- Hand-edit the file to `"palette": "rainbow"` and to a malformed custom color; both are
   corrected on load with a warning in the log, and the game does not crash.
 
 - [ ] **Step 2: Document it**
 
 In `README.md`:
-- Features list: one line for the colour palettes, one for hiding your own badge.
+- Features list: one line for the color palettes, one for hiding your own badge.
 - Commands table: `/justtiers ownbadge` and `/justtiers palette <palette>`.
-- The **Colours** table under Display modes: note that it lists the *default* palette and
+- The **Colors** table under Display modes: note that it lists the *default* palette and
   point at the new section.
 - A new section after **Configuration screen**, covering the four palettes with their
-  colours, why there is one colourblind preset rather than several, that custom colours
-  are set on the config screen only, that presets do not overwrite custom colours, and
+  colors, why there is one colorblind preset rather than several, that custom colors
+  are set on the config screen only, that presets do not overwrite custom colors, and
   that the palette applies to every screen at once.
 - The **Configuration** key table: `hideOwnBadge`, `palette`, `customColors`, including
-  that an unrecognised palette falls back to `default` and a malformed colour falls back
+  that an unrecognised palette falls back to `default` and a malformed color falls back
   per site.
 
 - [ ] **Step 3: Commit**
 
 ```bash
 git add README.md
-git commit -m "Document the colour palettes and hiding your own badge"
+git commit -m "Document the color palettes and hiding your own badge"
 ```
 
 ---
@@ -1337,6 +1337,6 @@ and resolution (Task 4), the `NametagStyle` route (Task 5), the twelve screen ca
 
 Deviation from the spec, deliberate: the spec described `SiteColors` as the facade for all
 thirteen call sites. Two of those — `Segments` and `NametagPreviewController` — turn out to
-read `segment.color()` rather than the source, so they already carry whatever colour the
+read `segment.color()` rather than the source, so they already carry whatever color the
 model gave them and need no change. Twelve routes through `SiteColors`; the nametag path
 routes through `NametagStyle`.

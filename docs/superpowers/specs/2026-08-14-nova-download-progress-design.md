@@ -42,8 +42,8 @@ packages and are unit-tested; only the drawing routine and its registration touc
   record. No locks, no I/O, no collection walks on the render path.
 - **One drawing routine, two registrations.** The HUD layer and the screen overlay must not
   each grow their own idea of what the bar looks like.
-- **Colour discipline, per the config-GUI plan.** The bar's fill is NovaTiers purple
-  (`0xAA55FF`), because this indicator is about NovaTiers specifically and colour in this
+- **Color discipline, per the config-GUI plan.** The bar's fill is NovaTiers purple
+  (`0xAA55FF`), because this indicator is about NovaTiers specifically and color in this
   mod's UI carries exactly one meaning: which leaderboard this is. Text is white, secondary
   text `0xA0A0A0`, failure text `0xFF5555`.
 
