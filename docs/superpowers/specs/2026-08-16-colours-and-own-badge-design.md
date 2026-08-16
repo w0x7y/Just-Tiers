@@ -73,20 +73,44 @@ one that works for everybody.
 
 **Default is unchanged.** Every existing user sees exactly what they see today.
 
-### The facade
+### Where the answer comes from
+
+The colours are configuration, so the config object owns resolving them:
 
 ```java
-// com.w0x7y.justtiers.tier.SiteColors
-public static int of(Source source)          // RGB triple, as Source.color() returned
+// JustTiersConfig — Minecraft-free, and therefore unit-testable
+public int colorOf(Source source)                 // RGB triple, as Source.color() returned
+public Map<Source, Integer> colors()              // all three, for callers that want them at once
 ```
 
-Every current reader of a site colour calls this instead. There are thirteen of them, in
-`Segments`, `NametagModel`, `JustTiersScreens`, `GamemodePickerController`,
-`GamemodeGridScreen`, `NametagPreviewController`, `PlayerLookupScreen` and `ScanScreen`.
+Screens read it through a one-line facade so call sites stay short:
+
+```java
+// com.w0x7y.justtiers.render.SiteColors
+public static int of(Source source) { return JustTiersClient.config().colorOf(source); }
+```
+
+**`NametagModel` must not use either.** It is Minecraft-free *and* unit-tested, and
+reaching `JustTiersClient` from it would make it neither. It already receives a
+`NametagStyle`, so that record gains the colours:
+
+```java
+public record NametagStyle(BadgePosition position, boolean showIcons, boolean showBrackets,
+                           Map<Source, Integer> colors)
+```
+
+`config.nametagStyle()` fills them in, `NametagModel` reads `style.colors()` when building
+a segment, and its tests pass whatever colours they want to assert on — which is a better
+test than the one it has today, where the expected colour is a constant on `Source`.
+
+The remaining twelve call sites — in `Segments`, `JustTiersScreens`,
+`GamemodePickerController`, `GamemodeGridScreen`, `NametagPreviewController`,
+`PlayerLookupScreen` and `ScanScreen` — go through `SiteColors.of`.
 
 `Source.color()` is **renamed `Source.defaultColor()`**. The rename is the point: it makes
 every remaining call site read as "the fallback", so a future one cannot quietly bypass
-the user's choice by reaching for the obvious-looking method.
+the user's choice by reaching for the obvious-looking method. After this change its only
+callers are `Palette.DEFAULT` and the per-site fallback for a malformed hex.
 
 ### Storage
 
@@ -162,6 +186,8 @@ Minecraft-free, in the existing layout:
   palette falls back to `default`; a malformed hex is corrected on load; both keys
   round-trip through save and load.
 - **`ControlAvailabilityTest`** — the pickers are live only when enabled and Custom.
+- **`NametagModelTest`** — segments carry the colours their style was given, not
+  `Source`'s constants.
 - **Existing tests** asserting on `Source.color()` are updated to `defaultColor()`.
 
 Manual verification: switch palettes on the config screen and watch the preview, the
