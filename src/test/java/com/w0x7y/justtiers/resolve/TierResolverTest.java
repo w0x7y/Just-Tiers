@@ -4,6 +4,7 @@ import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
 import org.junit.jupiter.api.Test;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -314,5 +315,29 @@ class TierResolverTest {
         Map<String, Tier> tiers = Map.of("axe", ht(3), "sword", lt(1), "pot", ht(4));
         assertEquals(TierResolver.rankAll(Source.MCTIERS, tiers).get(0),
                 TierResolver.highestOn(Source.MCTIERS, tiers).orElseThrow());
+    }
+
+    @Test
+    void activeOnlyDropsRetiredPlacementsAndKeepsOrder() {
+        Map<String, Tier> tiers = new LinkedHashMap<>();
+        tiers.put("vanilla", ht(1));
+        tiers.put("sword", retiredHt(2));
+        tiers.put("pot", lt(3));
+
+        Map<String, Tier> active = TierResolver.activeOnly(tiers);
+
+        assertEquals(List.of("vanilla", "pot"), List.copyOf(active.keySet()));
+    }
+
+    @Test
+    void activeOnlyReturnsTheSameMapWhenNothingIsRetired() {
+        Map<String, Tier> tiers = Map.of("vanilla", ht(1));
+        assertSame(tiers, TierResolver.activeOnly(tiers));
+    }
+
+    @Test
+    void activeOnlyHandlesNullAndEmpty() {
+        assertTrue(TierResolver.activeOnly(null).isEmpty());
+        assertTrue(TierResolver.activeOnly(Map.of()).isEmpty());
     }
 }
