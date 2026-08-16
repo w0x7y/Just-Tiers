@@ -74,14 +74,14 @@ class ControlAvailabilityTest {
     }
 
     @Test
-    void theColourPickersAreLiveOnlyForTheCustomPalette() {
+    void theColorPickersAreLiveOnlyForTheCustomPalette() {
         assertTrue(ControlAvailability.of(true, DisplayMode.ALL, Palette.CUSTOM).customColors());
         assertFalse(ControlAvailability.of(true, DisplayMode.ALL, Palette.DEFAULT).customColors());
         assertFalse(ControlAvailability.of(true, DisplayMode.ALL, Palette.COLORBLIND).customColors());
     }
 
     @Test
-    void theColourPickersAreDeadWhileTheModIsOff() {
+    void theColorPickersAreDeadWhileTheModIsOff() {
         assertFalse(ControlAvailability.of(false, DisplayMode.ALL, Palette.CUSTOM).customColors());
     }
 

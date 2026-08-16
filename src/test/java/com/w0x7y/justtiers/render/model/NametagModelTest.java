@@ -38,7 +38,7 @@ class NametagModelTest {
     }
 
     @Test
-    void tierTextTakesTheSiteColour() {
+    void tierTextTakesTheSiteColor() {
         List<Segment> segments = NametagModel.build(
                 List.of(resolved(Source.MCTIERS, "vanilla", new Tier(2, true, false))));
 
@@ -47,20 +47,20 @@ class NametagModelTest {
     }
 
     @Test
-    void eachSiteUsesItsOwnColour() {
-        assertEquals(0xFFFF55, colourOf(Source.MCTIERS, "vanilla"));
-        assertEquals(0x55FFFF, colourOf(Source.SUBTIERS, "bow"));
-        assertEquals(0xAA55FF, colourOf(Source.NOVATIERS, "spleef"));
+    void eachSiteUsesItsOwnColor() {
+        assertEquals(0xFFFF55, colorOf(Source.MCTIERS, "vanilla"));
+        assertEquals(0x55FFFF, colorOf(Source.SUBTIERS, "bow"));
+        assertEquals(0xAA55FF, colorOf(Source.NOVATIERS, "spleef"));
     }
 
-    private int colourOf(Source source, String slug) {
+    private int colorOf(Source source, String slug) {
         List<Segment> segments = NametagModel.build(
                 List.of(resolved(source, slug, new Tier(3, true, false))));
         return segments.stream().filter(s -> s.text().equals("HT3")).findFirst().orElseThrow().color();
     }
 
     @Test
-    void retiredTiersKeepTheirSiteColourAndAreMarkedOnlyByTheRPrefix() {
+    void retiredTiersKeepTheirSiteColorAndAreMarkedOnlyByTheRPrefix() {
         List<Segment> segments = NametagModel.build(
                 List.of(resolved(Source.MCTIERS, "vanilla", new Tier(1, true, true))));
 
@@ -80,7 +80,7 @@ class NametagModelTest {
     }
 
     @Test
-    void bracketsUseTheBracketColour() {
+    void bracketsUseTheBracketColor() {
         List<Segment> segments = NametagModel.build(
                 List.of(resolved(Source.MCTIERS, "vanilla", new Tier(2, true, false))));
 
@@ -101,7 +101,7 @@ class NametagModelTest {
     }
 
     @Test
-    void retiredAndActiveEntriesAreEachColouredBySite() {
+    void retiredAndActiveEntriesAreEachColoredBySite() {
         List<Segment> segments = NametagModel.build(List.of(
                 resolved(Source.MCTIERS, "axe", new Tier(1, true, true)),
                 resolved(Source.NOVATIERS, "uhc", new Tier(4, true, false))));
@@ -144,18 +144,18 @@ class NametagModelTest {
     }
 
     @Test
-    void iconsCanBeTurnedOffLeavingColourToTellTheSitesApart() {
+    void iconsCanBeTurnedOffLeavingColorToTellTheSitesApart() {
         NametagStyle style = new NametagStyle(BadgePosition.BEFORE, false, true);
         assertEquals("[" + entries(false) + "] ", text(style));
 
         // Nothing else distinguishes the two sites once the glyphs are gone, so the
-        // per-site colours have to survive.
+        // per-site colors have to survive.
         List<Segment> segments = NametagModel.build(PAIR, style);
-        assertEquals(Source.MCTIERS.defaultColor(), colourOfText(segments, "HT2"));
-        assertEquals(Source.SUBTIERS.defaultColor(), colourOfText(segments, "LT3"));
+        assertEquals(Source.MCTIERS.defaultColor(), colorOfText(segments, "HT2"));
+        assertEquals(Source.SUBTIERS.defaultColor(), colorOfText(segments, "LT3"));
     }
 
-    private static int colourOfText(List<Segment> segments, String text) {
+    private static int colorOfText(List<Segment> segments, String text) {
         return segments.stream().filter(s -> s.text().equals(text))
                 .findFirst().orElseThrow().color();
     }
@@ -225,7 +225,7 @@ class NametagModelTest {
         assertTrue(NametagModel.entries(null, true).isEmpty());
     }
 
-    // --- colours from the style ---
+    // --- colors from the style ---
 
     private static Map<Source, Integer> colorMap(int mctiers, int subtiers, int novatiers) {
         Map<Source, Integer> colors = new EnumMap<>(Source.class);
@@ -236,43 +236,43 @@ class NametagModelTest {
     }
 
     @Test
-    void tierTextTakesItsColourFromTheStyle() {
+    void tierTextTakesItsColorFromTheStyle() {
         NametagStyle style = new NametagStyle(BadgePosition.BEFORE, false, false,
                 colorMap(0xAA0000, 0x00AA00, 0x0000AA));
 
         List<Segment> segments = NametagModel.build(PAIR, style);
 
-        assertEquals(0xAA0000, colourOfText(segments, "HT2"));
-        assertEquals(0x00AA00, colourOfText(segments, "LT3"));
+        assertEquals(0xAA0000, colorOfText(segments, "HT2"));
+        assertEquals(0x00AA00, colorOfText(segments, "LT3"));
     }
 
     @Test
-    void theThreeArgumentStyleStillUsesTheSitesOwnColours() {
+    void theThreeArgumentStyleStillUsesTheSitesOwnColors() {
         NametagStyle style = new NametagStyle(BadgePosition.BEFORE, false, false);
         for (Source source : Source.ALL) {
             assertEquals(source.defaultColor(), style.colorOf(source));
         }
         assertEquals(Source.MCTIERS.defaultColor(),
-                colourOfText(NametagModel.build(PAIR, style), "HT2"));
+                colorOfText(NametagModel.build(PAIR, style), "HT2"));
     }
 
     @Test
-    void aStyleWithNoColoursFallsBackToTheSiteDefaults() {
+    void aStyleWithNoColorsFallsBackToTheSiteDefaults() {
         NametagStyle style = new NametagStyle(BadgePosition.BEFORE, false, false, null);
         assertEquals(Source.SUBTIERS.defaultColor(), style.colorOf(Source.SUBTIERS));
     }
 
     @Test
-    void entriesColourEachTierByItsOwnSite() {
+    void entriesColorEachTierByItsOwnSite() {
         List<Segment> segments = NametagModel.entries(PAIR, false,
                 colorMap(0xAA0000, 0x00AA00, 0x0000AA));
 
-        assertEquals(0xAA0000, colourOfText(segments, "HT2"));
-        assertEquals(0x00AA00, colourOfText(segments, "LT3"));
+        assertEquals(0xAA0000, colorOfText(segments, "HT2"));
+        assertEquals(0x00AA00, colorOfText(segments, "LT3"));
     }
 
     @Test
-    void bracketsAndIconsAreNotSiteColoured() {
+    void bracketsAndIconsAreNotSiteColored() {
         NametagStyle style = new NametagStyle(BadgePosition.BEFORE, true, true,
                 colorMap(0xAA0000, 0x00AA00, 0x0000AA));
 
@@ -322,7 +322,7 @@ class NametagModelTest {
     }
 
     @Test
-    void recolouringASegmentKeepsWhetherItIsAnIcon() {
+    void recoloringASegmentKeepsWhetherItIsAnIcon() {
         Segment icon = new Segment("\uE101", 0xFFFFFF, true);
         Segment text = new Segment("HT2", 0xFFFF55);
 

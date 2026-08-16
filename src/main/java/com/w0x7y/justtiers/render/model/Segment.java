@@ -1,7 +1,7 @@
 package com.w0x7y.justtiers.render.model;
 
 /**
- * A run of nametag text with a single colour. Deliberately Minecraft-free.
+ * A run of nametag text with a single color. Deliberately Minecraft-free.
  *
  * <p>{@code icon} marks the runs that are gamemode glyphs rather than words. They are
  * drawn from Just-Tiers' own font, which nothing else on a nametag is, and a boolean is
@@ -15,7 +15,7 @@ public record Segment(String text, int color, boolean icon) {
     }
 
     /**
-     * The same run in a different colour. Recolouring by rebuilding through the
+     * The same run in a different color. Recoloring by rebuilding through the
      * two-argument constructor would quietly turn an icon back into ordinary text, and
      * an icon drawn in the default font is a missing-glyph box.
      */
