@@ -398,8 +398,8 @@ public final class PlayerLookupScreen extends Screen {
         int textX = x + (cellWidth - contentWidth) / 2;
         int textY = y + (cellHeight - font.lineHeight) / 2 + 1;
 
-        // Bitmap glyphs are multiplied by the text colour, so the icon has to stay white
-        // even in a row that is otherwise entirely its site's colour.
+        // Bitmap glyphs are multiplied by the text color, so the icon has to stay white
+        // even in a row that is otherwise entirely its site's color.
         graphics.text(font, icon, textX + (iconWidth - font.width(icon)) / 2, textY,
                 0xFFFFFFFF, false);
         graphics.text(font, label, textX + iconWidth + CELL_TEXT_GAP, textY,

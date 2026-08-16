@@ -171,9 +171,9 @@ public final class JustTiersScreens {
     }
 
     /**
-     * The colours the preview should draw right now: the pending palette's own, or the
+     * The colors the preview should draw right now: the pending palette's own, or the
      * pending contents of the three pickers when that palette is Custom. Read from the
-     * pending values rather than the config, so the preview recolours as the palette is
+     * pending values rather than the config, so the preview recolors as the palette is
      * cycled instead of waiting for Save.
      */
     private static Map<Source, Integer> pendingColors(Option<Palette> palette,
@@ -333,7 +333,7 @@ public final class JustTiersScreens {
                 .build();
     }
 
-    /** The display-mode row is where the colour legend is taught, so it is coloured. */
+    /** The display-mode row is where the color legend is taught, so it is colored. */
     private static Component formatMode(DisplayMode mode) {
         MutableComponent text = Component.translatable("justtiers.mode." + mode.id());
         return mode.singleSource()

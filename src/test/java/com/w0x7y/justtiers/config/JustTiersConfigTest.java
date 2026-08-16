@@ -244,7 +244,7 @@ class JustTiersConfigTest {
     }
 
     @Test
-    void aFileWithoutTheColourKeysBehavesAsBefore(@TempDir Path dir) throws Exception {
+    void aFileWithoutTheColorKeysBehavesAsBefore(@TempDir Path dir) throws Exception {
         Path file = dir.resolve("old.json");
         Files.writeString(file, """
                 {"enabled":true,"displayMode":"all","selectedGamemodes":{}}
@@ -259,7 +259,7 @@ class JustTiersConfigTest {
     }
 
     @Test
-    void aPresetPaletteColoursEverySite(@TempDir Path dir) throws Exception {
+    void aPresetPaletteColorsEverySite(@TempDir Path dir) throws Exception {
         Path file = dir.resolve("preset.json");
         Files.writeString(file, """
                 {"palette":"colorblind","selectedGamemodes":{}}
@@ -293,7 +293,7 @@ class JustTiersConfigTest {
     }
 
     @Test
-    void customColoursAreUsedOnlyByTheCustomPalette(@TempDir Path dir) throws Exception {
+    void customColorsAreUsedOnlyByTheCustomPalette(@TempDir Path dir) throws Exception {
         Path custom = dir.resolve("custom.json");
         Files.writeString(custom, """
                 {"palette":"custom","customColors":{"MCTIERS":"#123456"},
@@ -311,7 +311,7 @@ class JustTiersConfigTest {
     }
 
     @Test
-    void aMalformedCustomColourFallsBackForThatSiteAlone(@TempDir Path dir) throws Exception {
+    void aMalformedCustomColorFallsBackForThatSiteAlone(@TempDir Path dir) throws Exception {
         Path file = dir.resolve("typo.json");
         Files.writeString(file, """
                 {"palette":"custom",
@@ -341,7 +341,7 @@ class JustTiersConfigTest {
     }
 
     @Test
-    void switchingToAPresetKeepsTheCustomColours(@TempDir Path dir) {
+    void switchingToAPresetKeepsTheCustomColors(@TempDir Path dir) {
         Path file = dir.resolve("kept.json");
         JustTiersConfig config = new JustTiersConfig();
         config.setPalette(Palette.CUSTOM);

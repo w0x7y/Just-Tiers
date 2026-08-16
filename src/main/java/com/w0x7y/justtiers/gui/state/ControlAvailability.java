@@ -37,7 +37,7 @@ public record ControlAvailability(boolean displayMode,
         }
         // The badge's shape - its side, its icons, its brackets - means the same thing in
         // every display mode, so the master switch is the only thing that can grey it.
-        // The colour pickers additionally need the palette to be the one they feed.
+        // The color pickers additionally need the palette to be the one they feed.
         return new ControlAvailability(enabled, enabled, enabled,
                 enabled && palette != null && palette.isCustom(), reasons);
     }

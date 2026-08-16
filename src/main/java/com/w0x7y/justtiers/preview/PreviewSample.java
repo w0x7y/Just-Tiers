@@ -24,7 +24,7 @@ import java.util.Map;
  *
  * <p>Minecraft-free on purpose, and still built through the shared
  * {@link NametagModel}, so the preview keeps agreeing with the real nametag's shape,
- * spacing and colours.
+ * spacing and colors.
  */
 public final class PreviewSample {
 

@@ -43,9 +43,9 @@ public enum Source {
         return homeUrl;
     }
 
-    /** Colour applied to tier text originating from this site. */
+    /** Color applied to tier text originating from this site. */
     /**
-     * The colour this site is drawn in when nothing else is configured. Read this only
+     * The color this site is drawn in when nothing else is configured. Read this only
      * as a fallback — {@link com.w0x7y.justtiers.config.JustTiersConfig#colorOf} is what
      * the user actually chose, and reaching past it is how a screen ends up ignoring
      * their palette.

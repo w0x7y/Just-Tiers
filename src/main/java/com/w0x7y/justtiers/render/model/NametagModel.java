@@ -9,7 +9,7 @@ import java.util.Map;
 
 /**
  * Lays out the tier badge that goes with a player's name, as
- * {@code [<icon>HT2 <icon>LT3] }. Tier text is always coloured by its source site;
+ * {@code [<icon>HT2 <icon>LT3] }. Tier text is always colored by its source site;
  * retired tiers are distinguished by their {@code R} prefix alone.
  *
  * <p>The brackets, the icons and the side the badge sits on are all
@@ -19,7 +19,7 @@ import java.util.Map;
 public final class NametagModel {
 
     public static final int BRACKET_COLOR = 0x555555;
-    /** Bitmap glyphs are multiplied by the text colour, so icons must be white. */
+    /** Bitmap glyphs are multiplied by the text color, so icons must be white. */
     public static final int ICON_COLOR = 0xFFFFFF;
 
     /** The badge in its default shape: bracketed, with icons, in front of the name. */
@@ -64,7 +64,7 @@ public final class NametagModel {
         return entries(tiers, icons, NametagStyle.DEFAULT.colors());
     }
 
-    /** As {@link #entries(List, boolean)}, in whatever colours the caller was given. */
+    /** As {@link #entries(List, boolean)}, in whatever colors the caller was given. */
     public static List<Segment> entries(List<ResolvedTier> tiers, boolean icons,
                                         Map<Source, Integer> colors) {
         if (tiers == null || tiers.isEmpty()) {
@@ -89,7 +89,7 @@ public final class NametagModel {
         return List.copyOf(segments);
     }
 
-    /** Concatenated text, ignoring colour. Used by tests and debug logging. */
+    /** Concatenated text, ignoring color. Used by tests and debug logging. */
     public static String plainText(List<Segment> segments) {
         StringBuilder builder = new StringBuilder();
         for (Segment segment : segments) {

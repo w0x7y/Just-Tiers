@@ -24,7 +24,7 @@ import java.util.function.Supplier;
  * A read-only option row that draws the nametag the current pending settings would
  * produce, under the player's own name. The tiers come from {@link PreviewSample} and
  * are made up — always tier 1 — so this is a picture of the settings, never a
- * leaderboard lookup; the shape and colours still come from the same {@code NametagModel}
+ * leaderboard lookup; the shape and colors still come from the same {@code NametagModel}
  * the world nametag uses.
  *
  * <p>The widget re-reads its {@link PreviewState} supplier every frame, so it follows
@@ -78,7 +78,7 @@ public final class NametagPreviewController implements Controller<Component> {
 
     /**
      * The tag as a component. {@code widget} is passed only so a disabled preview can
-     * borrow YACL's colour-multiply; pass null for an undimmed tag.
+     * borrow YACL's color-multiply; pass null for an undimmed tag.
      */
     private MutableComponent tag(PreviewState current, PreviewWidget widget, long timeMillis) {
         List<Segment> segments = PreviewSample.segments(current.displayMode(),
@@ -136,7 +136,7 @@ public final class NametagPreviewController implements Controller<Component> {
             int tagY = dim.y() + CONTENT_INSET;
 
             // Drawn at 2x so the 8x8 gamemode glyphs are legible; the per-segment
-            // colours survive the scale because they live in the component's Style.
+            // colors survive the scale because they live in the component's Style.
             graphics.pose().pushMatrix();
             graphics.pose().translate(contentX, tagY);
             graphics.pose().scale(TAG_SCALE, TAG_SCALE);

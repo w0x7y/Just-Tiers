@@ -176,7 +176,7 @@ public final class GamemodeGridScreen extends Screen {
         boolean highlighted = index == hoveredIndex || index == focusedIndex;
         graphics.fill(x, y, x + TILE, y + TILE, highlighted ? TILE_HOVERED : TILE_BACKGROUND);
         if (gamemode.slug().equals(selectedSlug)) {
-            // The only colour on this screen besides the title: which site you are in.
+            // The only color on this screen besides the title: which site you are in.
             graphics.outline(x, y, TILE, TILE, Colors.opaque(SiteColors.of(source)));
         }
 

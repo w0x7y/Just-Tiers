@@ -45,7 +45,7 @@ class HexColorTest {
     }
 
     @Test
-    void everyFormattedColourParsesBack() {
+    void everyFormattedColorParsesBack() {
         for (int rgb : new int[] {0x000000, 0xFFFFFF, 0xE69F00, 0x56B4E9, 0xAA55FF}) {
             assertEquals(OptionalInt.of(rgb), HexColor.parse(HexColor.format(rgb)));
         }
