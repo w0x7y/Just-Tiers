@@ -78,7 +78,8 @@ public final class NametagModel {
             }
             ResolvedTier resolved = tiers.get(i);
             if (icons) {
-                segments.add(new Segment(String.valueOf(resolved.gamemode().icon()), ICON_COLOR));
+                segments.add(new Segment(String.valueOf(resolved.gamemode().icon()),
+                        ICON_COLOR, true));
             }
             Source source = resolved.gamemode().source();
             segments.add(new Segment(resolved.tier().label(),

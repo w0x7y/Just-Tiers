@@ -1,5 +1,6 @@
 package com.w0x7y.justtiers.gui;
 
+import com.w0x7y.justtiers.render.Icons;
 import com.w0x7y.justtiers.render.SiteColors;
 import com.w0x7y.justtiers.gui.layout.GridLayout;
 import com.w0x7y.justtiers.gui.layout.ScanLayout;
@@ -113,7 +114,7 @@ public final class ScanScreen extends Screen {
      * mid-read, on top of the re-sorting it already does.
      */
     private void measure() {
-        iconWidth = font.width(String.valueOf(Gamemodes.of(Source.MCTIERS).get(0).icon()));
+        iconWidth = font.width(Icons.of(Gamemodes.of(Source.MCTIERS).get(0).icon()));
         cellWidth = iconWidth + CELL_TEXT_GAP + font.width(WIDEST_LABEL)
                 + 2 * CELL_SIDE_PADDING;
         cellHeight = font.lineHeight + 4;
@@ -290,7 +291,7 @@ public final class ScanScreen extends Screen {
 
         Optional<Tier> tier = cell.tier();
         String label = tier.map(Tier::label).orElse(NOT_TESTED);
-        String icon = String.valueOf(cell.gamemode().icon());
+        Component icon = Icons.of(cell.gamemode().icon());
         int contentWidth = iconWidth + CELL_TEXT_GAP + font.width(label);
         int textX = x + (cellWidth - contentWidth) / 2;
         int textY = y + (cellHeight - font.lineHeight) / 2 + 1;

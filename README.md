@@ -587,4 +587,22 @@ Issues and pull requests are welcome.
 Run `./gradlew test` before opening a pull request. The parsing, resolver, cache and config logic is
 deliberately free of Minecraft types so it can all be unit-tested without launching the game.
 
-When adding a gamemode, three things must stay in sync: the registry in `Gamemodes.java`, the icon codepoint list in `tools/gen_font_provider.py`, and the icon texture itself. The plan document explains the layout in detail.
+When adding a gamemode, three things must stay in sync: the registry in `Gamemodes.java`, the icon codepoint list in `tools/gen_font_provider.py`, and the icon texture itself. Run `python3 tools/gen_font_provider.py` after changing either of the first two; it rewrites `assets/justtiers/font/icons.json` from the codepoint list. The plan document explains the layout in detail.
+
+### The icon font
+
+The gamemode glyphs live in Just-Tiers' own font, `justtiers:icons`, at private-use
+codepoints `U+E101..`, `U+E201..` and `U+E301..`. They are deliberately **not** added to
+`minecraft:default`: a mod that ships `assets/minecraft/font/default.json` is overriding a
+vanilla file, and pack order alone decides whether it or the next mod's copy survives.
+
+The trade is that a private font inherits none of the vanilla fallbacks, so anything drawn
+in it that is not one of those glyphs comes out as a missing-glyph box. Everything that
+draws an icon therefore goes through `render/Icons.java`, which is the only place that
+names the font, and only ever wraps the single glyph character — never a label beside it.
+Two consequences worth remembering when editing this code:
+
+- A component appended to an icon component **inherits** the icon font. Build a glyph and
+  a label as two children of `Component.empty()`, never the label appended to the glyph.
+- `Segment` carries an `icon` flag. Recolour with `Segment.withColor`, which keeps it;
+  rebuilding through the two-argument constructor silently turns an icon back into text.

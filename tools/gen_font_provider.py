@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate assets/minecraft/font/default.json binding gamemode icons to codepoints.
+"""Generate assets/justtiers/font/icons.json binding gamemode icons to codepoints.
 
 Codepoints must match Gamemodes.java exactly:
   MCTiers  U+E101..U+E108   SubTiers U+E201..U+E20C   NovaTiers U+E301..U+E30C
@@ -16,7 +16,10 @@ SITES = {
                            "uhc", "vanilla"]),
 }
 
-OUT = "src/main/resources/assets/minecraft/font/default.json"
+# Our own font, not an override of the vanilla one. A mod that writes
+# assets/minecraft/font/default.json is fighting every resource pack and every other mod
+# that adds a glyph; a private font is ours alone and cannot collide.
+OUT = "src/main/resources/assets/justtiers/font/icons.json"
 
 
 def main():

@@ -1,5 +1,6 @@
 package com.w0x7y.justtiers.gui;
 
+import com.w0x7y.justtiers.render.Icons;
 import com.w0x7y.justtiers.render.SiteColors;
 import com.w0x7y.justtiers.gui.state.PreviewState;
 import com.w0x7y.justtiers.tier.Gamemodes;
@@ -47,7 +48,12 @@ public final class GamemodePickerController implements Controller<String> {
     public Component currentValue() {
         String slug = option.pendingValue();
         return Gamemodes.find(source, slug)
-                .map(gamemode -> Component.literal(gamemode.icon() + " " + gamemode.displayName()))
+                // Two pieces under an empty root, not the name appended to the glyph: a
+                // child inherits its parent's style, so hanging the name off the icon
+                // would draw it in the icon font, as a row of missing-glyph boxes.
+                .map(gamemode -> Component.empty()
+                        .append(Icons.of(gamemode.icon()))
+                        .append(Component.literal(" " + gamemode.displayName())))
                 .orElseGet(() -> Component.literal(String.valueOf(slug)));
     }
 
