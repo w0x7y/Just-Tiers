@@ -281,4 +281,54 @@ class NametagModelTest {
         assertEquals(NametagModel.BRACKET_COLOR, segments.get(0).color());
         assertEquals(NametagModel.BRACKET_COLOR, segments.get(segments.size() - 1).color());
     }
+
+    // --- icon segments carry their own font ---
+
+    @Test
+    void aSegmentIsNotAnIconUnlessItSaysSo() {
+        assertFalse(new Segment("HT2", 0xFFFFFF).icon());
+        assertFalse(new Segment("HT2", 0xFFFFFF, false).icon());
+        assertTrue(new Segment("\uE101", 0xFFFFFF, true).icon());
+    }
+
+    @Test
+    void exactlyTheIconSegmentsAreMarked() {
+        List<Segment> segments = NametagModel.build(PAIR, NametagStyle.DEFAULT);
+
+        for (Segment segment : segments) {
+            assertEquals(segment.text().equals(String.valueOf(mode(Source.MCTIERS, "axe").icon()))
+                            || segment.text().equals(String.valueOf(mode(Source.SUBTIERS, "bow").icon())),
+                    segment.icon(), segment.text());
+        }
+    }
+
+    @Test
+    void withIconsOffNoSegmentIsAnIcon() {
+        List<Segment> segments = NametagModel.build(PAIR,
+                new NametagStyle(BadgePosition.BEFORE, false, true));
+
+        assertTrue(segments.stream().noneMatch(Segment::icon));
+    }
+
+    @Test
+    void bracketsAndTierLabelsAreNeverIcons() {
+        List<Segment> segments = NametagModel.build(PAIR, NametagStyle.DEFAULT);
+
+        assertFalse(segments.get(0).icon(), "opening bracket");
+        assertFalse(segments.get(segments.size() - 1).icon(), "closing bracket");
+        assertTrue(segments.stream()
+                .filter(segment -> segment.text().equals("HT2"))
+                .noneMatch(Segment::icon));
+    }
+
+    @Test
+    void recolouringASegmentKeepsWhetherItIsAnIcon() {
+        Segment icon = new Segment("\uE101", 0xFFFFFF, true);
+        Segment text = new Segment("HT2", 0xFFFF55);
+
+        assertTrue(icon.withColor(0x808080).icon());
+        assertEquals(0x808080, icon.withColor(0x808080).color());
+        assertEquals("\uE101", icon.withColor(0x808080).text());
+        assertFalse(text.withColor(0x808080).icon());
+    }
 }

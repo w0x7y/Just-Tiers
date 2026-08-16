@@ -13,8 +13,13 @@ public final class Segments {
     public static MutableComponent toComponent(List<Segment> segments) {
         MutableComponent result = Component.empty();
         for (Segment segment : segments) {
-            result.append(Component.literal(segment.text())
-                    .withStyle(style -> style.withColor(segment.color())));
+            // An icon is drawn from Just-Tiers' own font; everything else stays on the
+            // default one, which is the only font that can render words.
+            MutableComponent piece = segment.icon()
+                    ? Component.literal(segment.text()).withStyle(
+                            style -> style.withFont(Icons.FONT))
+                    : Component.literal(segment.text());
+            result.append(piece.withStyle(style -> style.withColor(segment.color())));
         }
         return result;
     }

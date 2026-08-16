@@ -86,8 +86,7 @@ public final class NametagPreviewController implements Controller<Component> {
                 current.style());
         if (widget != null && !current.enabled()) {
             segments = segments.stream()
-                    .map(segment -> new Segment(segment.text(),
-                            widget.dim(segment.color())))
+                    .map(segment -> segment.withColor(widget.dim(segment.color())))
                     .toList();
         }
         return Segments.compose(segments, PreviewName.component(),
