@@ -32,6 +32,8 @@ Just-Tiers supports all three leaderboards, and adds an **All** mode that shows 
 - **Look anyone up** — `/justtiers lookup <player>` opens a screen with that player's skin and every gamemode all three sites run, tier by tier, without them being anywhere near you. See [Looking a player up](#looking-a-player-up).
 - **Scan the whole lobby** — `/justtiers scan` scores everyone on the server out of every placement they hold on all three sites and sorts them best first, so you can see who is dangerous before the fight starts. See [Scanning a lobby](#scanning-a-lobby).
 - **Shape the badge** — put it before or after the name, and turn the icons or the brackets off to make it as short as you like. The config screen previews every combination live.
+- **Recolour the sites** — the three leaderboard colours can be swapped for a colourblind-safe or high-contrast palette, or for three colours of your own. See [Colour palettes](#colour-palettes).
+- **Hide your own badge** — leave your own nametag undecorated while everyone else's keeps its tiers.
 - **Retired tiers handled properly** — shown with an `R` prefix in their site's colour, still counted when finding a player's highest tier, and hideable entirely with one setting.
 - **Non-blocking** — all lookups are asynchronous and cached; the mod never stalls your frame rate waiting on a web request.
 - **Shows up as it arrives** — a nametag gains its badge the moment the first site answers, then fills in as the others land, rather than waiting on the slowest one.
@@ -83,6 +85,8 @@ Example nametag in `all` mode, where a player is HT2 on MCTiers, LT3 on SubTiers
 Each icon shows the gamemode that earned the tier, so you know a tier came from Axe rather than Vanilla.
 
 ### Colours
+
+These are the **default** palette. All three can be changed — see [Colour palettes](#colour-palettes).
 
 | Source | Colour | Hex |
 |---|---|---|
@@ -147,6 +151,8 @@ All commands are client-side and start with `/justtiers`.
 | `/justtiers badge <before\|after>` | Put the badge in front of the player's name or behind it |
 | `/justtiers icons` | Show or hide the gamemode icons |
 | `/justtiers brackets` | Show or hide the `[ ]` around the badge |
+| `/justtiers ownbadge` | Show or hide the badge on your own nametag |
+| `/justtiers palette <palette>` | Set the colour palette: `default`, `colorblind`, `high_contrast`, `custom` |
 | `/justtiers refresh` | Re-download tier data and clear the cache |
 | `/justtiers gui` | Open the configuration screen |
 
@@ -332,6 +338,52 @@ in a pending state that **Cancel** discards and **Undo** reverts. **Save** write
 
 ---
 
+## Colour palettes
+
+Colour is how Just-Tiers tells you which leaderboard a tier came from, which makes it the
+one thing in the mod that has to be legible to everybody. The default yellow/cyan/purple
+is not, for everybody, so it can be changed.
+
+| Palette | `id` | MCTiers | SubTiers | NovaTiers |
+|---|---|---|---|---|
+| Default | `default` | `#FFFF55` yellow | `#55FFFF` cyan | `#AA55FF` purple |
+| Colourblind-safe | `colorblind` | `#E69F00` orange | `#56B4E9` sky blue | `#FFFFFF` white |
+| High contrast | `high_contrast` | `#FFFFFF` white | `#FFAA00` amber | `#00FFFF` cyan |
+| Custom | `custom` | whatever you pick | | |
+
+**One colourblind preset, not one per condition.** Its three colours are derived from the
+Okabe-Ito palette and separate by *luminance* as well as by hue, so the same three work
+for protanopia, deuteranopia and tritanopia alike. A second preset differing only slightly
+would be a worse answer than one that works for everybody.
+
+**A palette applies everywhere at once** — nametags, `/justtiers lookup`,
+`/justtiers scan`, the gamemode grid and the config screen's own previews. Colour carries
+exactly one meaning in this mod, and a palette that only reached some screens would stop
+that being true.
+
+**Custom colours are set on the config screen**, under Appearance: pick Custom from the
+palette row and the three colour pickers below it come alive. They stay greyed under any
+other palette rather than disappearing, so the screen never changes shape. There is no
+command for them — a colour is chosen by looking at it, which chat cannot do.
+
+**Presets do not overwrite your custom colours.** Switching to Custom, then to Default,
+then back to Custom returns the colours you picked.
+
+---
+
+## Hiding your own badge
+
+`/justtiers ownbadge`, or **Hide my own badge** on the config screen, leaves your own
+nametag undecorated while everyone else's keeps its badge. It is worth having in third
+person, where your own tag is in shot constantly and tells you nothing you did not already
+know.
+
+It applies to the nametag only: `/justtiers lookup <yourself>` and `/justtiers scan` still
+list you and your tiers. The setting is about not cluttering your own tag, not about
+hiding yourself from yourself.
+
+---
+
 ## Configuration
 
 Settings are stored in `config/justtiers.json` and are written automatically whenever you change them with a command, or when you press Save on the configuration screen.
@@ -365,12 +417,20 @@ Settings are stored in `config/justtiers.json` and are written automatically whe
 | `badgePosition` | `before` or `after` — which side of the player's name the badge sits on |
 | `showIcons` | Whether each tier carries its gamemode glyph |
 | `showBrackets` | Whether the badge is wrapped in `[ ]` |
+| `hideOwnBadge` | Whether your own nametag is left undecorated |
+| `palette` | `default`, `colorblind`, `high_contrast` or `custom` |
+| `customColors` | Per-site `#RRGGBB`, used only while `palette` is `custom` |
 
 Settings are also written by the [configuration screen](#configuration-screen), which produces the
 same file. `novaRefreshMinutes` and `showDownloadProgress` have no commands, but both appear on the
 screen's **Data** category — a slider and a tick box respectively. Changing the interval takes effect
 as soon as you press Save: the refresh timer is rescheduled rather than waiting for the next launch.
 Out-of-range or unrecognised values are corrected on load rather than rejected.
+
+`palette` is written and read exactly as `displayMode` is: lower-case on disk,
+case-insensitive on load, falling back to `default` with a logged warning when
+unrecognised. A malformed entry in `customColors` falls back to **that site's** default
+colour and leaves the other two alone, so one typo costs one colour rather than three.
 
 `displayMode` and `badgePosition` are written in lower-case and read case-insensitively, so config
 files written by older builds with upper-case values (e.g. `"ALL"`) still load correctly. An
