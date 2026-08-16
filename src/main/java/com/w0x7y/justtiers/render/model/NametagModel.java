@@ -73,7 +73,7 @@ public final class NametagModel {
                 segments.add(new Segment(String.valueOf(resolved.gamemode().icon()), ICON_COLOR));
             }
             segments.add(new Segment(resolved.tier().label(),
-                    resolved.gamemode().source().color()));
+                    resolved.gamemode().source().defaultColor()));
         }
         return List.copyOf(segments);
     }

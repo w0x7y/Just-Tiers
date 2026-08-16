@@ -10,7 +10,7 @@ final class Colors {
     static final int SECONDARY = 0xFFA0A0A0;
     static final int DISABLED = 0xFF707070;
 
-    /** {@code Source.color()} is a bare RGB triple; draw calls want opaque ARGB. */
+    /** {@code Source.defaultColor()} is a bare RGB triple; draw calls want opaque ARGB. */
     static int opaque(int rgb) {
         return 0xFF000000 | rgb;
     }

@@ -63,7 +63,7 @@ class NametagModelTest {
                 List.of(resolved(Source.MCTIERS, "vanilla", new Tier(1, true, true))));
 
         Segment tier = segments.stream().filter(s -> s.text().equals("RHT1")).findFirst().orElseThrow();
-        assertEquals(Source.MCTIERS.color(), tier.color());
+        assertEquals(Source.MCTIERS.defaultColor(), tier.color());
         assertEquals("[\uE108RHT1] ", NametagModel.plainText(segments));
     }
 
@@ -107,8 +107,8 @@ class NametagModelTest {
         Segment retired = segments.stream().filter(s -> s.text().equals("RHT1")).findFirst().orElseThrow();
         Segment active = segments.stream().filter(s -> s.text().equals("HT4")).findFirst().orElseThrow();
 
-        assertEquals(Source.MCTIERS.color(), retired.color());
-        assertEquals(Source.NOVATIERS.color(), active.color());
+        assertEquals(Source.MCTIERS.defaultColor(), retired.color());
+        assertEquals(Source.NOVATIERS.defaultColor(), active.color());
     }
 
     // --- style ---
@@ -149,8 +149,8 @@ class NametagModelTest {
         // Nothing else distinguishes the two sites once the glyphs are gone, so the
         // per-site colours have to survive.
         List<Segment> segments = NametagModel.build(PAIR, style);
-        assertEquals(Source.MCTIERS.color(), colourOfText(segments, "HT2"));
-        assertEquals(Source.SUBTIERS.color(), colourOfText(segments, "LT3"));
+        assertEquals(Source.MCTIERS.defaultColor(), colourOfText(segments, "HT2"));
+        assertEquals(Source.SUBTIERS.defaultColor(), colourOfText(segments, "LT3"));
     }
 
     private static int colourOfText(List<Segment> segments, String text) {

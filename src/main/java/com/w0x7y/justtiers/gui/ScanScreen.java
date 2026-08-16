@@ -190,7 +190,7 @@ public final class ScanScreen extends Screen {
             int left = ScanLayout.columnLeft(columnsLeft, columnWidth, COLUMN_GAP, i);
             String name = source.displayName();
             graphics.text(font, name, left + (columnWidth - font.width(name)) / 2, labelY,
-                    Colors.opaque(source.color()));
+                    Colors.opaque(source.defaultColor()));
         }
     }
 
@@ -299,7 +299,7 @@ public final class ScanScreen extends Screen {
         graphics.text(font, icon, textX + (iconWidth - font.width(icon)) / 2, textY,
                 0xFFFFFFFF, false);
         graphics.text(font, label, textX + iconWidth + CELL_TEXT_GAP, textY,
-                tier.isPresent() ? Colors.opaque(source.color()) : Colors.DISABLED, false);
+                tier.isPresent() ? Colors.opaque(source.defaultColor()) : Colors.DISABLED, false);
     }
 
     private void drawScrollbar(GuiGraphicsExtractor graphics) {
