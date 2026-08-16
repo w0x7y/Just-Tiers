@@ -84,8 +84,8 @@ class GamemodesTest {
 
     @Test
     void sourcesCarryTheirBrandColours() {
-        assertEquals(0xFFFF55, Source.MCTIERS.color());
-        assertEquals(0x55FFFF, Source.SUBTIERS.color());
-        assertEquals(0xAA55FF, Source.NOVATIERS.color());
+        assertEquals(0xFFFF55, Source.MCTIERS.defaultColor());
+        assertEquals(0x55FFFF, Source.SUBTIERS.defaultColor());
+        assertEquals(0xAA55FF, Source.NOVATIERS.defaultColor());
     }
 }

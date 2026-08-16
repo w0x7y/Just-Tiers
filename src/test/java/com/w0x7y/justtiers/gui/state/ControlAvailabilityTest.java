@@ -1,5 +1,6 @@
 package com.w0x7y.justtiers.gui.state;
 
+import com.w0x7y.justtiers.config.Palette;
 import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Source;
 import org.junit.jupiter.api.Test;
@@ -70,5 +71,35 @@ class ControlAvailabilityTest {
                 }
             }
         }
+    }
+
+    @Test
+    void theColourPickersAreLiveOnlyForTheCustomPalette() {
+        assertTrue(ControlAvailability.of(true, DisplayMode.ALL, Palette.CUSTOM).customColors());
+        assertFalse(ControlAvailability.of(true, DisplayMode.ALL, Palette.DEFAULT).customColors());
+        assertFalse(ControlAvailability.of(true, DisplayMode.ALL, Palette.COLORBLIND).customColors());
+    }
+
+    @Test
+    void theColourPickersAreDeadWhileTheModIsOff() {
+        assertFalse(ControlAvailability.of(false, DisplayMode.ALL, Palette.CUSTOM).customColors());
+    }
+
+    @Test
+    void thePaletteDoesNotDisturbTheOtherControls() {
+        ControlAvailability withCustom =
+                ControlAvailability.of(true, DisplayMode.ALL, Palette.CUSTOM);
+        ControlAvailability withDefault =
+                ControlAvailability.of(true, DisplayMode.ALL, Palette.DEFAULT);
+
+        assertEquals(withDefault.displayMode(), withCustom.displayMode());
+        assertEquals(withDefault.showRetired(), withCustom.showRetired());
+        assertEquals(withDefault.appearance(), withCustom.appearance());
+        assertEquals(withDefault.reasons(), withCustom.reasons());
+    }
+
+    @Test
+    void theTwoArgumentFormStillMeansTheDefaultPalette() {
+        assertFalse(ControlAvailability.of(true, DisplayMode.ALL).customColors());
     }
 }

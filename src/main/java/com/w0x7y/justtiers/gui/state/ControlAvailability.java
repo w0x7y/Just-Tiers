@@ -1,5 +1,6 @@
 package com.w0x7y.justtiers.gui.state;
 
+import com.w0x7y.justtiers.config.Palette;
 import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Source;
 
@@ -15,6 +16,7 @@ import java.util.Map;
 public record ControlAvailability(boolean displayMode,
                                   boolean showRetired,
                                   boolean appearance,
+                                  boolean customColors,
                                   Map<Source, Reason> reasons) {
 
     public enum Reason { AVAILABLE, MOD_DISABLED, MODE_IS_ALL, OTHER_SITE }
@@ -23,14 +25,21 @@ public record ControlAvailability(boolean displayMode,
         reasons = Map.copyOf(reasons);
     }
 
+    /** As {@link #of(boolean, DisplayMode, Palette)}, with the default palette. */
     public static ControlAvailability of(boolean enabled, DisplayMode mode) {
+        return of(enabled, mode, Palette.DEFAULT);
+    }
+
+    public static ControlAvailability of(boolean enabled, DisplayMode mode, Palette palette) {
         Map<Source, Reason> reasons = new EnumMap<>(Source.class);
         for (Source source : Source.ALL) {
             reasons.put(source, reasonFor(enabled, mode, source));
         }
         // The badge's shape - its side, its icons, its brackets - means the same thing in
         // every display mode, so the master switch is the only thing that can grey it.
-        return new ControlAvailability(enabled, enabled, enabled, reasons);
+        // The colour pickers additionally need the palette to be the one they feed.
+        return new ControlAvailability(enabled, enabled, enabled,
+                enabled && palette != null && palette.isCustom(), reasons);
     }
 
     private static Reason reasonFor(boolean enabled, DisplayMode mode, Source source) {
