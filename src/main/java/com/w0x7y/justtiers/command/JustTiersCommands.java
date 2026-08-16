@@ -5,6 +5,7 @@ import com.w0x7y.justtiers.api.OnlinePlayers;
 import com.w0x7y.justtiers.config.JustTiersConfig;
 import com.w0x7y.justtiers.gui.JustTiersKeybinds;
 import com.w0x7y.justtiers.gui.PlayerLookupScreen;
+import com.w0x7y.justtiers.gui.ScanScreen;
 import com.w0x7y.justtiers.render.model.BadgePosition;
 import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Gamemode;
@@ -53,6 +54,7 @@ public final class JustTiersCommands {
                                 ChatFormatting.YELLOW)))
                         .then(literal("refresh").executes(JustTiersCommands::refresh))
                         .then(literal("gui").executes(JustTiersCommands::openGui))
+                        .then(literal("scan").executes(JustTiersCommands::scan))
                         .then(literal("mode")
                                 .then(argument("mode", StringArgumentType.word())
                                         .suggests(suggestIds(DisplayMode.values(), DisplayMode::id))
@@ -250,6 +252,15 @@ public final class JustTiersCommands {
         // Opened on the next tick for the same reason /justtiers gui is: the chat screen
         // is still closing right now, and its setScreen(null) would overwrite this.
         JustTiersKeybinds.requestOpen(() -> new PlayerLookupScreen(name));
+        return 1;
+    }
+
+    /**
+     * Opens the scan screen. Deferred to the next tick for the same reason a lookup is:
+     * the chat screen is still closing, and its setScreen(null) would overwrite this.
+     */
+    private static int scan(CommandContext<FabricClientCommandSource> context) {
+        JustTiersKeybinds.requestOpen(ScanScreen::new);
         return 1;
     }
 
