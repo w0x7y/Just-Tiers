@@ -376,4 +376,40 @@ class JustTiersConfigTest {
         assertTrue(written.contains("\"high_contrast\""));
         assertFalse(written.contains("\"HIGH_CONTRAST\""));
     }
+
+    @Test
+    void tierCacheMinutesDefaultsToAnHourAndRoundTrips(@TempDir Path dir) {
+        assertEquals(60, new JustTiersConfig().getTierCacheMinutes());
+
+        Path file = dir.resolve("ttl.json");
+        JustTiersConfig config = new JustTiersConfig();
+        config.setTierCacheMinutes(120);
+        config.save(file);
+
+        assertEquals(120, JustTiersConfig.load(file).getTierCacheMinutes());
+    }
+
+    @Test
+    void loadClampsAnOutOfRangeTierCacheMinutes(@TempDir Path dir) throws Exception {
+        Path low = dir.resolve("low.json");
+        Files.writeString(low, """
+                {"tierCacheMinutes":0,"selectedGamemodes":{}}
+                """);
+        assertEquals(5, JustTiersConfig.load(low).getTierCacheMinutes());
+
+        Path high = dir.resolve("high.json");
+        Files.writeString(high, """
+                {"tierCacheMinutes":999999,"selectedGamemodes":{}}
+                """);
+        assertEquals(1440, JustTiersConfig.load(high).getTierCacheMinutes());
+    }
+
+    @Test
+    void aFileWithoutTierCacheMinutesGetsTheDefault(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("older.json");
+        Files.writeString(file, """
+                {"enabled":true,"displayMode":"all","selectedGamemodes":{}}
+                """);
+        assertEquals(60, JustTiersConfig.load(file).getTierCacheMinutes());
+    }
 }

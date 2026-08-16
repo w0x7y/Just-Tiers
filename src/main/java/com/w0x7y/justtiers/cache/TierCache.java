@@ -40,7 +40,7 @@ public final class TierCache {
     private final Map<Source, Map<UUID, Attempt>> attempts = new EnumMap<>(Source.class);
     private final Map<Source, SiteGate> gates = new EnumMap<>(Source.class);
 
-    private final CachePolicy policy;
+    private volatile CachePolicy policy;
     private final Backoff backoff;
     private final LongSupplier clock;
     private final DoubleSupplier random;
@@ -97,6 +97,15 @@ public final class TierCache {
             this.gates.put(source, new SiteGate(policy.siteFailureThreshold(),
                     policy.basePause(), policy.maxPause(), clock));
         }
+    }
+
+    /**
+     * Changes how long an answer is trusted, without discarding anything already cached.
+     * The setting is a slider on the config screen, and a user who nudges it should not
+     * pay for it with every badge on screen disappearing while they are re-fetched.
+     */
+    public void setTtl(Duration ttl) {
+        this.policy = policy.withTtl(ttl);
     }
 
     /**
@@ -197,8 +206,9 @@ public final class TierCache {
     }
 
     private boolean isStale(Entry entry) {
-        return policy.expires() && entry.settled
-                && clock.getAsLong() - entry.settledAtNanos >= policy.ttl().toNanos();
+        CachePolicy current = policy;
+        return current.expires() && entry.settled
+                && clock.getAsLong() - entry.settledAtNanos >= current.ttl().toNanos();
     }
 
     /**

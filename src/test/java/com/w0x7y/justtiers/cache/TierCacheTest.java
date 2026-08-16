@@ -526,4 +526,45 @@ class TierCacheTest {
         it.cache.peek(Source.MCTIERS, UUID.randomUUID());
         assertEquals(9, it.fake.calls.get());
     }
+
+    @Test
+    void changingTheTtlKeepsWhatIsAlreadyCached() {
+        // The setting is a slider; nudging it must not blank every badge on screen.
+        Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
+
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.fake.complete();
+        assertTrue(it.cache.peek(Source.MCTIERS, PLAYER).isPresent());
+
+        it.cache.setTtl(Duration.ofMinutes(120));
+        assertTrue(it.cache.peek(Source.MCTIERS, PLAYER).isPresent(),
+                "the answer was still fresh and must have survived");
+        assertEquals(1, it.fake.calls.get());
+    }
+
+    @Test
+    void aLongerTtlKeepsAnAnswerThatWouldHaveGoneStale() {
+        Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
+
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.fake.complete();
+        it.cache.setTtl(Duration.ofMinutes(120));
+        it.advance(Duration.ofMinutes(90));
+
+        assertTrue(it.cache.peek(Source.MCTIERS, PLAYER).isPresent());
+        assertEquals(1, it.fake.calls.get());
+    }
+
+    @Test
+    void aShorterTtlCanMakeACachedAnswerStaleAtOnce() {
+        Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
+
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.fake.complete();
+        it.advance(Duration.ofMinutes(30));
+        it.cache.setTtl(Duration.ofMinutes(10));
+
+        assertEquals(Optional.empty(), it.cache.peek(Source.MCTIERS, PLAYER));
+        assertEquals(2, it.fake.calls.get());
+    }
 }
