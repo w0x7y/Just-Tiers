@@ -91,6 +91,14 @@
   "justtiers.about.commands": "Most settings are also available via /justtiers",
   "justtiers.about.licence": "MIT licensed. Tier data belongs to the sites it comes from.",
 
+  "justtiers.scan.title": "Lobby scan",
+  "justtiers.scan.progress": "%s / %s",
+  "justtiers.scan.waiting": "Looking up...",
+  "justtiers.scan.unavailable": "site unavailable",
+  "justtiers.scan.empty.noServer": "Join a server to scan the players on it.",
+  "justtiers.scan.empty.noPlayers": "There is nobody here to scan.",
+  "justtiers.command.scan.opening": "Scanning %s players...",
+
   "key.justtiers.open_config": "Open config screen",
   "key.category.justtiers.main": "Just-Tiers"
 }

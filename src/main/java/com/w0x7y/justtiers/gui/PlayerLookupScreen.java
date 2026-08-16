@@ -68,6 +68,7 @@ public final class PlayerLookupScreen extends Screen {
     private static final int[] SKIN_SCALES = {3, 2, 1};
 
     private final LookupSession session;
+    private final Screen parent;
 
     private final List<Row> rows = new ArrayList<>(Source.ALL.size());
     private final List<Link> links = new ArrayList<>(Source.ALL.size());
@@ -99,8 +100,27 @@ public final class PlayerLookupScreen extends Screen {
     }
 
     public PlayerLookupScreen(String name) {
+        this(name, null);
+    }
+
+    /**
+     * Opened from somewhere worth going back to — the scan screen — rather than from a
+     * command. Closing returns there with its state intact instead of closing the game
+     * menu outright.
+     */
+    public PlayerLookupScreen(String name, Screen parent) {
         super(Component.translatable("justtiers.lookup.header", name));
         this.session = LookupSession.start(name);
+        this.parent = parent;
+    }
+
+    @Override
+    public void onClose() {
+        if (parent == null) {
+            super.onClose();
+            return;
+        }
+        minecraft.setScreenAndShow(parent);
     }
 
     @Override
