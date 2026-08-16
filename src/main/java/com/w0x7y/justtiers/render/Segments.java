@@ -7,7 +7,7 @@ import net.minecraft.network.chat.MutableComponent;
 
 import java.util.List;
 
-/** Turns the Minecraft-free {@link Segment} list into a coloured {@link Component}. */
+/** Turns the Minecraft-free {@link Segment} list into a colored {@link Component}. */
 public final class Segments {
 
     public static MutableComponent toComponent(List<Segment> segments) {

@@ -30,11 +30,11 @@ public final class DownloadHud implements HudElement {
     private static final int LINE_GAP = 2;
 
     private static final int BACKDROP = 0x90000000;
-    private static final int TRACK_COLOUR = 0xFF3F3F3F;
-    /** NovaTiers purple: this indicator is about NovaTiers, and colour here means the site. */
-    private static final int FILL_COLOUR = 0xFFAA55FF;
-    private static final int TEXT_COLOUR = 0xFFFFFFFF;
-    private static final int FAILURE_COLOUR = 0xFFFF5555;
+    private static final int TRACK_COLOR = 0xFF3F3F3F;
+    /** NovaTiers purple: this indicator is about NovaTiers, and color here means the site. */
+    private static final int FILL_COLOR = 0xFFAA55FF;
+    private static final int TEXT_COLOR = 0xFFFFFFFF;
+    private static final int FAILURE_COLOR = 0xFFFF5555;
 
     public static void register() {
         HudElementRegistry.addLast(
@@ -85,7 +85,7 @@ public final class DownloadHud implements HudElement {
         graphics.fill(left, top, left + boxWidth, bottom, BACKDROP);
         graphics.text(font,
                 Component.translatable(failed ? "justtiers.download.failed" : "justtiers.download.title"),
-                left + PADDING, top + PADDING, failed ? FAILURE_COLOUR : TEXT_COLOUR);
+                left + PADDING, top + PADDING, failed ? FAILURE_COLOR : TEXT_COLOR);
 
         if (failed) {
             return;
@@ -94,14 +94,14 @@ public final class DownloadHud implements HudElement {
         int trackLeft = left + PADDING;
         int trackTop = top + PADDING + font.lineHeight + LINE_GAP;
         graphics.fill(trackLeft, trackTop, trackLeft + TRACK_WIDTH, trackTop + TRACK_HEIGHT,
-                TRACK_COLOUR);
+                TRACK_COLOR);
 
         String readout;
         if (snapshot.determinate()) {
             double fraction = ProgressBarLayout.fraction(snapshot.bytesRead(), snapshot.total());
             int filled = (int) Math.round(TRACK_WIDTH * fraction);
             graphics.fill(trackLeft, trackTop, trackLeft + filled, trackTop + TRACK_HEIGHT,
-                    FILL_COLOUR);
+                    FILL_COLOR);
             readout = ProgressBarLayout.formatPercent(fraction);
         } else {
             // No content-length from novatiers.com, so the first download of a session can
@@ -114,14 +114,14 @@ public final class DownloadHud implements HudElement {
             int clampedRight = Math.min(trackLeft + TRACK_WIDTH, segmentLeft + segmentWidth);
             if (clampedRight > clampedLeft) {
                 graphics.fill(clampedLeft, trackTop, clampedRight, trackTop + TRACK_HEIGHT,
-                        FILL_COLOUR);
+                        FILL_COLOR);
             }
             readout = ProgressBarLayout.formatBytes(snapshot.bytesRead());
         }
 
         // Right-aligned on the label's line, inside the backdrop.
         graphics.text(font, readout,
-                left + boxWidth - PADDING - font.width(readout), top + PADDING, TEXT_COLOUR);
+                left + boxWidth - PADDING - font.width(readout), top + PADDING, TEXT_COLOR);
     }
 
 }

@@ -58,7 +58,7 @@ public class JustTiersConfig {
     private transient volatile Map<Source, String> resolvedSelection;
 
     /**
-     * Cache for {@link #colors()}, dropped whenever the palette or a custom colour
+     * Cache for {@link #colors()}, dropped whenever the palette or a custom color
      * changes. Transient so it never reaches the config file, and volatile because the
      * render thread reads it.
      */
@@ -121,7 +121,7 @@ public class JustTiersConfig {
 
     /**
      * Whether each tier carries its gamemode glyph. With icons off the sites are told
-     * apart by tier colour alone, which is what the shortest possible badge costs.
+     * apart by tier color alone, which is what the shortest possible badge costs.
      */
     public boolean isShowIcons() {
         return showIcons;
@@ -159,7 +159,7 @@ public class JustTiersConfig {
     }
 
     /**
-     * The stored custom colour for a site, whether or not the custom palette is in use.
+     * The stored custom color for a site, whether or not the custom palette is in use.
      * Selecting a preset does not discard these, so switching to Custom and back is not
      * a way to lose them.
      */
@@ -175,13 +175,13 @@ public class JustTiersConfig {
         this.resolvedColors = null;
     }
 
-    /** What colour this site is drawn in, under the palette in force. */
+    /** What color this site is drawn in, under the palette in force. */
     public int colorOf(Source source) {
         return colors().getOrDefault(source, source.defaultColor());
     }
 
     /**
-     * Every site's colour at once. Resolved on first use and cached: this is read per
+     * Every site's color at once. Resolved on first use and cached: this is read per
      * player per frame, and parsing three hex strings there would be three allocations a
      * frame for an answer that only changes when the config does.
      */

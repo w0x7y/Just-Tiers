@@ -37,7 +37,7 @@
 - **Reuse the render path, do not re-implement it.** The preview must produce its `Component` through `TierResolver.resolve(...)` → `NametagModel.build(...)`, the same two calls `NametagRenderer` makes. A preview that draws its own idea of a nametag is a bug waiting to happen.
 - **Minecraft-free packages stay Minecraft-free.** `tier`, `api`, `cache`, `resolve`, `render.model` already are. This plan adds three more: `preview`, `gui.layout`, `gui.state`. They must not import `net.minecraft.*`. Everything under `gui` itself is Minecraft-facing.
 - **Nothing is hidden, only greyed.** Every option is present in every state. Availability is computed by one pure function (`ControlAvailability`) so the rule lives in one place and is testable.
-- **Colour discipline.** Colour carries exactly one meaning in this UI: *which leaderboard this is*. `Source.color()` — MCTiers `0xFFFF55`, SubTiers `0x55FFFF`, NovaTiers `0xAA55FF` — is used for the display-mode value text, the gamemode picker value text, the grid screen's header and its selected-tile border, and (via the existing model) the tier text inside the preview. Everything else is neutral: white labels, `0xA0A0A0` secondary text, `0x707070` when disabled. Booleans use plain tick boxes, **not** YACL's coloured yes/no controller. No tier-rank colours, no red/green toggles.
+- **Color discipline.** Color carries exactly one meaning in this UI: *which leaderboard this is*. `Source.color()` — MCTiers `0xFFFF55`, SubTiers `0x55FFFF`, NovaTiers `0xAA55FF` — is used for the display-mode value text, the gamemode picker value text, the grid screen's header and its selected-tile border, and (via the existing model) the tier text inside the preview. Everything else is neutral: white labels, `0xA0A0A0` secondary text, `0x707070` when disabled. Booleans use plain tick boxes, **not** YACL's colored yes/no controller. No tier-rank colors, no red/green toggles.
 - **Pending values, not saved values.** YACL edits a pending copy and applies on Save. The preview and the grid screen both read and write *pending* values (`Option#pendingValue`, `Option#requestSet`), never `JustTiersConfig` directly, or Cancel will lie.
 - **The grid returns on click.** One click on a tile sets the pending gamemode and immediately restores the YACL screen. No confirm button.
 - **No behaviour change to the nametag itself.** This plan touches rendering only by extracting a shared `Segment`→`Component` helper. `NametagModelTest` and `TierResolverTest` must stay green untouched.
@@ -190,11 +190,11 @@ public boolean charTyped(CharacterEvent event);
 │  │             │  ╰──────────────────────────────────────────╯    │   │
 │  │             │                                                  │   │
 │  │             │  Show tiers in nametags               [x]        │   │
-│  │             │  Display mode                     < MCTiers >    │   │  ← site-coloured
+│  │             │  Display mode                     < MCTiers >    │   │  ← site-colored
 │  │             │  Show retired tiers                   [x]        │   │
 │  │             │                                                  │   │
 │  │             │  ── Gamemodes ───────────────────────────────    │   │
-│  │             │  MCTiers gamemode                 ⛏ Vanilla >    │   │  ← site-coloured
+│  │             │  MCTiers gamemode                 ⛏ Vanilla >    │   │  ← site-colored
 │  │             │  SubTiers gamemode                🏹 Elytra >    │   │  ← greyed
 │  │             │  NovaTiers gamemode              ⚔ Vanilla >     │   │  ← greyed
 │  └─────────────┴──────────────────────────────────────────────────┘   │
@@ -206,7 +206,7 @@ Clicking any gamemode row opens the grid screen:
 
 ```
 ┌───────────────────────────────────────────────────────────────────────┐
-│                        MCTiers gamemode                               │  ← site-coloured title
+│                        MCTiers gamemode                               │  ← site-colored title
 │               [⛏HT2 🏹LT3 ⚔RHT1] Steve                                │  ← live preview, follows hover
 │                                                                       │
 │      ╭────────╮  ╭────────╮  ╭────────╮  ╭────────╮                   │
@@ -215,7 +215,7 @@ Clicking any gamemode row opens the grid screen:
 │      ╰────────╯  ╰────────╯  ╰────────╯  ╰────────╯                   │
 │      ╭────────╮  ╭────────╮  ╭────────╮  ╭━━━━━━━━╮                   │
 │      │   🏠   │  │   ⚔    │  │  ❤    │  │   🟩   │                   │  ← selected tile:
-│      │  SMP   │  │ Sword  │  │  UHC   │  │Vanilla │                   │    site-coloured border
+│      │  SMP   │  │ Sword  │  │  UHC   │  │Vanilla │                   │    site-colored border
 │      ╰────────╯  ╰────────╯  ╰────────╯  ╰━━━━━━━━╯                   │
 │                                                                       │
 │                          [ Back ]                                     │
@@ -228,7 +228,7 @@ Clicking any gamemode row opens the grid screen:
 |---|---|
 | **Display** | Preview row; `enabled`; `displayMode`; `showRetired`; group **Gamemodes** with the three pickers |
 | **Data** | `novaRefreshMinutes` slider; "Refresh tier data now" button; a read-only label with the indexed NovaTiers player count |
-| **About** | Static labels: version, the three leaderboard names in their own colours, a line pointing at `/justtiers`, licence note |
+| **About** | Static labels: version, the three leaderboard names in their own colors, a line pointing at `/justtiers`, licence note |
 
 ### Availability rules (the greying)
 
@@ -928,7 +928,7 @@ import net.minecraft.network.chat.MutableComponent;
 
 import java.util.List;
 
-/** Turns the Minecraft-free {@link Segment} list into a coloured {@link Component}. */
+/** Turns the Minecraft-free {@link Segment} list into a colored {@link Component}. */
 public final class Segments {
 
     public static MutableComponent toComponent(List<Segment> segments) {
@@ -974,11 +974,11 @@ Expected: PASS, all existing tests green. No behaviour change is intended or acc
 - The option's value is a `Component` (like `LabelOption`), but the widget re-reads the supplier every frame, so it tracks pending edits with no listener wiring.
 - The widget extends YACL's `AbstractWidget` directly (the same base `LabelControllerElement` uses) and self-sizes to 56 px via `setDimension(getDimension().withHeight(56))` in its constructor.
 - Drawing, per frame:
-  1. `fill` a plate inset 4 px from the row: `0x40000000` background, then `outline(...)` in `0x30FFFFFF`. Nothing site-coloured here — the tag inside supplies all the colour.
-  2. `pose().pushMatrix(); pose().translate(x, y); pose().scale(2f, 2f);` then `text(font, tagComponent, 0, 0, 0xFFFFFFFF, true)` and `popMatrix()`. Drawing at 2× is what makes the 8×8 gamemode glyphs readable; the tag text keeps its per-segment colours because they live in the `Style`.
+  1. `fill` a plate inset 4 px from the row: `0x40000000` background, then `outline(...)` in `0x30FFFFFF`. Nothing site-colored here — the tag inside supplies all the color.
+  2. `pose().pushMatrix(); pose().translate(x, y); pose().scale(2f, 2f);` then `text(font, tagComponent, 0, 0, 0xFFFFFFFF, true)` and `popMatrix()`. Drawing at 2× is what makes the 8×8 gamemode glyphs readable; the tag text keeps its per-segment colors because they live in the `Style`.
   3. The player name is appended to the tag as `Component.translatable("justtiers.preview.player")` so the preview reads `[⛏HT2 …] Steve`, matching what the mixin produces in world.
   4. The caption line beneath, in `0xA0A0A0`, from `PreviewSample.caption(...)`: `justtiers.preview.sample`, `justtiers.preview.fallback`, `justtiers.preview.off` or `justtiers.preview.empty`.
-- When `enabled` is false, draw the tag at 40 % alpha (multiply the segment colours through `AbstractWidget#multiplyColor`) and swap in the "turned off" caption. The preview never goes blank — a blank preview looks like a bug.
+- When `enabled` is false, draw the tag at 40 % alpha (multiply the segment colors through `AbstractWidget#multiplyColor`) and swap in the "turned off" caption. The preview never goes blank — a blank preview looks like a bug.
 - The widget is inert: `mouseClicked` returns false, `canReset()` returns false, narration reports the caption text.
 
 - [ ] **Step 1: Define `PreviewState`**
@@ -1039,7 +1039,7 @@ Expected: the plate shows `[⛏HT2 🚂RHT2 🔱RHT1] Steve` at 2× with a capti
 - `extends Screen`, title `justtiers.grid.title` formatted with the site name and drawn in `Source.color()`.
 - Under the title, the same preview the config screen shows — but recomputed for whichever tile the mouse is over, so hovering **Sword** shows what a Sword selection would look like before committing. Falls back to the current selection when nothing is hovered. This is the reason the grid is a screen rather than a dropdown.
 - Tiles come from `Gamemodes.of(source)` in registry order. Each tile: `fill` a `0x40000000` panel; on hover, `0x60FFFFFF`; the icon glyph drawn centred at 2× through `pose().scale(2f, 2f)`; the display name centred under it via `centeredText`, truncated to the tile width if the font reports it wider.
-- The selected tile gets a 1 px `outline` in `Source.color()` — the only colour on the screen besides the title.
+- The selected tile gets a 1 px `outline` in `Source.color()` — the only color on the screen besides the title.
 - Layout via `GridLayout.of(gamemodes.size(), width - 2 * MARGIN, 72, 72, 8, 6)`, recomputed in `init()` and `repositionElements()`. Origin is `(width - grid.contentWidth()) / 2` horizontally, below the preview vertically.
 - If `grid.contentHeight()` exceeds the space, wrap the grid in `enableScissor`/`disableScissor` and offset by a scroll amount driven by `mouseScrolled`, clamped to `[0, contentHeight - viewportHeight]`. Twelve tiles at four columns is three rows, which fits at every supported GUI scale, so scrolling is a safety net rather than the normal path — but implement it, because a 6-column cap on a narrow window can produce four rows.
 - `mouseClicked(MouseButtonEvent event, boolean doubleClick)`: only `event.button() == 0`; convert `event.x()`/`event.y()` to grid-local coordinates, `grid.indexAt(...)`, and on a hit call `onPick.accept(slug)`, `playDownSound()`-equivalent click feedback, then `minecraft.setScreen(parent)`. One click, straight back.
@@ -1103,7 +1103,7 @@ public final class GamemodeGridScreen extends Screen {
 - [ ] **Step 2: Verify in game**
 
 Run: `./gradlew runClient`
-Expected: clicking a gamemode row opens the grid; the current gamemode is outlined in the site colour; hovering a tile updates the preview at the top; clicking returns immediately with the new value pending; Escape and **Back** return with it unchanged; arrow keys plus Enter do the same as a click.
+Expected: clicking a gamemode row opens the grid; the current gamemode is outlined in the site color; hovering a tile updates the preview at the top; clicking returns immediately with the new value pending; Escape and **Back** return with it unchanged; arrow keys plus Enter do the same as a click.
 
 ---
 
@@ -1224,7 +1224,7 @@ public static Screen create(Screen parent) {
 }
 ```
 
-`formatMode` maps each `DisplayMode` to `Component.translatable("justtiers.mode." + mode.id())` and colours the three single-site entries with their `Source.color()`, leaving `all` white — the display-mode row is where the colour legend is taught.
+`formatMode` maps each `DisplayMode` to `Component.translatable("justtiers.mode." + mode.id())` and colors the three single-site entries with their `Source.color()`, leaving `all` white — the display-mode row is where the color legend is taught.
 
 The greyed pickers' descriptions come from `ControlAvailability.Reason`: `MODE_IS_ALL` → `justtiers.option.gamemode.inactive`, `MOD_DISABLED` → `justtiers.option.gamemode.disabled`, `OTHER_SITE` → the inactive text as well (switching mode is the fix in both cases).
 
@@ -1232,7 +1232,7 @@ The greyed pickers' descriptions come from `ControlAvailability.Reason`: `MODE_I
 
 `dataCategory`: the `novaRefreshMinutes` slider (`IntegerSliderControllerBuilder`, range 5–1440, step 5, formatted as `"%d min"`), the refresh `ButtonOption` (`JustTiersClient.cache().invalidateAll()` + `novaSource().refresh()`), and a `LabelOption` reporting `justtiers.data.indexed` with `JustTiersClient.novaSource().indexedPlayerCount()`.
 
-`aboutCategory`: `LabelOption`s for the version, the three site names each in their own colour, and the `/justtiers` pointer.
+`aboutCategory`: `LabelOption`s for the version, the three site names each in their own color, and the `/justtiers` pointer.
 
 - [ ] **Step 4: Verify in game**
 
@@ -1378,11 +1378,11 @@ Run before calling the GUI done:
 - [ ] The preview updates in the same frame as the control that changed it, for `enabled`, `displayMode`, `showRetired` and every gamemode pick.
 - [ ] The preview's retired entries disappear when **Show retired** is turned off, and the remaining tiers are the best *active* ones — not blanks.
 - [ ] Selecting a gamemode the sample player is unranked in shows the fallback caption naming both the gamemode and the site.
-- [ ] The grid opens on click, shows all of that site's gamemodes with icons, outlines the current one in the site colour, previews on hover, and returns on a single click.
+- [ ] The grid opens on click, shows all of that site's gamemodes with icons, outlines the current one in the site color, previews on hover, and returns on a single click.
 - [ ] Escape and **Back** leave the grid without changing the selection.
 - [ ] Arrow keys move the grid focus, Enter selects, and focus never lands on an empty trailing cell.
 - [ ] **Cancel** discards every pending change, including gamemodes picked in the grid. **Save** writes the file exactly once.
-- [ ] Colour appears only where the rule allows: display-mode value, gamemode picker value, grid title, selected tile border, and tier text inside the preview. Everything else is neutral.
+- [ ] Color appears only where the rule allows: display-mode value, gamemode picker value, grid title, selected tile border, and tier text inside the preview. Everything else is neutral.
 - [ ] At GUI scales 1–4 and window widths down to 854 px the grid reflows without clipping, and the config rows do not overlap.
 - [ ] Removing YACL from the mods folder produces Fabric's normal missing-dependency screen, not a crash inside Just-Tiers.
 - [ ] With ModMenu absent, the game starts and every other entry point still works.
