@@ -4,6 +4,7 @@ import com.w0x7y.justtiers.render.SiteColors;
 import com.w0x7y.justtiers.JustTiers;
 import com.w0x7y.justtiers.JustTiersClient;
 import com.w0x7y.justtiers.config.JustTiersConfig;
+import com.w0x7y.justtiers.config.Palette;
 import com.w0x7y.justtiers.gui.state.ControlAvailability;
 import com.w0x7y.justtiers.gui.state.PreviewState;
 import com.w0x7y.justtiers.render.model.BadgePosition;
@@ -17,6 +18,7 @@ import dev.isxander.yacl3.api.Option;
 import dev.isxander.yacl3.api.OptionDescription;
 import dev.isxander.yacl3.api.OptionGroup;
 import dev.isxander.yacl3.api.YetAnotherConfigLib;
+import dev.isxander.yacl3.api.controller.ColorControllerBuilder;
 import dev.isxander.yacl3.api.controller.EnumControllerBuilder;
 import dev.isxander.yacl3.api.controller.IntegerSliderControllerBuilder;
 import dev.isxander.yacl3.api.controller.TickBoxControllerBuilder;
@@ -24,6 +26,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 
+import java.awt.Color;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -77,16 +80,42 @@ public final class JustTiersScreens {
         Option<Boolean> showBrackets = tickBox("justtiers.option.showBrackets",
                 config::isShowBrackets, config::setShowBrackets);
 
+        Option<Boolean> hideOwnBadge = tickBox("justtiers.option.hideOwnBadge", false,
+                config::isHideOwnBadge, config::setHideOwnBadge);
+
+        Option<Palette> palette = Option.<Palette>createBuilder()
+                .name(Component.translatable("justtiers.option.palette"))
+                .description(description("justtiers.option.palette.desc"))
+                .binding(Palette.DEFAULT, config::getPalette, config::setPalette)
+                .controller(opt -> EnumControllerBuilder.create(opt)
+                        .enumClass(Palette.class)
+                        .valueFormatter(value -> Component.translatable(value.displayKey())))
+                .build();
+
         // Read lazily, so the pickers can hand this supplier to the grid screen even
-        // though the map they live in is still being filled in below.
+        // though the maps they live in are still being filled in below.
         Map<Source, Option<String>> pickers = new EnumMap<>(Source.class);
+        Map<Source, Option<Color>> colorPickers = new EnumMap<>(Source.class);
         Supplier<PreviewState> previewState = () -> new PreviewState(
                 enabled.pendingValue(),
                 displayMode.pendingValue(),
                 pendingGamemodes(pickers),
                 showRetired.pendingValue(),
                 new NametagStyle(badgePosition.pendingValue(),
-                        showIcons.pendingValue(), showBrackets.pendingValue()));
+                        showIcons.pendingValue(), showBrackets.pendingValue(),
+                        pendingColors(palette, colorPickers)));
+
+        for (Source source : Source.ALL) {
+            colorPickers.put(source, Option.<Color>createBuilder()
+                    .name(Component.translatable("justtiers.option.customColor",
+                            source.displayName()))
+                    .description(description("justtiers.option.customColor.desc"))
+                    .binding(new Color(source.defaultColor()),
+                            () -> new Color(config.getCustomColor(source)),
+                            color -> config.setCustomColor(source, color.getRGB()))
+                    .controller(ColorControllerBuilder::create)
+                    .build());
+        }
 
         for (Source source : Source.ALL) {
             pickers.put(source, Option.<String>createBuilder()
@@ -103,16 +132,22 @@ public final class JustTiersScreens {
 
         Runnable syncAvailability = () -> {
             ControlAvailability state = ControlAvailability.of(
-                    enabled.pendingValue(), displayMode.pendingValue());
+                    enabled.pendingValue(), displayMode.pendingValue(), palette.pendingValue());
             displayMode.setAvailable(state.displayMode());
             showRetired.setAvailable(state.showRetired());
             badgePosition.setAvailable(state.appearance());
             showIcons.setAvailable(state.appearance());
             showBrackets.setAvailable(state.appearance());
+            hideOwnBadge.setAvailable(state.appearance());
+            palette.setAvailable(state.appearance());
             pickers.forEach((source, option) -> option.setAvailable(state.gamemode(source)));
+            colorPickers.values().forEach(option -> option.setAvailable(state.customColors()));
         };
         enabled.addEventListener((option, event) -> syncAvailability.run());
         displayMode.addEventListener((option, event) -> syncAvailability.run());
+        // A palette change greys or ungreys the three pickers the moment it is made,
+        // rather than waiting for Save.
+        palette.addEventListener((option, event) -> syncAvailability.run());
         syncAvailability.run();
 
         Option<Component> preview = NametagPreviewController.option(previewState);
@@ -120,7 +155,8 @@ public final class JustTiersScreens {
         return YetAnotherConfigLib.createBuilder()
                 .title(Component.translatable("justtiers.config.title"))
                 .category(displayCategory(preview, enabled, displayMode, showRetired,
-                        badgePosition, showIcons, showBrackets, pickers))
+                        badgePosition, showIcons, showBrackets, hideOwnBadge, palette,
+                        colorPickers, pickers))
                 .category(dataCategory(config))
                 .category(aboutCategory())
                 .save(JustTiersClient::saveConfig)
@@ -134,6 +170,25 @@ public final class JustTiersScreens {
         return pending;
     }
 
+    /**
+     * The colours the preview should draw right now: the pending palette's own, or the
+     * pending contents of the three pickers when that palette is Custom. Read from the
+     * pending values rather than the config, so the preview recolours as the palette is
+     * cycled instead of waiting for Save.
+     */
+    private static Map<Source, Integer> pendingColors(Option<Palette> palette,
+                                                      Map<Source, Option<Color>> pickers) {
+        Palette pending = palette.pendingValue();
+        Map<Source, Integer> colors = new EnumMap<>(Source.class);
+        for (Source source : Source.ALL) {
+            Option<Color> picker = pickers.get(source);
+            colors.put(source, pending.isCustom() && picker != null
+                    ? picker.pendingValue().getRGB() & 0xFFFFFF
+                    : pending.colorOf(source, Map.of()));
+        }
+        return colors;
+    }
+
     private static ConfigCategory displayCategory(Option<Component> preview,
                                                   Option<Boolean> enabled,
                                                   Option<DisplayMode> displayMode,
@@ -141,15 +196,22 @@ public final class JustTiersScreens {
                                                   Option<BadgePosition> badgePosition,
                                                   Option<Boolean> showIcons,
                                                   Option<Boolean> showBrackets,
+                                                  Option<Boolean> hideOwnBadge,
+                                                  Option<Palette> palette,
+                                                  Map<Source, Option<Color>> colorPickers,
                                                   Map<Source, Option<String>> pickers) {
         // Appearance sits above the gamemode pickers because every one of its rows shows
         // up in the preview immediately, whatever else the screen is set to.
-        OptionGroup appearance = OptionGroup.createBuilder()
+        OptionGroup.Builder appearance = OptionGroup.createBuilder()
                 .name(Component.translatable("justtiers.group.appearance"))
                 .option(badgePosition)
                 .option(showIcons)
                 .option(showBrackets)
-                .build();
+                .option(hideOwnBadge)
+                .option(palette);
+        // The three pickers sit under the palette they belong to, greyed until it is
+        // Custom rather than hidden, like everything else on this screen.
+        colorPickers.values().forEach(appearance::option);
 
         OptionGroup.Builder gamemodes = OptionGroup.createBuilder()
                 .name(Component.translatable("justtiers.group.gamemodes"));
@@ -161,7 +223,7 @@ public final class JustTiersScreens {
                 .option(enabled)
                 .option(displayMode)
                 .option(showRetired)
-                .group(appearance)
+                .group(appearance.build())
                 .group(gamemodes.build())
                 .build();
     }
@@ -238,10 +300,16 @@ public final class JustTiersScreens {
      */
     private static Option<Boolean> tickBox(String key, Supplier<Boolean> get,
                                            Consumer<Boolean> set) {
+        return tickBox(key, true, get, set);
+    }
+
+    /** As {@link #tickBox(String, Supplier, Consumer)}, for a setting that defaults off. */
+    private static Option<Boolean> tickBox(String key, boolean fallback,
+                                           Supplier<Boolean> get, Consumer<Boolean> set) {
         return Option.<Boolean>createBuilder()
                 .name(Component.translatable(key))
                 .description(description(key + ".desc"))
-                .binding(true, get, set)
+                .binding(fallback, get, set)
                 .controller(TickBoxControllerBuilder::create)
                 .build();
     }
