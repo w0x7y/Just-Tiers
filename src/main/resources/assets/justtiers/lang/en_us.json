@@ -91,6 +91,24 @@
   "justtiers.about.commands": "Most settings are also available via /justtiers",
   "justtiers.about.licence": "MIT licensed. Tier data belongs to the sites it comes from.",
 
+  "justtiers.command.ownbadge.on": "Your own badge is hidden",
+  "justtiers.command.ownbadge.off": "Your own badge is shown",
+  "justtiers.command.paletteSet": "Colour palette set to %s",
+  "justtiers.command.status.palette": "Palette: %s",
+
+  "justtiers.palette.default": "Default",
+  "justtiers.palette.colorblind": "Colourblind-safe",
+  "justtiers.palette.high_contrast": "High contrast",
+  "justtiers.palette.custom": "Custom",
+
+  "justtiers.config.hideOwnBadge": "Hide my own badge",
+  "justtiers.config.hideOwnBadge.desc": "Leaves your own nametag undecorated. /justtiers lookup and /justtiers scan still show you.",
+  "justtiers.config.palette": "Colour palette",
+  "justtiers.config.palette.desc": "Which colours tell the three leaderboards apart. Applies to nametags and to every Just-Tiers screen.",
+  "justtiers.config.customColor": "%s colour",
+  "justtiers.config.customColor.desc": "Only used while the palette is Custom.",
+  "justtiers.config.customColor.inactive": "Set the palette to Custom to change this.",
+
   "justtiers.scan.title": "Lobby scan",
   "justtiers.scan.progress": "%s / %s",
   "justtiers.scan.waiting": "Looking up...",
