@@ -242,4 +242,138 @@ class JustTiersConfigTest {
                 """);
         assertEquals(NametagStyle.DEFAULT, JustTiersConfig.load(file).nametagStyle());
     }
+
+    @Test
+    void aFileWithoutTheColourKeysBehavesAsBefore(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("old.json");
+        Files.writeString(file, """
+                {"enabled":true,"displayMode":"all","selectedGamemodes":{}}
+                """);
+        JustTiersConfig config = JustTiersConfig.load(file);
+
+        assertFalse(config.isHideOwnBadge());
+        assertEquals(Palette.DEFAULT, config.getPalette());
+        for (Source source : Source.ALL) {
+            assertEquals(source.defaultColor(), config.colorOf(source));
+        }
+    }
+
+    @Test
+    void aPresetPaletteColoursEverySite(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("preset.json");
+        Files.writeString(file, """
+                {"palette":"colorblind","selectedGamemodes":{}}
+                """);
+        JustTiersConfig config = JustTiersConfig.load(file);
+
+        assertEquals(0xE69F00, config.colorOf(Source.MCTIERS));
+        assertEquals(0x56B4E9, config.colorOf(Source.SUBTIERS));
+        assertEquals(0xFFFFFF, config.colorOf(Source.NOVATIERS));
+    }
+
+    @Test
+    void anUnrecognisedPaletteFallsBackToDefault(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("rainbow.json");
+        Files.writeString(file, """
+                {"palette":"rainbow","selectedGamemodes":{}}
+                """);
+        JustTiersConfig config = JustTiersConfig.load(file);
+
+        assertEquals(Palette.DEFAULT, config.getPalette());
+        assertEquals(Source.MCTIERS.defaultColor(), config.colorOf(Source.MCTIERS));
+    }
+
+    @Test
+    void aPaletteIsReadCaseInsensitively(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("legacy-palette.json");
+        Files.writeString(file, """
+                {"palette":"HIGH_CONTRAST","selectedGamemodes":{}}
+                """);
+        assertEquals(Palette.HIGH_CONTRAST, JustTiersConfig.load(file).getPalette());
+    }
+
+    @Test
+    void customColoursAreUsedOnlyByTheCustomPalette(@TempDir Path dir) throws Exception {
+        Path custom = dir.resolve("custom.json");
+        Files.writeString(custom, """
+                {"palette":"custom","customColors":{"MCTIERS":"#123456"},
+                 "selectedGamemodes":{}}
+                """);
+        assertEquals(0x123456, JustTiersConfig.load(custom).colorOf(Source.MCTIERS));
+
+        Path preset = dir.resolve("preset-with-custom.json");
+        Files.writeString(preset, """
+                {"palette":"default","customColors":{"MCTIERS":"#123456"},
+                 "selectedGamemodes":{}}
+                """);
+        assertEquals(Source.MCTIERS.defaultColor(),
+                JustTiersConfig.load(preset).colorOf(Source.MCTIERS));
+    }
+
+    @Test
+    void aMalformedCustomColourFallsBackForThatSiteAlone(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("typo.json");
+        Files.writeString(file, """
+                {"palette":"custom",
+                 "customColors":{"MCTIERS":"#123456","SUBTIERS":"nonsense"},
+                 "selectedGamemodes":{}}
+                """);
+        JustTiersConfig config = JustTiersConfig.load(file);
+
+        assertEquals(0x123456, config.colorOf(Source.MCTIERS));
+        assertEquals(Source.SUBTIERS.defaultColor(), config.colorOf(Source.SUBTIERS));
+        assertEquals(Source.NOVATIERS.defaultColor(), config.colorOf(Source.NOVATIERS));
+    }
+
+    @Test
+    void bothNewKeysSurviveSaveAndLoad(@TempDir Path dir) {
+        Path file = dir.resolve("roundtrip.json");
+        JustTiersConfig config = new JustTiersConfig();
+        config.setHideOwnBadge(true);
+        config.setPalette(Palette.CUSTOM);
+        config.setCustomColor(Source.NOVATIERS, 0xABCDEF);
+        config.save(file);
+
+        JustTiersConfig loaded = JustTiersConfig.load(file);
+        assertTrue(loaded.isHideOwnBadge());
+        assertEquals(Palette.CUSTOM, loaded.getPalette());
+        assertEquals(0xABCDEF, loaded.colorOf(Source.NOVATIERS));
+    }
+
+    @Test
+    void switchingToAPresetKeepsTheCustomColours(@TempDir Path dir) {
+        Path file = dir.resolve("kept.json");
+        JustTiersConfig config = new JustTiersConfig();
+        config.setPalette(Palette.CUSTOM);
+        config.setCustomColor(Source.MCTIERS, 0x123456);
+        config.setPalette(Palette.DEFAULT);
+        config.save(file);
+
+        JustTiersConfig loaded = JustTiersConfig.load(file);
+        assertEquals(Source.MCTIERS.defaultColor(), loaded.colorOf(Source.MCTIERS));
+        assertEquals(0x123456, loaded.getCustomColor(Source.MCTIERS));
+    }
+
+    @Test
+    void colorsAnswersEverySiteAtOnce() {
+        JustTiersConfig config = new JustTiersConfig();
+        config.setPalette(Palette.COLORBLIND);
+
+        assertEquals(Source.ALL.size(), config.colors().size());
+        for (Source source : Source.ALL) {
+            assertEquals(config.colorOf(source), config.colors().get(source));
+        }
+    }
+
+    @Test
+    void savingWritesThePaletteAsItsLowerCaseId(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("palette-case.json");
+        JustTiersConfig config = new JustTiersConfig();
+        config.setPalette(Palette.HIGH_CONTRAST);
+        config.save(file);
+
+        String written = Files.readString(file);
+        assertTrue(written.contains("\"high_contrast\""));
+        assertFalse(written.contains("\"HIGH_CONTRAST\""));
+    }
 }

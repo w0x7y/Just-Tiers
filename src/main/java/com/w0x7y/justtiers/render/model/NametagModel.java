@@ -1,9 +1,11 @@
 package com.w0x7y.justtiers.render.model;
 
 import com.w0x7y.justtiers.resolve.ResolvedTier;
+import com.w0x7y.justtiers.tier.Source;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Lays out the tier badge that goes with a player's name, as
@@ -26,7 +28,7 @@ public final class NametagModel {
     }
 
     public static List<Segment> build(List<ResolvedTier> tiers, NametagStyle style) {
-        List<Segment> entries = entries(tiers, style.icons());
+        List<Segment> entries = entries(tiers, style.icons(), style.colors());
         if (entries.isEmpty()) {
             return List.of();
         }
@@ -59,6 +61,12 @@ public final class NametagModel {
      * the nametag's wrapping.
      */
     public static List<Segment> entries(List<ResolvedTier> tiers, boolean icons) {
+        return entries(tiers, icons, NametagStyle.DEFAULT.colors());
+    }
+
+    /** As {@link #entries(List, boolean)}, in whatever colours the caller was given. */
+    public static List<Segment> entries(List<ResolvedTier> tiers, boolean icons,
+                                        Map<Source, Integer> colors) {
         if (tiers == null || tiers.isEmpty()) {
             return List.of();
         }
@@ -72,8 +80,10 @@ public final class NametagModel {
             if (icons) {
                 segments.add(new Segment(String.valueOf(resolved.gamemode().icon()), ICON_COLOR));
             }
+            Source source = resolved.gamemode().source();
             segments.add(new Segment(resolved.tier().label(),
-                    resolved.gamemode().source().color()));
+                    colors == null ? source.defaultColor()
+                            : colors.getOrDefault(source, source.defaultColor())));
         }
         return List.copyOf(segments);
     }

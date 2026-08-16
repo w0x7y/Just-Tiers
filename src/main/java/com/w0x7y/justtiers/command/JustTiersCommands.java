@@ -3,6 +3,7 @@ package com.w0x7y.justtiers.command;
 import com.w0x7y.justtiers.JustTiersClient;
 import com.w0x7y.justtiers.api.OnlinePlayers;
 import com.w0x7y.justtiers.config.JustTiersConfig;
+import com.w0x7y.justtiers.config.Palette;
 import com.w0x7y.justtiers.gui.JustTiersKeybinds;
 import com.w0x7y.justtiers.gui.PlayerLookupScreen;
 import com.w0x7y.justtiers.gui.ScanScreen;
@@ -48,6 +49,10 @@ public final class JustTiersCommands {
                                 JustTiersConfig::isShowIcons, JustTiersConfig::setShowIcons,
                                 "justtiers.command.icons.on", "justtiers.command.icons.off",
                                 ChatFormatting.YELLOW)))
+                        .then(literal("ownbadge").executes(context -> toggle(context,
+                                JustTiersConfig::isHideOwnBadge, JustTiersConfig::setHideOwnBadge,
+                                "justtiers.command.ownbadge.on", "justtiers.command.ownbadge.off",
+                                ChatFormatting.YELLOW)))
                         .then(literal("brackets").executes(context -> toggle(context,
                                 JustTiersConfig::isShowBrackets, JustTiersConfig::setShowBrackets,
                                 "justtiers.command.brackets.on", "justtiers.command.brackets.off",
@@ -77,6 +82,16 @@ public final class JustTiersCommands {
                                                         Component.translatable(
                                                                 "justtiers.badge."
                                                                         + position.id()))))))
+                        .then(literal("palette")
+                                .then(argument("palette", StringArgumentType.word())
+                                        .suggests(suggestIds(Palette.values(), Palette::id))
+                                        .executes(context -> setEnum(context, "palette",
+                                                Palette.values(), Palette::id,
+                                                JustTiersConfig::setPalette,
+                                                palette -> Component.translatable(
+                                                        "justtiers.command.paletteSet",
+                                                        Component.translatable(
+                                                                palette.displayKey()))))))
                         .then(literal("lookup")
                                 .then(argument("player", StringArgumentType.word())
                                         .suggests((context, builder) -> {
@@ -141,6 +156,8 @@ public final class JustTiersCommands {
         reply(context, ChatFormatting.WHITE, "justtiers.command.status.badge",
                 Component.translatable("justtiers.badge." + config.getBadgePosition().id()),
                 onOff(config.isShowIcons()), onOff(config.isShowBrackets()));
+        reply(context, ChatFormatting.WHITE, "justtiers.command.status.palette",
+                Component.translatable(config.getPalette().displayKey()));
         for (Source source : Source.ALL) {
             String slug = config.selectedGamemode(source);
             String title = Gamemodes.find(source, slug).map(Gamemode::displayName).orElse(slug);
