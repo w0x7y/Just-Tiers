@@ -208,7 +208,7 @@ public final class JustTiersScreens {
                         JustTiers.VERSION)));
         for (Source source : Source.ALL) {
             about.option(LabelOption.create(Component.literal(source.displayName())
-                    .withStyle(style -> style.withColor(source.color()))));
+                    .withStyle(style -> style.withColor(source.defaultColor()))));
         }
         return about
                 .option(LabelOption.create(Component.translatable("justtiers.about.commands")))
@@ -256,7 +256,7 @@ public final class JustTiersScreens {
         MutableComponent text = Component.translatable("justtiers.mode." + mode.id());
         return mode.singleSource()
                 .<Component>map(source -> text.withStyle(
-                        style -> style.withColor(source.color())))
+                        style -> style.withColor(source.defaultColor())))
                 .orElse(text);
     }
 

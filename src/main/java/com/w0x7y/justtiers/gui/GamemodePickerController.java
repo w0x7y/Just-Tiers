@@ -75,7 +75,7 @@ public final class GamemodePickerController implements Controller<String> {
 
         @Override
         protected int getValueColor() {
-            return isAvailable() ? Colors.opaque(control.source().color()) : inactiveColor;
+            return isAvailable() ? Colors.opaque(control.source().defaultColor()) : inactiveColor;
         }
 
         @Override

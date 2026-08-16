@@ -128,7 +128,7 @@ public final class GamemodeGridScreen extends Screen {
         hoveredIndex = indexAtScreen(mouseX, mouseY).orElse(-1);
         super.extractRenderState(graphics, mouseX, mouseY, delta);
 
-        graphics.centeredText(font, title, width / 2, TITLE_Y, Colors.opaque(source.color()));
+        graphics.centeredText(font, title, width / 2, TITLE_Y, Colors.opaque(source.defaultColor()));
         extractPreview(graphics);
         graphics.centeredText(font, Component.translatable("justtiers.grid.hint"),
                 width / 2, HINT_Y, HINT_COLOR);
@@ -175,7 +175,7 @@ public final class GamemodeGridScreen extends Screen {
         graphics.fill(x, y, x + TILE, y + TILE, highlighted ? TILE_HOVERED : TILE_BACKGROUND);
         if (gamemode.slug().equals(selectedSlug)) {
             // The only colour on this screen besides the title: which site you are in.
-            graphics.outline(x, y, TILE, TILE, Colors.opaque(source.color()));
+            graphics.outline(x, y, TILE, TILE, Colors.opaque(source.defaultColor()));
         }
 
         String icon = String.valueOf(gamemode.icon());

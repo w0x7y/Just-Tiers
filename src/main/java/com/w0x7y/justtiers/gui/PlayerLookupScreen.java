@@ -351,9 +351,9 @@ public final class PlayerLookupScreen extends Screen {
             int textY = row.y() + (row.height() - font.lineHeight) / 2;
             graphics.text(font, row.source().displayName(),
                     row.x() - LABEL_GAP - font.width(row.source().displayName()), textY,
-                    Colors.opaque(row.source().color()));
+                    Colors.opaque(row.source().defaultColor()));
             graphics.outline(row.x(), row.y(), row.width(), row.height(),
-                    Colors.opaque(row.source().color()));
+                    Colors.opaque(row.source().defaultColor()));
 
             Optional<LookupSection> section = session.section(row.source());
             if (section.isEmpty()) {
@@ -401,7 +401,7 @@ public final class PlayerLookupScreen extends Screen {
         graphics.text(font, icon, textX + (iconWidth - font.width(icon)) / 2, textY,
                 0xFFFFFFFF, false);
         graphics.text(font, label, textX + iconWidth + CELL_TEXT_GAP, textY,
-                tier.isPresent() ? Colors.opaque(source.color()) : Colors.DISABLED, false);
+                tier.isPresent() ? Colors.opaque(source.defaultColor()) : Colors.DISABLED, false);
     }
 
     private Component tooltip(LookupCell cell) {
@@ -421,7 +421,7 @@ public final class PlayerLookupScreen extends Screen {
                     link.x() - font.width(SITE_SEPARATOR), footerY, Colors.SECONDARY);
         }
         for (Link link : links) {
-            int color = Colors.opaque(link.source().color());
+            int color = Colors.opaque(link.source().defaultColor());
             graphics.text(font, link.source().displayName(), link.x(), footerY, color);
             if (isOver(link, mouseX, mouseY)) {
                 graphics.horizontalLine(link.x(), link.x() + link.width() - 1,
