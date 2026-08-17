@@ -1,9 +1,14 @@
 package com.w0x7y.justtiers.command;
 
+import com.w0x7y.justtiers.JustTiers;
 import com.w0x7y.justtiers.JustTiersClient;
 import com.w0x7y.justtiers.api.OnlinePlayers;
+import com.w0x7y.justtiers.cache.TierCache;
 import com.w0x7y.justtiers.config.JustTiersConfig;
 import com.w0x7y.justtiers.config.Palette;
+import com.w0x7y.justtiers.debug.DebugReport;
+import com.w0x7y.justtiers.debug.DebugSnapshot;
+import com.w0x7y.justtiers.debug.SiteDiagnostics;
 import com.w0x7y.justtiers.gui.JustTiersKeybinds;
 import com.w0x7y.justtiers.gui.PlayerLookupScreen;
 import com.w0x7y.justtiers.gui.ScanScreen;
@@ -17,10 +22,15 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.function.BiConsumer;
@@ -60,6 +70,7 @@ public final class JustTiersCommands {
                         .then(literal("refresh").executes(JustTiersCommands::refresh))
                         .then(literal("gui").executes(JustTiersCommands::openGui))
                         .then(literal("scan").executes(JustTiersCommands::scan))
+                        .then(literal("debug").executes(JustTiersCommands::debug))
                         .then(literal("mode")
                                 .then(argument("mode", StringArgumentType.word())
                                         .suggests(suggestIds(DisplayMode.values(), DisplayMode::id))
@@ -279,6 +290,62 @@ public final class JustTiersCommands {
     private static int scan(CommandContext<FabricClientCommandSource> context) {
         JustTiersKeybinds.requestOpen(ScanScreen::new);
         return 1;
+    }
+
+    /**
+     * Prints what every site has actually been doing, and puts the same text on the
+     * clipboard. Nearly every bug report this mod will get is "it doesn't show tiers for
+     * X", which is a question about the cache, the retry delays and the site gates —
+     * none of which are visible from inside the game. This makes answering it one paste.
+     *
+     * <p>The report lines go out unprefixed: the "[Just-Tiers]" the other replies carry
+     * would be repeated down the whole dump, and would come back in every pasted issue.
+     */
+    private static int debug(CommandContext<FabricClientCommandSource> context) {
+        DebugSnapshot snapshot = diagnostics();
+        for (String line : DebugReport.lines(snapshot)) {
+            context.getSource().sendFeedback(
+                    Component.literal(line).withStyle(ChatFormatting.GRAY));
+        }
+        Minecraft.getInstance().keyboardHandler.setClipboard(DebugReport.asText(snapshot));
+        reply(context, ChatFormatting.GREEN, "justtiers.command.debug.copied");
+        return 1;
+    }
+
+    /** Reads the report's contents off the live cache and config in one pass. */
+    private static DebugSnapshot diagnostics() {
+        JustTiersConfig config = JustTiersClient.config();
+        TierCache cache = JustTiersClient.cache();
+        List<SiteDiagnostics> sites = new ArrayList<>(Source.ALL.size());
+        for (Source source : Source.ALL) {
+            sites.add(new SiteDiagnostics(source,
+                    cache.health(source),
+                    cache.gateStatus(source),
+                    cache.cachedPlayers(source),
+                    cache.pendingLookups(source),
+                    cache.playersAwaitingRetry(source)));
+        }
+        return new DebugSnapshot(
+                JustTiers.VERSION,
+                modVersion("minecraft"),
+                modVersion("fabricloader"),
+                config.isEnabled(),
+                config.getDisplayMode(),
+                Duration.ofMinutes(config.getTierCacheMinutes()),
+                JustTiersClient.novaSource().indexedPlayerCount(),
+                config.getNovaRefreshMinutes(),
+                sites);
+    }
+
+    /**
+     * A loaded mod's own version string. Falls back rather than throwing: the command
+     * whose whole job is to work when something else is broken must not be the thing that
+     * breaks.
+     */
+    private static String modVersion(String modId) {
+        return FabricLoader.getInstance().getModContainer(modId)
+                .map(container -> container.getMetadata().getVersion().getFriendlyString())
+                .orElse("unknown");
     }
 
     private JustTiersCommands() {

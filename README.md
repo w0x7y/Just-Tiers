@@ -39,6 +39,7 @@ Just-Tiers supports all three leaderboards, and adds an **All** mode that shows 
 - **Keeps up with the leaderboards** — a cached tier is re-checked every hour, so a player tested or re-ranked mid-session stops showing the wrong thing without a restart.
 - **Shows up as it arrives** — a nametag gains its badge the moment the first site answers, then fills in as the others land, rather than waiting on the slowest one.
 - **Fails safe** — a site that is down, rate-limiting or unreachable is retried; it is never mistaken for "this player is unranked". Repeated failures back off, and a site that keeps failing is left alone entirely rather than being asked once a minute per player.
+- **Explains itself when something is wrong** — `/justtiers debug` prints what each site has actually answered, how fast, and what it last said when it failed, and copies it to your clipboard for a bug report. See [Reporting a bug](#reporting-a-bug).
 - **In-game config screen** — every setting in one place, with a live nametag preview and an
   icon grid for picking gamemodes. See [Configuration screen](#configuration-screen).
 - **Visible downloads** — the NovaTiers list has to be fetched in full, so a small progress bar
@@ -156,6 +157,7 @@ All commands are client-side and start with `/justtiers`.
 | `/justtiers palette <palette>` | Set the color palette: `default`, `colorblind`, `high_contrast`, `custom` |
 | `/justtiers refresh` | Re-download tier data and clear the cache |
 | `/justtiers gui` | Open the configuration screen |
+| `/justtiers debug` | Print what each site has been doing, and copy it for a bug report |
 
 `/justtiers gamemode` offers tab-completion limited to the gamemodes that actually exist on the site you are currently viewing. `/justtiers lookup` completes from the players currently on the server.
 
@@ -537,6 +539,44 @@ An empty answer and a failed request are deliberately different things:
 - **Any other status, or a transport failure**, means the lookup did not complete. It is not cached as "unranked"; it is retried, behind the two delays described in [Backing off](#backing-off), so a rate-limited or briefly unavailable site does not get hammered by a lookup that runs every frame.
 - **A failed NovaTiers refresh** keeps the index already in memory rather than replacing it with nothing, so one bad refresh cannot blank every NovaTiers badge until the next successful one.
 - **A refresh in progress** keeps serving the tiers already on screen. The cached entries are only dropped once the new list has finished downloading, so badges do not disappear for the length of a scheduled refresh.
+
+### Reporting a bug
+
+Everything above happens where you cannot see it, which makes "it doesn't show tiers for
+X" almost impossible to answer from the outside. `/justtiers debug` prints the state
+behind it and copies the same text to your clipboard, so a bug report can be one paste:
+
+```
+=== Just-Tiers debug ===
+Just-Tiers 1.0.2+mc26.2 | Minecraft 26.2 | Fabric Loader 0.19.3
+nametags on | mode all | cache TTL 60m
+NovaTiers index 12345 players | refresh every 30m
+MCTiers: ok | 12 ok, 0 failed | last ok 4s ago | latency 180ms last, 210ms mean | 42 cached, 1 in flight, 0 retrying
+SubTiers: PAUSED, retrying in 28s | 3 ok, 9 failed | last ok 6m ago, last fail 12s ago | latency 4.0s last, 1.2s mean | 8 cached, 0 in flight, 4 retrying
+  last error: TierLookupException: HTTP 503 from subtiers.net
+NovaTiers: ok | no lookups yet | 120 cached, 0 in flight, 0 retrying
+```
+
+Reading one site's line left to right:
+
+- **`ok` / `PAUSED`** — whether the site gate is letting requests out at all, and when it
+  will next try if not. A gate that is open but has failures behind it says so
+  (`ok (7 failures in a row)`), because seven of the eight it takes to close reads as
+  healthy right up until it is not.
+- **`3 ok, 9 failed`** — lookups completed this session, and how each ended.
+- **`last ok`, `last fail`** — how long ago each last happened. A site whose last success
+  is hours old but which is not paused is failing slowly, not failing loudly.
+- **`latency`** — the last round trip and the mean, failures included. A ten-second
+  failure is a timeout; an instant one is a refused connection.
+- **`cached / in flight / retrying`** — players the site holds an answer for, of those how
+  many are still waiting on the network, and how many are sitting out a per-player retry
+  delay.
+- **`last error`** — the most recent failure, kept even after the site recovers, since
+  what went wrong is usually the reason a report is being written at all. Long messages
+  are cut to one line.
+
+The report is deliberately in English rather than your game language: it is written to be
+read by whoever fixes the bug.
 
 ---
 

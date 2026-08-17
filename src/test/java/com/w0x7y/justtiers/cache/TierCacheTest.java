@@ -567,4 +567,108 @@ class TierCacheTest {
         assertEquals(Optional.empty(), it.cache.peek(Source.MCTIERS, PLAYER));
         assertEquals(2, it.fake.calls.get());
     }
+
+    // --- what /justtiers debug reads ---
+
+    @Test
+    void aSuccessIsTimedFromWhenTheRequestWentOut() {
+        Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
+
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.advance(Duration.ofMillis(250));
+        it.fake.complete();
+
+        SiteHealth.Snapshot health = it.cache.health(Source.MCTIERS);
+        assertEquals(1, health.successes());
+        assertEquals(0, health.failures());
+        assertEquals(Duration.ofMillis(250).toNanos(), health.lastLatencyNanos().getAsLong());
+        assertEquals(0, health.sinceLastSuccessNanos().getAsLong());
+    }
+
+    @Test
+    void aFailureIsTimedAndItsReasonKept() {
+        Controlled it = new Controlled(Map.of(), policy());
+
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.advance(Duration.ofSeconds(10));
+        it.fake.pending.completeExceptionally(new RuntimeException("site down"));
+
+        SiteHealth.Snapshot health = it.cache.health(Source.MCTIERS);
+        assertEquals(1, health.failures());
+        // A site that timed out and one that refused the connection look identical
+        // without this.
+        assertEquals(Duration.ofSeconds(10).toNanos(), health.lastLatencyNanos().getAsLong());
+        assertEquals("RuntimeException: site down", health.lastError().orElseThrow());
+    }
+
+    @Test
+    void aSiteNobodyHasAskedReportsNothingRatherThanThrowing() {
+        // Constructed with no sources at all: every accessor still has to answer.
+        TierCache cache = new TierCache(List.of());
+
+        assertTrue(cache.health(Source.NOVATIERS).idle());
+        assertFalse(cache.gateStatus(Source.NOVATIERS).closed());
+        assertEquals(0, cache.cachedPlayers(Source.NOVATIERS));
+        assertEquals(0, cache.pendingLookups(Source.NOVATIERS));
+        assertEquals(0, cache.playersAwaitingRetry(Source.NOVATIERS));
+    }
+
+    @Test
+    void inFlightLookupsAreCountedSeparatelyFromSettledOnes() {
+        Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
+
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        assertEquals(1, it.cache.cachedPlayers(Source.MCTIERS));
+        assertEquals(1, it.cache.pendingLookups(Source.MCTIERS));
+
+        it.fake.complete();
+        assertEquals(1, it.cache.cachedPlayers(Source.MCTIERS));
+        assertEquals(0, it.cache.pendingLookups(Source.MCTIERS));
+    }
+
+    @Test
+    void playersWaitingOutARetryAreCountedWhileTheyWait() {
+        Controlled it = new Controlled(Map.of(), policy());
+
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.fake.pending.completeExceptionally(new RuntimeException("site down"));
+        it.cache.peek(Source.MCTIERS, PLAYER);
+
+        assertEquals(1, it.cache.playersAwaitingRetry(Source.MCTIERS));
+
+        // Once the delay is up the player is free to be tried again, and stops counting.
+        it.advance(Duration.ofMinutes(5));
+        assertEquals(0, it.cache.playersAwaitingRetry(Source.MCTIERS));
+    }
+
+    @Test
+    void theGateIsVisibleOnceItHasGivenUpOnASite() {
+        Controlled it = new Controlled(Map.of(), policy());
+
+        for (int i = 0; i < CachePolicy.DEFAULT.siteFailureThreshold(); i++) {
+            UUID player = UUID.randomUUID();
+            it.cache.peek(Source.MCTIERS, player);
+            it.fake.pending.completeExceptionally(new RuntimeException("site down"));
+        }
+
+        SiteGate.Status gate = it.cache.gateStatus(Source.MCTIERS);
+        assertTrue(gate.closed(), "the report has to be able to say why nothing is being asked");
+        assertEquals(CachePolicy.DEFAULT.basePause().toNanos(), gate.reopensInNanos());
+    }
+
+    @Test
+    void refreshingReopensTheGateWithoutRewritingHistory() {
+        Controlled it = new Controlled(Map.of(), policy());
+
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.fake.pending.completeExceptionally(new RuntimeException("site down"));
+        it.cache.invalidate(Source.MCTIERS);
+
+        assertEquals(0, it.cache.gateStatus(Source.MCTIERS).consecutiveFailures());
+        // The failures leading up to a refresh are usually the interesting half of a
+        // bug report, so clearing the cache must not clear them.
+        assertEquals(1, it.cache.health(Source.MCTIERS).failures());
+        assertEquals("RuntimeException: site down",
+                it.cache.health(Source.MCTIERS).lastError().orElseThrow());
+    }
 }
