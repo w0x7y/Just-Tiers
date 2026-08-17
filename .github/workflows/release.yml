@@ -60,16 +60,28 @@ jobs:
             echo 'CHANGELOG_EOF'
           } >> "$GITHUB_ENV"
 
-      - name: Publish to Modrinth
-        env:
-          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
-        run: ./gradlew modrinth --stacktrace
-
+      # Before Modrinth, and on purpose. This half depends on nothing outside the
+      # repository, while a Modrinth upload can be refused for reasons that have nothing
+      # to do with the build — a project still in review, a Minecraft version Modrinth
+      # has not listed yet. Losing the GitHub release to one of those would be losing the
+      # half that was never in doubt.
       - name: Publish the GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            --title "$GITHUB_REF_NAME" \
-            --notes "$CHANGELOG" \
-            build/libs/*.jar
+          # Idempotent, so that re-running this job after a failed Modrinth upload does
+          # not fall over on the release it already created.
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "release $GITHUB_REF_NAME already exists; replacing its files"
+            gh release upload "$GITHUB_REF_NAME" build/libs/*.jar --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --title "$GITHUB_REF_NAME" \
+              --notes "$CHANGELOG" \
+              build/libs/*.jar
+          fi
+
+      - name: Publish to Modrinth
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+        run: ./gradlew modrinth --stacktrace

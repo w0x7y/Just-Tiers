@@ -81,6 +81,13 @@ modrinth {
     required.project("fabric-api")
     required.project("yacl")
     optional.project("modmenu")
+    // `./gradlew modrinth -Pmodrinth_dry_run=true` still authenticates, still resolves
+    // the project, and still assembles the whole payload — then prints it and stops
+    // without creating a version. That is the only way to find out whether publishing is
+    // wired up correctly without publishing something, which matters most before the
+    // first real release.
+    debugMode.set(providers.gradleProperty("modrinth_dry_run")
+            .map(String::toBoolean).orElse(false))
     // The Modrinth listing is written for Modrinth rather than for GitHub, so it lives in
     // its own file. Deliberately not wired into the release job: `modrinthSyncBody`
     // overwrites the project body, and that cannot be undone.

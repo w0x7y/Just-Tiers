@@ -639,6 +639,28 @@ Two things are worth knowing before the first tagged release:
 Published versions are labelled from `release_type` in `gradle.properties`, which stays `beta`
 until the mod does.
 
+#### Checking the publish without publishing
+
+A release is the worst possible place to find out that a token is wrong. This runs the entire
+Modrinth path — authenticating, looking the project up through the live API, assembling the
+version payload — and then prints it and stops instead of creating anything:
+
+```bash
+MODRINTH_TOKEN=... ./gradlew modrinth -Pmodrinth_dry_run=true
+```
+
+The **Modrinth dry run** workflow does the same from the Actions tab, using the repository
+secret, so it can be checked without a token on your machine.
+
+What a dry run proves: the token is valid, the project id resolves, and the version number,
+game versions, loaders and dependencies are what you meant. What it cannot prove: that Modrinth
+will *accept* the upload — game versions are validated server-side, so a Minecraft version
+Modrinth has not listed yet will only fail for real.
+
+If a Modrinth upload does fail, the GitHub release has already been made — the release job does
+that first, deliberately, since it depends on nothing outside this repository. Fix the cause and
+re-run the job; it will not trip over the release it already created.
+
 The Modrinth listing body is kept in `Modrinth/description.md` and is **not** part of the release
 job — pushing it overwrites the project body irreversibly. Sync it deliberately, when you mean to:
 
