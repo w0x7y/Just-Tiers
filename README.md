@@ -1,5 +1,7 @@
 # Just-Tiers
 
+[![Build](https://github.com/w0x7y/Just-Tiers/actions/workflows/build.yml/badge.svg)](https://github.com/w0x7y/Just-Tiers/actions/workflows/build.yml)
+
 A Minecraft **Fabric** client mod that shows a player's competitive PvP tier directly in their nametag, using all three major tier leaderboards at once: **MCTiers**, **SubTiers** and **NovaTiers**.
 
 ---
@@ -601,6 +603,48 @@ Requires a JDK 25 toolchain. The Gradle build can provision one automatically.
 The build resolves YetAnotherConfigLib from Maven Central, ModMenu from Terraformers' maven and
 YACL's `org.quiltmc.parsers` transitives from Quilt's maven; all three repositories are declared
 in `build.gradle.kts`, so no extra setup is needed.
+
+### Continuous integration
+
+`.github/workflows/build.yml` runs `./gradlew build` on every pull request and every push to
+`main`. That is the unit tests *and* a full compile and remap of the jar, because most of this mod
+is Minecraft-facing code that no unit test can reach — a change that compiles nowhere but breaks
+the mixin would otherwise get as far as a release. The jar is kept as a run artifact; the test
+report is kept only when something failed.
+
+### Releasing
+
+Tagging is the whole process:
+
+```bash
+# gradle.properties must already say mod_version=1.0.3
+git tag v1.0.3
+git push origin v1.0.3
+```
+
+`.github/workflows/release.yml` then builds, publishes to Modrinth with
+[Minotaur](https://github.com/modrinth/minotaur), and opens a GitHub release with the jar attached
+and the commits since the previous tag as its notes.
+
+Two things are worth knowing before the first tagged release:
+
+- **`MODRINTH_TOKEN` must be set** as a repository secret, from
+  [your Modrinth account settings](https://modrinth.com/settings/account), with the
+  `CREATE_VERSION` scope. Minotaur reads that environment variable itself, so no token appears
+  anywhere in `build.gradle.kts`.
+- **The tag must match `mod_version`.** The workflow checks and stops if it does not, because a jar
+  whose own metadata contradicts the release it is attached to is much easier to prevent than to
+  withdraw once Modrinth has it.
+
+Published versions are labelled from `release_type` in `gradle.properties`, which stays `beta`
+until the mod does.
+
+The Modrinth listing body is kept in `Modrinth/description.md` and is **not** part of the release
+job — pushing it overwrites the project body irreversibly. Sync it deliberately, when you mean to:
+
+```bash
+./gradlew modrinthSyncBody
+```
 
 ---
 

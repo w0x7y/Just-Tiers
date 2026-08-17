@@ -1,0 +1,75 @@
+name: Release
+
+# Tag-driven: `git tag v1.0.3 && git push origin v1.0.3` is the whole release process.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Tags and history, so the changelog can be the commits since the last release.
+          fetch-depth: 0
+
+      - uses: gradle/actions/wrapper-validation@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: temurin
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # A tag that disagrees with gradle.properties would publish a jar whose own
+      # metadata contradicts the release it is attached to, and Modrinth would take it.
+      # Cheaper to stop here than to yank a version.
+      - name: Check the tag against mod_version
+        run: |
+          tagged="${GITHUB_REF_NAME#v}"
+          declared="$(grep '^mod_version=' gradle.properties | cut -d= -f2 | tr -d '[:space:]')"
+          if [ "$tagged" != "$declared" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match mod_version=$declared in gradle.properties"
+            exit 1
+          fi
+          echo "releasing $declared"
+
+      - name: Build and test
+        run: ./gradlew build --stacktrace
+
+      # The commits since the previous tag, or since the beginning for a first release.
+      - name: Assemble the changelog
+        run: |
+          previous="$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)"
+          if [ -n "$previous" ]; then
+            range="$previous..${GITHUB_REF_NAME}"
+            echo "changes since $previous"
+          else
+            range="${GITHUB_REF_NAME}"
+            echo "first release: using the whole history"
+          fi
+          {
+            echo 'CHANGELOG<<CHANGELOG_EOF'
+            git log --no-merges --pretty=format:'- %s' "$range"
+            echo
+            echo 'CHANGELOG_EOF'
+          } >> "$GITHUB_ENV"
+
+      - name: Publish to Modrinth
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+        run: ./gradlew modrinth --stacktrace
+
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes "$CHANGELOG" \
+            build/libs/*.jar
