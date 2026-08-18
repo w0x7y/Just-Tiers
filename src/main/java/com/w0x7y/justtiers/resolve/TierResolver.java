@@ -61,10 +61,9 @@ public final class TierResolver {
      * unchanged when it holds none, which is the common case and saves a copy on a path
      * that runs per player.
      *
-     * <p>Public because a lobby scan strips retired placements one site at a time, as
-     * each answer lands, rather than across a whole map of sites at once.
+     * <p>Package-private rather than private: its own tests exercise it directly.
      */
-    public static Map<String, Tier> activeOnly(Map<String, Tier> tiers) {
+    static Map<String, Tier> activeOnly(Map<String, Tier> tiers) {
         if (tiers == null || tiers.isEmpty()) {
             return Map.of();
         }

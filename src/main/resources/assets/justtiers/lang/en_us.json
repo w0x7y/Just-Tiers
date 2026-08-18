@@ -107,20 +107,12 @@
   "justtiers.palette.custom": "Custom",
 
   "justtiers.option.hideOwnBadge": "Hide my own badge",
-  "justtiers.option.hideOwnBadge.desc": "Leaves your own nametag undecorated. /justtiers lookup and /justtiers scan still show you.",
+  "justtiers.option.hideOwnBadge.desc": "Leaves your own nametag undecorated. /justtiers lookup still shows you.",
   "justtiers.option.palette": "Color palette",
   "justtiers.option.palette.desc": "Which colors tell the three leaderboards apart. Applies to nametags and to every Just-Tiers screen.",
   "justtiers.option.customColor": "%s color",
   "justtiers.option.customColor.desc": "Only used while the palette is Custom.",
   "justtiers.option.customColor.inactive": "Set the palette to Custom to change this.",
-
-  "justtiers.scan.title": "Lobby scan",
-  "justtiers.scan.progress": "%s / %s",
-  "justtiers.scan.waiting": "Looking up...",
-  "justtiers.scan.unavailable": "site unavailable",
-  "justtiers.scan.empty.noServer": "Join a server to scan the players on it.",
-  "justtiers.scan.empty.noPlayers": "There is nobody here to scan.",
-  "justtiers.command.scan.opening": "Scanning %s players...",
 
   "key.justtiers.open_config": "Open config screen",
   "key.category.justtiers.main": "Just-Tiers"
