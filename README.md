@@ -607,8 +607,8 @@ in `build.gradle.kts`, so no extra setup is needed.
 ### Continuous integration
 
 `.github/workflows/build.yml` runs `./gradlew build` on every pull request and every push to
-`main`. That is the unit tests *and* a full compile and remap of the jar, because most of this mod
-is Minecraft-facing code that no unit test can reach — a change that compiles nowhere but breaks
+`main`. That is the unit tests *and* a full compile and packaging of the mod jar, because most of
+this mod is Minecraft-facing code that no unit test can reach — a change that compiles nowhere but breaks
 the mixin would otherwise get as far as a release. The jar is kept as a run artifact; the test
 report is kept only when something failed.
 
@@ -629,8 +629,8 @@ and the commits since the previous tag as its notes.
 Two things are worth knowing before the first tagged release:
 
 - **`MODRINTH_TOKEN` must be set** as a repository secret, from
-  [your Modrinth account settings](https://modrinth.com/settings/account), with the
-  `CREATE_VERSION` scope. Minotaur reads that environment variable itself, so no token appears
+  [your Modrinth personal access tokens](https://modrinth.com/settings/pats), with the
+  `CREATE_VERSION` scope (`PROJECT_WRITE` too, if you ever want to run `modrinthSyncBody`). Minotaur reads that environment variable itself, so no token appears
   anywhere in `build.gradle.kts`.
 - **The tag must match `mod_version`.** The workflow checks and stops if it does not, because a jar
   whose own metadata contradicts the release it is attached to is much easier to prevent than to
