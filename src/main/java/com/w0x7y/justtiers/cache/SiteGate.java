@@ -90,4 +90,29 @@ public final class SiteGate {
         openAtNanos = clock.getAsLong() + pauseNanos;
         closed = true;
     }
+
+    /**
+     * A read-only view of the gate, for {@code /justtiers debug}. Asking for it changes
+     * nothing — in particular it never claims the probe {@link #allowRequest} hands out,
+     * so running the command cannot itself let a request past a closed gate.
+     */
+    public synchronized Status status() {
+        return new Status(closed, probing,
+                closed ? Math.max(0, openAtNanos - clock.getAsLong()) : 0,
+                consecutiveFailures);
+    }
+
+    /**
+     * @param closed              whether the site is being left alone entirely.
+     * @param probing             whether the one request allowed out to test the water is
+     *                            still in flight.
+     * @param reopensInNanos      how long until that probe is allowed, or 0 when the site
+     *                            is open, is probing, or is already due.
+     * @param consecutiveFailures failures since the last success. Worth showing even below
+     *                            the threshold: a site at 7 of 8 is one lookup from being
+     *                            dropped, which reads as healthy until it suddenly is not.
+     */
+    public record Status(boolean closed, boolean probing, long reopensInNanos,
+                         int consecutiveFailures) {
+    }
 }

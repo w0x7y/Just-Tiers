@@ -39,6 +39,7 @@ public final class TierCache {
     private final Map<Source, Map<UUID, Entry>> entries = new EnumMap<>(Source.class);
     private final Map<Source, Map<UUID, Attempt>> attempts = new EnumMap<>(Source.class);
     private final Map<Source, SiteGate> gates = new EnumMap<>(Source.class);
+    private final Map<Source, SiteHealth> health = new EnumMap<>(Source.class);
 
     private volatile CachePolicy policy;
     private final Backoff backoff;
@@ -96,6 +97,7 @@ public final class TierCache {
             this.attempts.put(source, new ConcurrentHashMap<>());
             this.gates.put(source, new SiteGate(policy.siteFailureThreshold(),
                     policy.basePause(), policy.maxPause(), clock));
+            this.health.put(source, new SiteHealth(clock));
         }
     }
 
@@ -186,12 +188,19 @@ public final class TierCache {
 
     private Function<UUID, Entry> fetch(Source source, TierSource tierSource) {
         return key -> {
+            // Timed from here rather than from inside the source: what a user waits on is
+            // the whole round trip, including whatever queueing the source does before the
+            // request goes out.
+            long startedAtNanos = clock.getAsLong();
             Entry entry = new Entry(tierSource.fetch(key));
             entry.future.whenComplete((tiers, error) -> {
-                entry.settle(clock.getAsLong());
+                long settledAtNanos = clock.getAsLong();
+                entry.settle(settledAtNanos);
+                long latencyNanos = settledAtNanos - startedAtNanos;
                 if (error == null) {
                     attempts.get(source).remove(key);
                     gates.get(source).recordSuccess();
+                    health.get(source).recordSuccess(latencyNanos);
                 } else {
                     attempts.get(source).compute(key, (ignored, previous) -> {
                         int failures = previous == null ? 1 : previous.failures() + 1;
@@ -199,6 +208,7 @@ public final class TierCache {
                                 clock.getAsLong() + backoff.delayAfter(failures, random));
                     });
                     gates.get(source).recordFailure();
+                    health.get(source).recordFailure(latencyNanos, error);
                 }
             });
             return entry;
@@ -224,6 +234,53 @@ public final class TierCache {
         if (entry != null && entry.future.isCompletedExceptionally()) {
             entriesForSource.remove(uuid, entry);
         }
+    }
+
+    /**
+     * What this site has answered this session, for {@code /justtiers debug}. Deliberately
+     * survives {@link #invalidate}: clearing the cache is a user asking to fetch again, not
+     * a claim that the failures before it never happened — and the run-up to a refresh is
+     * usually the interesting half of a bug report.
+     */
+    public SiteHealth.Snapshot health(Source source) {
+        return health.get(source).snapshot();
+    }
+
+    /** Whether this site is currently being asked at all, and if not, for how much longer. */
+    public SiteGate.Status gateStatus(Source source) {
+        return gates.get(source).status();
+    }
+
+    /** Players this site holds an answer for, including lookups still in flight. */
+    public int cachedPlayers(Source source) {
+        return entries.get(source).size();
+    }
+
+    /** Of those, the ones that have not come back yet. */
+    public int pendingLookups(Source source) {
+        int pending = 0;
+        for (Entry entry : entries.get(source).values()) {
+            if (!entry.future.isDone()) {
+                pending++;
+            }
+        }
+        return pending;
+    }
+
+    /**
+     * Players whose next attempt at this site is still waiting out a retry delay. A high
+     * count next to a healthy gate is the signature of failures spread thinly enough to
+     * never trip it.
+     */
+    public int playersAwaitingRetry(Source source) {
+        long now = clock.getAsLong();
+        int waiting = 0;
+        for (Attempt attempt : attempts.get(source).values()) {
+            if (now - attempt.retryAtNanos() < 0) {
+                waiting++;
+            }
+        }
+        return waiting;
     }
 
     public void invalidateAll() {
