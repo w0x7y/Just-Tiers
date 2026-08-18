@@ -80,6 +80,7 @@
   "justtiers.command.brackets.on": "Showing brackets",
   "justtiers.command.brackets.off": "Hiding brackets",
   "justtiers.command.refreshing": "Refreshing tier data...",
+  "justtiers.command.debug.copied": "Copied to clipboard \u2014 paste it into your bug report",
   "justtiers.command.modeSet": "Mode set to %s",
   "justtiers.command.badgeSet": "Badge set to %s",
   "justtiers.command.unknown": "Unknown %s '%s'. Valid: %s",

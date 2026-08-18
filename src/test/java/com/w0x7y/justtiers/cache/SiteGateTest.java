@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -125,6 +126,60 @@ class SiteGateTest {
 
         advance(MAX_PAUSE);
         assertTrue(gate.allowRequest(), "the pause must never exceed its cap");
+    }
+
+    @Test
+    void statusReportsTheRunOfFailuresBeforeItClosesAnything() {
+        SiteGate gate = gate();
+        fail(gate, THRESHOLD - 1);
+
+        SiteGate.Status status = gate.status();
+        assertFalse(status.closed());
+        assertEquals(THRESHOLD - 1, status.consecutiveFailures());
+        assertEquals(0, status.reopensInNanos());
+    }
+
+    @Test
+    void statusCountsDownTheRemainingPause() {
+        SiteGate gate = gate();
+        fail(gate, THRESHOLD);
+        advance(Duration.ofSeconds(10));
+
+        SiteGate.Status status = gate.status();
+        assertTrue(status.closed());
+        assertFalse(status.probing());
+        assertEquals(Duration.ofSeconds(20).toNanos(), status.reopensInNanos());
+    }
+
+    @Test
+    void statusNeverCountsBelowZero() {
+        SiteGate gate = gate();
+        fail(gate, THRESHOLD);
+        advance(MAX_PAUSE);
+
+        assertEquals(0, gate.status().reopensInNanos());
+    }
+
+    @Test
+    void statusShowsAProbeInFlight() {
+        SiteGate gate = gate();
+        fail(gate, THRESHOLD);
+        advance(PAUSE);
+        assertTrue(gate.allowRequest());
+
+        assertTrue(gate.status().probing());
+    }
+
+    @Test
+    void askingForStatusDoesNotSpendTheProbe() {
+        SiteGate gate = gate();
+        fail(gate, THRESHOLD);
+        advance(PAUSE);
+
+        for (int i = 0; i < 10; i++) {
+            assertFalse(gate.status().probing(), "reading the gate must not open it");
+        }
+        assertTrue(gate.allowRequest(), "the probe must still be there to hand out");
     }
 
     @Test
