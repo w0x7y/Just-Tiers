@@ -550,7 +550,7 @@ behind it and copies the same text to your clipboard, so a bug report can be one
 
 ```
 === Just-Tiers debug ===
-Just-Tiers 1.0.2+mc26.2 | Minecraft 26.2 | Fabric Loader 0.19.3
+Just-Tiers 1.0.3+mc26.2 | Minecraft 26.2 | Fabric Loader 0.19.3
 nametags on | mode all | cache TTL 60m
 NovaTiers index 12345 players | refresh every 30m
 MCTiers: ok | 12 ok, 0 failed | last ok 4s ago | latency 180ms last, 210ms mean | 42 cached, 1 in flight, 0 retrying
