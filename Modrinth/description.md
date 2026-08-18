@@ -37,6 +37,7 @@ Just-Tiers supports all three leaderboards, and adds an **All** mode that shows 
 - **Shows up as it arrives** - a nametag gains its badge the moment the first site answers, then fills in as the others land, rather than waiting on the slowest one.
 - **Keeps up with the leaderboards** - a cached tier is re-checked every hour, so a player tested or re-ranked mid-session stops showing the wrong thing without a restart.
 - **Fails safe** - a site that is down, rate-limiting or unreachable is retried with a growing delay, and one that keeps failing is left alone entirely rather than asked again every minute. A failure is never mistaken for "this player is unranked".
+- **One-paste bug reports** - `/justtiers debug` prints what each site is actually doing right now, and copies it to your clipboard. If tiers stop showing up, that report says why.
 - **Client-side only** - works on any server, nothing to install server-side.
 
 ---
@@ -191,6 +192,36 @@ All commands are client-side and start with `/justtiers`. Everything they change
 | `/justtiers palette <palette>` | Set the color palette: `default`, `colorblind`, `high_contrast`, `custom` |
 | `/justtiers retired` | Show or hide retired tiers, across every display mode |
 | `/justtiers refresh` | Clear the cache and re-download tier data |
+| `/justtiers debug` | Print a per-site status report and copy it to the clipboard, for pasting into a bug report |
+
+---
+
+## When something looks wrong
+
+Tiers not showing up has a handful of causes that look identical from the outside: a site
+is down, you are being rate-limited, the player genuinely is unranked, or the mod has
+stopped asking because a site failed too many times in a row.
+
+`/justtiers debug` tells them apart. It prints a line per site and copies the whole thing
+to your clipboard:
+
+```
+=== Just-Tiers debug ===
+Just-Tiers 1.0.3+mc26.2 | Minecraft 26.2 | Fabric Loader 0.19.3
+nametags on | mode all | cache TTL 60m
+NovaTiers index 12345 players | refresh every 30m
+MCTiers: ok | 12 ok, 0 failed | last ok 4s ago | latency 180ms last, 210ms mean | 42 cached, 1 in flight, 0 retrying
+SubTiers: PAUSED, retrying in 28s | 3 ok, 9 failed | last ok 6m ago, last fail 12s ago | latency 4.0s last, 1.2s mean | 8 cached, 0 in flight, 4 retrying
+  last error: TierLookupException: HTTP 503 from subtiers.net
+NovaTiers: ok | no lookups yet | 120 cached, 0 in flight, 0 retrying
+```
+
+`PAUSED` means the mod has stopped asking that site for a while after repeated failures,
+and says when it will try again. That is the mod protecting a struggling site, not a bug.
+
+Paste it into an issue and there is usually nothing left to ask you. The report is
+deliberately in English regardless of your game language, so it stays readable in a bug
+tracker.
 
 ---
 
