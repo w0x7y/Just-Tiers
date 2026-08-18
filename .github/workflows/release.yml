@@ -69,16 +69,21 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # The mod jar only. build/libs also holds the sources jar, and a sources jar
+          # dropped into a mods folder fails to load — not something to hand someone on
+          # a release page next to the file they actually want.
+          jar=$(ls build/libs/*.jar | grep -v -- '-sources\.jar$')
+          test -n "$jar" || { echo "no mod jar in build/libs" >&2; exit 1; }
           # Idempotent, so that re-running this job after a failed Modrinth upload does
           # not fall over on the release it already created.
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             echo "release $GITHUB_REF_NAME already exists; replacing its files"
-            gh release upload "$GITHUB_REF_NAME" build/libs/*.jar --clobber
+            gh release upload "$GITHUB_REF_NAME" $jar --clobber
           else
             gh release create "$GITHUB_REF_NAME" \
               --title "$GITHUB_REF_NAME" \
               --notes "$CHANGELOG" \
-              build/libs/*.jar
+              $jar
           fi
 
       - name: Publish to Modrinth

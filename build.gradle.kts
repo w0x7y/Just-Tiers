@@ -63,9 +63,6 @@ modrinth {
     versionName.set("Just-Tiers ${property("mod_version")} for Minecraft "
             + "${property("minecraft_version")}")
     versionType.set(property("release_type") as String)
-    // With Loom this must be the remapped jar. The dev jar runs in a development
-    // workspace and nowhere else.
-    uploadFile.set(tasks.named("remapJar"))
     gameVersions.add(property("minecraft_version") as String)
     loaders.add("fabric")
     // Written by the release workflow from the commits since the previous tag. The
@@ -92,4 +89,15 @@ modrinth {
     // its own file. Deliberately not wired into the release job: `modrinthSyncBody`
     // overwrites the project body, and that cannot be undone.
     syncBodyFrom.set(rootProject.file("Modrinth/description.md").readText())
+}
+
+// The jar to upload. Minecraft 26.2 ships unobfuscated, so Loom has nothing to remap and
+// registers no `remapJar` task — `jar` is the distributable mod jar, not a dev-only one.
+// An obfuscated target would bring `remapJar` back, and uploading `jar` there would ship
+// something that only runs in a development workspace, so pick whichever exists rather
+// than hardcoding today's answer. This sits in afterEvaluate because Loom registers its
+// tasks late; keeping it a TaskProvider is what makes `modrinth` build the jar it uploads.
+afterEvaluate {
+    val modJar = if (tasks.findByName("remapJar") != null) "remapJar" else "jar"
+    modrinth { uploadFile.set(tasks.named(modJar)) }
 }
