@@ -478,7 +478,7 @@ class TierCacheTest {
             it.cache.peek(Source.MCTIERS, player);
         }
 
-        // A scan of two hundred players must not wave them all past the gate.
+        // A lobby of two hundred players must not wave them all past the gate.
         CompletableFuture<Map<String, Tier>> future = it.cache.load(Source.MCTIERS, UUID.randomUUID());
         assertTrue(future.isCompletedExceptionally());
         assertEquals(8, it.fake.calls.get());

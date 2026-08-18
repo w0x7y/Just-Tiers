@@ -37,23 +37,6 @@ public final class OnlinePlayers {
         return Optional.empty();
     }
 
-    /**
-     * Everyone on the server holding a real account UUID, in tab-list order — the set a
-     * scan covers. The v4 filter is the one {@link #find} already applies: offline-mode
-     * and proxy servers mint v3 UUIDs, which the leaderboards are not keyed by, so those
-     * players are left out rather than listed as permanently unranked.
-     */
-    public static List<PlayerRef> all() {
-        List<PlayerRef> players = new ArrayList<>();
-        for (GameProfile profile : profiles()) {
-            if (profile.name() != null && !profile.name().isBlank()
-                    && profile.id() != null && profile.id().version() == 4) {
-                players.add(new PlayerRef(profile.name(), profile.id()));
-            }
-        }
-        return List.copyOf(players);
-    }
-
     /** Every online name, for tab-completion. Empty on the title screen. */
     public static List<String> names() {
         List<String> names = new ArrayList<>();

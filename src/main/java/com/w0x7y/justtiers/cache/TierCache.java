@@ -161,7 +161,7 @@ public final class TierCache {
      *
      * <p>A site whose gate is closed fails immediately without being asked. That is the
      * truth of the situation and it is what callers already draw as "site unavailable";
-     * pretending otherwise would mean a lobby scan waving two hundred requests past the
+     * pretending otherwise would mean a busy lobby waving hundreds of requests past the
      * very thing holding them back.
      */
     public CompletableFuture<Map<String, Tier>> load(Source source, UUID uuid) {
