@@ -27,7 +27,6 @@ Just-Tiers supports all three leaderboards, and adds an **All** mode that shows 
 - **Automatic fallback** - not ranked in your chosen gamemode? It shows that player's highest tier on that same site instead.
 - **Gamemode icons** - a small icon shows *which* gamemode earned the tier.
 - **Color-coded by site** - you can always tell where a tier came from.
-- **Scan the whole lobby** - `/justtiers scan` scores everyone on the server out of every placement they hold on all three sites and sorts them best first, so you know who is dangerous before the fight starts.
 - **Look anyone up** - `/justtiers lookup <player>` opens a screen with that player's skin and every gamemode all three sites run, tier by tier, without them being anywhere near you.
 - **Color palettes** - swap the three site colors for a colorblind-safe or high-contrast preset, or pick three of your own.
 - **Shape the badge** - before or after the name, brackets and icons on or off, and your own nametag left plain if you prefer. The config screen previews every combination live.
@@ -70,33 +69,8 @@ These are the default palette:
 All three can be changed. The config screen offers a **Colorblind-safe** palette (orange,
 sky blue, white — separated by brightness as well as hue, so it works for red-green
 color blindness) and a **High contrast** one, or you can pick three colors of your own.
-Whichever you choose applies everywhere at once: nametags, lookup, scan and the config
-screen itself.
-
----
-
-## Scanning a lobby
-
-`/justtiers lookup` answers a question about one player. `/justtiers scan` answers the one
-you actually have when you join a lobby: **who here is dangerous?**
-
-It lists everyone on the server with their head, their name, a points total and the full
-grid of every gamemode all three sites run — sorted by that total, best first.
-
-Every placement is worth points, best to worst:
-
-| Tier | HT1 | LT1 | HT2 | LT2 | HT3 | LT3 | HT4 | LT4 | HT5 | LT5 |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Points | 10 | 9 | 8 | 7 | 6 | 5 | 4 | 3 | 2 | 1 |
-
-A player's total is the **sum across every gamemode on every site**, not their best and
-not their average — someone placed in eleven gamemodes really is more dangerous than
-someone placed in one at the same tier. Retired placements are not counted here and not
-shown: a scan asks who is a threat right now, and nobody is defending a retired tier.
-
-NovaTiers is already in memory, so the screen opens sorted immediately; the other two
-columns fill in as they answer, and the list re-sorts as they land. Clicking a row opens
-that player's lookup screen.
+Whichever you choose applies everywhere at once: nametags, lookup and the config screen
+itself.
 
 ---
 
@@ -124,7 +98,7 @@ never transmitted anywhere.
 
 | Contacted | What is sent | When |
 |---|---|---|
-| `mctiers.com` | The account UUID of a player being looked up | Whenever their nametag is drawn (while a mode including MCTiers is active), when you run `/justtiers lookup` on them, and for **everyone on the server** when you run `/justtiers scan`. At most once per player per `tierCacheMinutes` (60 by default, configurable 5–1440), however many of those happen |
+| `mctiers.com` | The account UUID of a player being looked up | Whenever their nametag is drawn (while a mode including MCTiers is active) and when you run `/justtiers lookup` on them. At most once per player per `tierCacheMinutes` (60 by default, configurable 5–1440), however many of those happen |
 | `subtiers.net` | The same, for SubTiers | The same |
 | `novatiers.com` | **Nothing about any player.** NovaTiers has no per-player endpoint, so the mod downloads that site's whole ranked-player list (~1.7 MB) and answers from it locally | At startup, then every 30 minutes by default (configurable, 5–1440) |
 | `api.mojang.com` | A username you typed into `/justtiers lookup` | Only when that name belongs to nobody on the server — anyone in the tab list is resolved locally with no request |
@@ -145,8 +119,8 @@ you. They are public identifiers, and the leaderboards are public pages keyed by
 looking a player up here sends no more than opening their page on those sites by hand.
 
 **Turning it off.** `/justtiers toggle` stops the per-player lookups entirely, so no
-UUID leaves your machine unless you ask for one by running `/justtiers lookup` or
-`/justtiers scan` yourself. Be aware that the NovaTiers list download is on its own timer
+UUID leaves your machine unless you ask for one by running `/justtiers lookup`
+yourself. Be aware that the NovaTiers list download is on its own timer
 and keeps running; it is an anonymous download of a public file and carries no
 information about you or anyone else.
 
@@ -181,7 +155,6 @@ All commands are client-side and start with `/justtiers`. Everything they change
 | `/justtiers` | Show current settings, the selected gamemode per site, and how many players are in the NovaTiers index |
 | `/justtiers gui` | Open the config screen |
 | `/justtiers lookup <player>` | Look a player up on all three sites and show the result on its own screen. Tab-completes anyone on the server; offline names are resolved through Mojang |
-| `/justtiers scan` | Rank everyone on the server by their tiers across all three sites |
 | `/justtiers toggle` | Turn the nametag display on or off |
 | `/justtiers mode <mode>` | Set display mode: `mctiers_only`, `subtiers_only`, `novatiers_only`, `all` |
 | `/justtiers gamemode <gamemode>` | Set the selected gamemode for the current single-site mode |
@@ -207,7 +180,7 @@ to your clipboard, it will look something like this:
 
 ```
 === Just-Tiers debug ===
-Just-Tiers 1.0.3+mc26.2 | Minecraft 26.2 | Fabric Loader 0.19.3
+Just-Tiers *+mc26.2 | Minecraft 26.2 | Fabric Loader 0.19.3
 nametags on | mode all | cache TTL 60m
 NovaTiers index 12345 players | refresh every 30m
 MCTiers: ok | 12 ok, 0 failed | last ok 4s ago | latency 180ms last, 210ms mean | 42 cached, 1 in flight, 0 retrying

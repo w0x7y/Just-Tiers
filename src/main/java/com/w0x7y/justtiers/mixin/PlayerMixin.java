@@ -21,7 +21,7 @@ public class PlayerMixin {
         }
         // Your own tag, when you have asked not to see a badge on it. Checked here rather
         // than in the renderer because this is where the entity is in hand: the renderer
-        // only ever sees a UUID. Lookup and scan still show you — this is about your own
+        // only ever sees a UUID. Lookup still shows you — this is about your own
         // nametag in third person, not about hiding yourself from yourself.
         if (JustTiersClient.config().isHideOwnBadge() && self == Minecraft.getInstance().player) {
             return original;
