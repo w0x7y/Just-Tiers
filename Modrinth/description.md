@@ -203,7 +203,7 @@ is down, you are being rate-limited, the player genuinely is unranked, or the mo
 stopped asking because a site failed too many times in a row.
 
 `/justtiers debug` tells them apart. It prints a line per site and copies the whole thing
-to your clipboard:
+to your clipboard, it will look something like this:
 
 ```
 === Just-Tiers debug ===
