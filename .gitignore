@@ -9,3 +9,5 @@ logs/
 *.class
 .idea/
 *.iml
+
+how-to-upload-to-modrinth.txt
