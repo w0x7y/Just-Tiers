@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.w0x7y.justtiers.JustTiers;
 import com.w0x7y.justtiers.render.model.BadgePosition;
+import com.w0x7y.justtiers.render.model.NametagSettings;
 import com.w0x7y.justtiers.render.model.NametagStyle;
 import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Gamemodes;
@@ -210,6 +211,16 @@ public class JustTiersConfig {
 
     public NametagStyle nametagStyle() {
         return new NametagStyle(getBadgePosition(), showIcons, showBrackets, colors());
+    }
+
+    /**
+     * Everything the nametag path reads, as one value. The config screen builds the same
+     * record out of YACL's pending values, which is what lets its preview go through
+     * exactly the code the world nametag does.
+     */
+    public NametagSettings nametagSettings() {
+        return new NametagSettings(enabled, getDisplayMode(), selectedGamemodesBySource(),
+                showRetired, nametagStyle());
     }
 
     /** The out-of-the-box gamemode for a site, and the config screen's reset target. */

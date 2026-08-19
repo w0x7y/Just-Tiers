@@ -6,8 +6,8 @@ import com.w0x7y.justtiers.JustTiersClient;
 import com.w0x7y.justtiers.config.JustTiersConfig;
 import com.w0x7y.justtiers.config.Palette;
 import com.w0x7y.justtiers.gui.state.ControlAvailability;
-import com.w0x7y.justtiers.gui.state.PreviewState;
 import com.w0x7y.justtiers.render.model.BadgePosition;
+import com.w0x7y.justtiers.render.model.NametagSettings;
 import com.w0x7y.justtiers.render.model.NametagStyle;
 import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Source;
@@ -96,7 +96,9 @@ public final class JustTiersScreens {
         // though the maps they live in are still being filled in below.
         Map<Source, Option<String>> pickers = new EnumMap<>(Source.class);
         Map<Source, Option<Color>> colorPickers = new EnumMap<>(Source.class);
-        Supplier<PreviewState> previewState = () -> new PreviewState(
+        // Always the pending values, never the saved config, so the preview agrees with
+        // what Save would write and Cancel discards it along with everything else.
+        Supplier<NametagSettings> previewState = () -> new NametagSettings(
                 enabled.pendingValue(),
                 displayMode.pendingValue(),
                 pendingGamemodes(pickers),

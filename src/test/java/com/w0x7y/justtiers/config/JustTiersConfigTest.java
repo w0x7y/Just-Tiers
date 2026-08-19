@@ -1,6 +1,7 @@
 package com.w0x7y.justtiers.config;
 
 import com.w0x7y.justtiers.render.model.BadgePosition;
+import com.w0x7y.justtiers.render.model.NametagSettings;
 import com.w0x7y.justtiers.render.model.NametagStyle;
 import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Source;
@@ -23,6 +24,33 @@ class JustTiersConfigTest {
         assertEquals("elytra", config.selectedGamemode(Source.SUBTIERS));
         assertEquals("vanilla", config.selectedGamemode(Source.NOVATIERS));
         assertEquals(30, config.getNovaRefreshMinutes());
+    }
+
+    @Test
+    void everySettingTheNametagReadsComesOutInOneValue() {
+        JustTiersConfig config = new JustTiersConfig();
+        config.setEnabled(false);
+        config.setDisplayMode(DisplayMode.SUBTIERS_ONLY);
+        config.setShowRetired(false);
+        config.setSelectedGamemode(Source.MCTIERS, "axe");
+        config.setBadgePosition(BadgePosition.AFTER);
+
+        NametagSettings settings = config.nametagSettings();
+        assertFalse(settings.enabled());
+        assertEquals(DisplayMode.SUBTIERS_ONLY, settings.displayMode());
+        assertFalse(settings.showRetired());
+        assertEquals("axe", settings.selectedGamemodes().get(Source.MCTIERS));
+        assertEquals(config.nametagStyle(), settings.style());
+    }
+
+    /** The nametag path reads this every frame, so it has to follow a saved change. */
+    @Test
+    void theNametagSettingsFollowALaterChange() {
+        JustTiersConfig config = new JustTiersConfig();
+        assertTrue(config.nametagSettings().enabled());
+
+        config.setEnabled(false);
+        assertFalse(config.nametagSettings().enabled());
     }
 
     @Test
