@@ -5,8 +5,7 @@ import com.w0x7y.justtiers.render.SiteColors;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.w0x7y.justtiers.gui.layout.GridLayout;
 import com.w0x7y.justtiers.gui.state.PreviewState;
-import com.w0x7y.justtiers.preview.PreviewSample;
-import com.w0x7y.justtiers.render.Segments;
+import com.w0x7y.justtiers.render.Nametags;
 import com.w0x7y.justtiers.tier.Gamemode;
 import com.w0x7y.justtiers.tier.Gamemodes;
 import com.w0x7y.justtiers.tier.Source;
@@ -141,10 +140,8 @@ public final class GamemodeGridScreen extends Screen {
     private void extractPreview(GuiGraphicsExtractor graphics) {
         String slug = hoveredIndex >= 0 ? gamemodes.get(hoveredIndex).slug() : selectedSlug;
         PreviewState state = stateFor(slug);
-        Component tag = Segments.compose(
-                PreviewSample.segments(state.displayMode(), state.selectedGamemodes(),
-                        state.showRetired(), System.currentTimeMillis(), state.style()),
-                PreviewName.component(), state.style().position());
+        Component tag = Nametags.compose(state.badge(System.currentTimeMillis()),
+                PreviewName.component());
 
         int tagWidth = Math.round(font.width(tag) * TAG_SCALE);
         graphics.pose().pushMatrix();

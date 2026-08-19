@@ -1,22 +1,22 @@
 package com.w0x7y.justtiers.render;
 
 import com.w0x7y.justtiers.JustTiersClient;
-import com.w0x7y.justtiers.render.model.NametagModel;
-import com.w0x7y.justtiers.render.model.NametagStyle;
-import com.w0x7y.justtiers.render.model.Segment;
+import com.w0x7y.justtiers.render.model.Badge;
 import com.w0x7y.justtiers.resolve.DisplayMode;
-import com.w0x7y.justtiers.resolve.ResolvedTier;
-import com.w0x7y.justtiers.resolve.TierResolver;
 import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
 import net.minecraft.network.chat.Component;
 
 import java.util.EnumMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/** Converts resolved tiers into the Component prefix shown in front of a player's name. */
+/**
+ * The nametag path's adapter: it reads the live config and cache, hands them to
+ * {@link Badge}, and puts the answer in front of (or behind) the player's name.
+ * Everything it decides is in those two calls, which is what keeps this class thin
+ * enough not to need the game running to be understood.
+ */
 public final class NametagRenderer {
 
     public static Component decorate(UUID uuid, Component original) {
@@ -31,41 +31,16 @@ public final class NametagRenderer {
 
         DisplayMode mode = config.getDisplayMode();
         Map<Source, Map<String, Tier>> tiersBySource = new EnumMap<>(Source.class);
-
-        // Sources still in flight are simply left out, so a badge appears as soon as the
-        // first site answers instead of waiting on the slowest one. It fills in over the
-        // next few frames as the others land.
-        for (Source source : SOURCES_BY_MODE.get(mode)) {
+        for (Source source : mode.sources()) {
             JustTiersClient.cache().peek(source, uuid)
                     .ifPresent(tiers -> tiersBySource.put(source, tiers));
         }
-        if (tiersBySource.isEmpty()) {
-            return original;
-        }
 
-        List<ResolvedTier> resolved = TierResolver.resolve(
-                mode, tiersBySource, config.selectedGamemodesBySource(), config.isShowRetired());
-        NametagStyle style = config.nametagStyle();
-        List<Segment> segments = NametagModel.build(resolved, style);
-        if (segments.isEmpty()) {
-            return original;
-        }
-
-        return Segments.compose(segments, original, style.position());
-    }
-
-    /**
-     * Precomputed: this is read per player per frame, and the Optional and the
-     * singleton list it used to build were allocated every one of those times.
-     */
-    private static final Map<DisplayMode, List<Source>> SOURCES_BY_MODE = sourcesByMode();
-
-    private static Map<DisplayMode, List<Source>> sourcesByMode() {
-        Map<DisplayMode, List<Source>> byMode = new EnumMap<>(DisplayMode.class);
-        for (DisplayMode mode : DisplayMode.values()) {
-            byMode.put(mode, mode.singleSource().map(List::of).orElse(Source.ALL));
-        }
-        return Map.copyOf(byMode);
+        Badge badge = Badge.forPlayer(mode, tiersBySource, config.selectedGamemodesBySource(),
+                config.isShowRetired(), config.nametagStyle());
+        // Returning the original rather than an equal copy: this runs per player per
+        // frame, and most players hold no tiers at all.
+        return badge.isEmpty() ? original : Nametags.compose(badge, original);
     }
 
     private NametagRenderer() {

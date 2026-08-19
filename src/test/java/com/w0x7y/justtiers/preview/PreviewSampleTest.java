@@ -1,7 +1,7 @@
 package com.w0x7y.justtiers.preview;
 
+import com.w0x7y.justtiers.render.model.Badge;
 import com.w0x7y.justtiers.render.model.BadgePosition;
-import com.w0x7y.justtiers.render.model.NametagModel;
 import com.w0x7y.justtiers.render.model.NametagStyle;
 import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Gamemode;
@@ -29,8 +29,10 @@ class PreviewSampleTest {
         };
     }
 
+    /** What the sample tiers draw as, through the same Badge the config screen uses. */
     private String text(DisplayMode mode, Map<Source, String> selected, boolean retired) {
-        return NametagModel.plainText(PreviewSample.segments(mode, selected, retired, NametagStyle.DEFAULT));
+        return Badge.of(PreviewSample.resolve(mode, selected, retired), NametagStyle.DEFAULT)
+                .plainText();
     }
 
     private static Gamemode gamemode(Source source, String slug) {
@@ -103,16 +105,14 @@ class PreviewSampleTest {
     }
 
     @Test
-    void theClockOverloadAgreesWithThePhase() {
+    void thePreviewPicksItsPhaseFromTheClock() {
         long retiredTime = PreviewSample.RETIRED_CYCLE_MILLIS;
         assertEquals(text(DisplayMode.ALL, DEFAULTS, true),
-                NametagModel.plainText(
-                        PreviewSample.segments(DisplayMode.ALL, DEFAULTS, true, retiredTime,
-                                NametagStyle.DEFAULT)));
+                Badge.preview(DisplayMode.ALL, DEFAULTS, true, retiredTime,
+                        NametagStyle.DEFAULT).plainText());
         assertEquals(text(DisplayMode.ALL, DEFAULTS, false),
-                NametagModel.plainText(
-                        PreviewSample.segments(DisplayMode.ALL, DEFAULTS, true, 0,
-                                NametagStyle.DEFAULT)));
+                Badge.preview(DisplayMode.ALL, DEFAULTS, true, 0,
+                        NametagStyle.DEFAULT).plainText());
     }
 
     @Test
@@ -140,9 +140,8 @@ class PreviewSampleTest {
         // The point of the preview is that it answers to the appearance rows too, not
         // just the mode and gamemode ones.
         NametagStyle stripped = new NametagStyle(BadgePosition.AFTER, false, false);
-        String shown = NametagModel.plainText(
-                PreviewSample.segments(DisplayMode.MCTIERS_ONLY,
-                        Map.of(Source.MCTIERS, "axe"), false, stripped));
+        String shown = Badge.of(PreviewSample.resolve(DisplayMode.MCTIERS_ONLY,
+                Map.of(Source.MCTIERS, "axe"), false), stripped).plainText();
 
         assertEquals(" HT1", shown);
         assertEquals("[" + entry(gamemode(Source.MCTIERS, "axe"), false) + "] ",
@@ -150,14 +149,13 @@ class PreviewSampleTest {
     }
 
     @Test
-    void theStyleSurvivesTheClockOverloadToo() {
+    void theStyleSurvivesTheClockToo() {
         NametagStyle stripped = new NametagStyle(BadgePosition.AFTER, false, false);
         assertEquals(
-                NametagModel.plainText(PreviewSample.segments(
-                        DisplayMode.ALL, DEFAULTS, true, stripped)),
-                NametagModel.plainText(PreviewSample.segments(
-                        DisplayMode.ALL, DEFAULTS, true,
-                        PreviewSample.RETIRED_CYCLE_MILLIS, stripped)));
+                Badge.of(PreviewSample.resolve(DisplayMode.ALL, DEFAULTS, true), stripped)
+                        .plainText(),
+                Badge.preview(DisplayMode.ALL, DEFAULTS, true,
+                        PreviewSample.RETIRED_CYCLE_MILLIS, stripped).plainText());
     }
 
     @Test
