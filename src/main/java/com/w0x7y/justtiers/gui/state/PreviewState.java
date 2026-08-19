@@ -1,5 +1,6 @@
 package com.w0x7y.justtiers.gui.state;
 
+import com.w0x7y.justtiers.render.model.Badge;
 import com.w0x7y.justtiers.render.model.NametagStyle;
 import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Source;
@@ -20,5 +21,14 @@ public record PreviewState(boolean enabled,
     public PreviewState {
         selectedGamemodes = Map.copyOf(selectedGamemodes);
         style = style == null ? NametagStyle.DEFAULT : style;
+    }
+
+    /**
+     * The badge these settings would draw. {@code timeMillis} drives the preview's
+     * active/retired cycle, so a widget that redraws every frame gets an animated tag
+     * out of a state record that holds no clock of its own.
+     */
+    public Badge badge(long timeMillis) {
+        return Badge.preview(displayMode, selectedGamemodes, showRetired, timeMillis, style);
     }
 }

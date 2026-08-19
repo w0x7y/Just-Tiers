@@ -1,8 +1,5 @@
 package com.w0x7y.justtiers.preview;
 
-import com.w0x7y.justtiers.render.model.NametagModel;
-import com.w0x7y.justtiers.render.model.NametagStyle;
-import com.w0x7y.justtiers.render.model.Segment;
 import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.resolve.ResolvedTier;
 import com.w0x7y.justtiers.tier.Gamemode;
@@ -22,9 +19,10 @@ import java.util.Map;
  * selection naming a gamemode its site no longer has, which draws that site's first
  * gamemode instead of nothing.
  *
- * <p>Minecraft-free on purpose, and still built through the shared
- * {@link NametagModel}, so the preview keeps agreeing with the real nametag's shape,
- * spacing and colors.
+ * <p>This is the made-up tier data alone. Laying it out is
+ * {@code Badge.preview}'s job, through exactly the same code the world nametag goes
+ * through, which is what keeps the preview agreeing with it on shape, spacing and
+ * colors.
  */
 public final class PreviewSample {
 
@@ -65,21 +63,6 @@ public final class PreviewSample {
         return gamemodes(mode, selectedGamemodes).stream()
                 .map(gamemode -> new ResolvedTier(gamemode, tier))
                 .toList();
-    }
-
-    public static List<Segment> segments(DisplayMode mode,
-                                         Map<Source, String> selectedGamemodes,
-                                         boolean retired,
-                                         NametagStyle style) {
-        return NametagModel.build(resolve(mode, selectedGamemodes, retired), style);
-    }
-
-    public static List<Segment> segments(DisplayMode mode,
-                                         Map<Source, String> selectedGamemodes,
-                                         boolean showRetired,
-                                         long timeMillis,
-                                         NametagStyle style) {
-        return segments(mode, selectedGamemodes, retiredPhase(showRetired, timeMillis), style);
     }
 
     /** The gamemodes the tag shows: the selection on one site, or the fixed trio. */
