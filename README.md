@@ -25,28 +25,28 @@ Just-Tiers supports all three leaderboards, and adds an **All** mode that shows 
 
 ## Features
 
-- **All three leaderboards** — MCTiers, SubTiers and NovaTiers.
-- **Four display modes** — focus on one site, or show all three at once.
-- **Per-site gamemode selection** — pick the gamemode you care about on each site.
-- **Automatic fallback** — not ranked in your chosen gamemode? It shows that player's highest tier on that same site instead.
-- **Gamemode icons** — a small icon shows *which* gamemode earned the tier.
-- **Color-coded by site** — you can always tell where a tier came from.
-- **Look anyone up** — `/justtiers lookup <player>` opens a screen with that player's skin and every gamemode all three sites run, tier by tier, without them being anywhere near you. See [Looking a player up](#looking-a-player-up).
-- **Shape the badge** — put it before or after the name, and turn the icons or the brackets off to make it as short as you like. The config screen previews every combination live.
-- **Recolor the sites** — the three leaderboard colors can be swapped for a colorblind-safe or high-contrast palette, or for three colors of your own. See [Color palettes](#color-palettes).
-- **Hide your own badge** — leave your own nametag undecorated while everyone else's keeps its tiers.
-- **Retired tiers handled properly** — shown with an `R` prefix in their site's color, still counted when finding a player's highest tier, and hideable entirely with one setting.
-- **Non-blocking** — all lookups are asynchronous and cached; the mod never stalls your frame rate waiting on a web request.
-- **Keeps up with the leaderboards** — a cached tier is re-checked every hour, so a player tested or re-ranked mid-session stops showing the wrong thing without a restart.
-- **Shows up as it arrives** — a nametag gains its badge the moment the first site answers, then fills in as the others land, rather than waiting on the slowest one.
-- **Fails safe** — a site that is down, rate-limiting or unreachable is retried; it is never mistaken for "this player is unranked". Repeated failures back off, and a site that keeps failing is left alone entirely rather than being asked once a minute per player.
-- **Explains itself when something is wrong** — `/justtiers debug` prints what each site has actually answered, how fast, and what it last said when it failed, and copies it to your clipboard for a bug report. See [Reporting a bug](#reporting-a-bug).
-- **In-game config screen** — every setting in one place, with a live nametag preview and an
+- **All three leaderboards** - MCTiers, SubTiers and NovaTiers.
+- **Four display modes** - focus on one site, or show all three at once.
+- **Per-site gamemode selection** - pick the gamemode you care about on each site.
+- **Automatic fallback** - not ranked in your chosen gamemode? It shows that player's highest tier on that same site instead.
+- **Gamemode icons** - a small icon shows *which* gamemode earned the tier.
+- **Color-coded by site** - you can always tell where a tier came from.
+- **Look anyone up** - `/justtiers lookup <player>` opens a screen with that player's skin and every gamemode all three sites run, tier by tier, without them being anywhere near you. See [Looking a player up](#looking-a-player-up).
+- **Shape the badge** - put it before or after the name, and turn the icons or the brackets off to make it as short as you like. The config screen previews every combination live.
+- **Recolor the sites** - the three leaderboard colors can be swapped for a colorblind-safe or high-contrast palette, or for three colors of your own. See [Color palettes](#color-palettes).
+- **Hide your own badge** - leave your own nametag undecorated while everyone else's keeps its tiers.
+- **Retired tiers handled properly** - shown with an `R` prefix in their site's color, still counted when finding a player's highest tier, and hideable entirely with one setting.
+- **Non-blocking** - all lookups are asynchronous and cached; the mod never stalls your frame rate waiting on a web request.
+- **Keeps up with the leaderboards** - a cached tier is re-checked every hour, so a player tested or re-ranked mid-session stops showing the wrong thing without a restart.
+- **Shows up as it arrives** - a nametag gains its badge the moment the first site answers, then fills in as the others land, rather than waiting on the slowest one.
+- **Fails safe** - a site that is down, rate-limiting or unreachable is retried; it is never mistaken for "this player is unranked". Repeated failures back off, and a site that keeps failing is left alone entirely rather than being asked once a minute per player.
+- **Explains itself when something is wrong** - `/justtiers debug` prints what each site has actually answered, how fast, and what it last said when it failed, and copies it to your clipboard for a bug report. See [Reporting a bug](#reporting-a-bug).
+- **In-game config screen** - every setting in one place, with a live nametag preview and an
   icon grid for picking gamemodes. See [Configuration screen](#configuration-screen).
-- **Visible downloads** — the NovaTiers list has to be fetched in full, so a small progress bar
+- **Visible downloads** - the NovaTiers list has to be fetched in full, so a small progress bar
   appears in the bottom-right corner while it downloads, rather than leaving you wondering whether
   the mod is working.
-- **Client-side only** — works on any server, nothing to install server-side.
+- **Client-side only** - works on any server, nothing to install server-side.
 
 ---
 
@@ -59,7 +59,7 @@ LT5 → HT5 → LT4 → HT4 → LT3 → HT3 → LT2 → HT2 → LT1 → HT1
 lowest                                                highest
 ```
 
-A **retired** tier is one a player earned but is no longer actively defending. Just-Tiers displays these with an `R` prefix (for example `RHT1`), colored like any other tier from that site, and still counts them when working out a player's highest tier — otherwise many well-known players, whose placements are entirely retired, would show nothing at all.
+A **retired** tier is one a player earned but is no longer actively defending. Just-Tiers displays these with an `R` prefix (for example `RHT1`), colored like any other tier from that site, and still counts them when working out a player's highest tier - otherwise many well-known players, whose placements are entirely retired, would show nothing at all.
 
 If you would rather not see them, set `showRetired` to `false` (or run `/justtiers retired`). This applies across all four display modes: a player whose best tier is retired then falls back to their best active tier, and one whose placements are *all* retired shows nothing for that site.
 
@@ -89,7 +89,7 @@ Each icon shows the gamemode that earned the tier, so you know a tier came from 
 
 ### Colors
 
-These are the **default** palette. All three can be changed — see [Color palettes](#color-palettes).
+These are the **default** palette. All three can be changed - see [Color palettes](#color-palettes).
 
 | Source | Color | Hex |
 |---|---|---|
@@ -101,7 +101,7 @@ These are the **default** palette. All three can be changed — see [Color palet
 
 ## Supported gamemodes
 
-Each leaderboard tests its own gamemodes. They are kept separate and never merged — `Vanilla` on MCTiers and `Vanilla` on NovaTiers are different competitions with different testers.
+Each leaderboard tests its own gamemodes. They are kept separate and never merged - `Vanilla` on MCTiers and `Vanilla` on NovaTiers are different competitions with different testers.
 
 The name in brackets is the slug you pass to `/justtiers gamemode` and the value stored in the
 config file. Tab-completion offers exactly these.
@@ -118,11 +118,11 @@ config file. Tab-completion offers exactly these.
 
 | | |
 |---|---|
-| Minecraft | 26.2 only — the mod declares `~26.2`, so it will not load on a later release until it has been verified against it |
+| Minecraft | 26.2 only - the mod declares `~26.2`, so it will not load on a later release until it has been verified against it |
 | Mod loader | Fabric Loader 0.19 or newer (built against 0.19.3) |
 | Dependency | Fabric API 0.157.0+26.2 or newer |
-| Dependency | [YetAnotherConfigLib](https://modrinth.com/mod/yacl) 3.9.4 or newer — **required**, the config screen is built on it |
-| Optional | [ModMenu](https://modrinth.com/mod/modmenu) — adds a config button to the mod list |
+| Dependency | [YetAnotherConfigLib](https://modrinth.com/mod/yacl) 3.9.4 or newer - **required**, the config screen is built on it |
+| Optional | [ModMenu](https://modrinth.com/mod/modmenu) - adds a config button to the mod list |
 | Java | 25 or newer |
 
 ---
@@ -131,7 +131,7 @@ config file. Tab-completion offers exactly these.
 
 1. Install [Fabric Loader](https://fabricmc.net/use/) for Minecraft 26.2.
 2. Download [Fabric API](https://modrinth.com/mod/fabric-api) for 26.2 and put it in your `mods` folder.
-3. Download [YetAnotherConfigLib](https://modrinth.com/mod/yacl) for 26.2 and put it in your `mods` folder. This one is required — Just-Tiers will refuse to load without it.
+3. Download [YetAnotherConfigLib](https://modrinth.com/mod/yacl) for 26.2 and put it in your `mods` folder. This one is required - Just-Tiers will refuse to load without it.
 4. Optionally add [ModMenu](https://modrinth.com/mod/modmenu) if you want a config button in the mod list.
 5. Put the Just-Tiers jar in your `mods` folder.
 6. Launch the game.
@@ -166,7 +166,7 @@ All commands are client-side and start with `/justtiers`.
 ## Looking a player up
 
 The nametag only tells you about people you can see. `/justtiers lookup <player>` tells you about
-anyone — useful in the thirty seconds before a duel, when the person you are about to fight is on
+anyone - useful in the thirty seconds before a duel, when the person you are about to fight is on
 the other side of the lobby.
 
 ```
@@ -202,13 +202,13 @@ one lookup to the next. A cell is either a tier in its site's color or `---`, wh
 site has never tested this player in that gamemode. Hover a cell to see which gamemode it is.
 
 The rows fill in one at a time, the moment each site answers, rather than the screen waiting on the
-slowest of the three — a cold NovaTiers list is a ~1.7 MB download, and a screen that showed
+slowest of the three - a cold NovaTiers list is a ~1.7 MB download, and a screen that showed
 nothing until it landed would look broken. A row that is still waiting says `Looking up...`.
 
 A lookup deliberately ignores your display mode and your gamemode selections: those settings exist
 to keep a nametag short, and the reason to ask about a player by name is to see everything. Retired
 placements are included, with their usual `R` prefix. Gamemode icons are always drawn here even if
-you have turned them off for nametags — on a nametag an icon says which gamemode earned a tier, but
+you have turned them off for nametags - on a nametag an icon says which gamemode earned a tier, but
 here it is the only thing naming the column.
 
 The three answers a site can give are kept distinct, because they mean different things:
@@ -217,12 +217,12 @@ The three answers a site can give are kept distinct, because they mean different
 |---|---|
 | cells, some with tiers | The site has placed this player |
 | every cell `---` | The site answered, and has never placed them |
-| `site unavailable` | The site could not be reached — it has said nothing either way |
+| `site unavailable` | The site could not be reached - it has said nothing either way |
 
 **The skin.** Drawn flat and face on, straight out of the skin texture: no world, no entity, so the
 screen works the same on a server, in singleplayer and from the title screen. A player on the
 server already has their skin loaded; anyone else has their profile fetched from Mojang first. If
-that fetch fails — Mojang rate-limits it like anything else — you get the default skin for that
+that fetch fails - Mojang rate-limits it like anything else - you get the default skin for that
 account and the tiers are unaffected.
 
 **The credit.** The three site names at the bottom are links to the leaderboards the data came
@@ -246,20 +246,20 @@ never have heard of.
 Everything the commands can do is also available on an in-game screen, built on
 [YetAnotherConfigLib](https://modrinth.com/mod/yacl). Open it any of three ways:
 
-- **A keybind** — unbound by default, so it never steals a key on first launch. Bind it under
+- **A keybind** - unbound by default, so it never steals a key on first launch. Bind it under
   Options → Controls → **Just-Tiers**.
-- **`/justtiers gui`** — from chat, in-game.
-- **ModMenu** — the config button on the Just-Tiers entry in the mod list, if you have ModMenu installed.
+- **`/justtiers gui`** - from chat, in-game.
+- **ModMenu** - the config button on the Just-Tiers entry in the mod list, if you have ModMenu installed.
 
 <!-- screenshot: the Display category, showing the preview row above the options -->
 
-The screen has three categories — **Display**, **Data** and **About** — and behaves as follows.
+The screen has three categories - **Display**, **Data** and **About** - and behaves as follows.
 
 **A live preview.** The top of the Display category draws the nametag your current settings would
-produce, under your own name. The tiers in it are invented — always `HT1` — so it is a picture of
+produce, under your own name. The tiers in it are invented - always `HT1` - so it is a picture of
 your settings rather than a lookup: pick any gamemode and the preview shows *that* gamemode, whether
-or not you have ever been tested in it. In `all` mode it shows one fixed gamemode per site — MCTiers
-Vanilla, SubTiers Minecart, NovaTiers Spear Mace — since that mode has no gamemode to pick. While
+or not you have ever been tested in it. In `all` mode it shows one fixed gamemode per site - MCTiers
+Vanilla, SubTiers Minecart, NovaTiers Spear Mace - since that mode has no gamemode to pick. While
 **Show retired tiers** is on, the tag alternates every five seconds between `HT1` and `RHT1` so you
 can see both spellings; turn it off and it stays active. A caption underneath says the same thing in
 words, so the preview is never mistaken for your real placements.
@@ -269,26 +269,26 @@ on any account.
 
 **Appearance.** Under the display mode sits an **Appearance** group with the three cosmetic
 settings: **Badge position** (before or after the name), **Show gamemode icons** and **Show
-brackets**. None of them change *which* tiers are shown — that is what the display mode and the
-gamemode pickers are for — so they stay live in every mode, greying only when Just-Tiers itself is
+brackets**. None of them change *which* tiers are shown - that is what the display mode and the
+gamemode pickers are for - so they stay live in every mode, greying only when Just-Tiers itself is
 switched off. Each one shows up in the preview immediately, including the space between the badge
 and the name, which follows the badge to whichever side it is on. With icons off the sites are told
 apart by tier color alone, which is the same legend the display-mode row is colored with.
 
 **Nothing is hidden, only greyed.** Options that cannot do anything useful in the current state are
 greyed out rather than removed, so the screen never changes shape under you. In `all` mode, for
-instance, all three gamemode rows go inert — that mode always shows each site's highest tier, so
-there is no gamemode to pick — but they stay visible, still showing the value they hold, and their
+instance, all three gamemode rows go inert - that mode always shows each site's highest tier, so
+there is no gamemode to pick - but they stay visible, still showing the value they hold, and their
 description says why they are inert.
 
 **A gamemode grid.** Clicking a gamemode row opens a full-screen grid of that site's gamemodes with
 their icons. The current selection is outlined in the site's color, hovering a tile previews the
-nametag that choice would produce, and a single click selects it and returns — there is no confirm
+nametag that choice would produce, and a single click selects it and returns - there is no confirm
 button. Escape or **Back** leaves it unchanged. Arrow keys and Enter work too.
 
 <!-- screenshot: the gamemode grid, with one tile outlined in the site color -->
 
-**Nothing is written until you press Save.** Edits — including a gamemode picked in the grid — live
+**Nothing is written until you press Save.** Edits - including a gamemode picked in the grid - live
 in a pending state that **Cancel** discards and **Undo** reverts. **Save** writes
 `config/justtiers.json` once, the same file the commands write.
 
@@ -312,7 +312,7 @@ Okabe-Ito palette and separate by *luminance* as well as by hue, so the same thr
 for protanopia, deuteranopia and tritanopia alike. A second preset differing only slightly
 would be a worse answer than one that works for everybody.
 
-**A palette applies everywhere at once** — nametags, `/justtiers lookup`, the gamemode
+**A palette applies everywhere at once** - nametags, `/justtiers lookup`, the gamemode
 grid and the config screen's own previews. Color carries
 exactly one meaning in this mod, and a palette that only reached some screens would stop
 that being true.
@@ -320,7 +320,7 @@ that being true.
 **Custom colors are set on the config screen**, under Appearance: pick Custom from the
 palette row and the three color pickers below it come alive. They stay greyed under any
 other palette rather than disappearing, so the screen never changes shape. There is no
-command for them — a color is chosen by looking at it, which chat cannot do.
+command for them - a color is chosen by looking at it, which chat cannot do.
 
 **Presets do not overwrite your custom colors.** Switching to Custom, then to Default,
 then back to Custom returns the colors you picked.
@@ -372,7 +372,7 @@ Settings are stored in `config/justtiers.json` and are written automatically whe
 | `novaRefreshMinutes` | How often to re-download the NovaTiers list (clamped to 5–1440) |
 | `tierCacheMinutes` | How long a fetched tier is trusted before it is looked up again (clamped to 5–1440) |
 | `showDownloadProgress` | Whether a progress bar is shown in the bottom-right while the NovaTiers list downloads |
-| `badgePosition` | `before` or `after` — which side of the player's name the badge sits on |
+| `badgePosition` | `before` or `after` - which side of the player's name the badge sits on |
 | `showIcons` | Whether each tier carries its gamemode glyph |
 | `showBrackets` | Whether the badge is wrapped in `[ ]` |
 | `hideOwnBadge` | Whether your own nametag is left undecorated |
@@ -381,7 +381,7 @@ Settings are stored in `config/justtiers.json` and are written automatically whe
 
 Settings are also written by the [configuration screen](#configuration-screen), which produces the
 same file. `novaRefreshMinutes` and `showDownloadProgress` have no commands, but both appear on the
-screen's **Data** category — a slider and a tick box respectively. Changing the interval takes effect
+screen's **Data** category - a slider and a tick box respectively. Changing the interval takes effect
 as soon as you press Save: the refresh timer is rescheduled rather than waiting for the next launch.
 Out-of-range or unrecognised values are corrected on load rather than rejected.
 
@@ -406,17 +406,17 @@ Just-Tiers reads three public leaderboard APIs and normalises them into one inte
 |---|---|---|
 | MCTiers | `mctiers.com/api/v2/…` | Per player, by UUID |
 | SubTiers | `subtiers.net/api/v2/…` | Per player, by UUID (same schema as MCTiers) |
-| NovaTiers | `novatiers.com/users` | Bulk only — the entire ranked player list in one request |
+| NovaTiers | `novatiers.com/users` | Bulk only - the entire ranked player list in one request |
 
 One more endpoint is contacted, and only by `/justtiers lookup`: Mojang's
 `api.mojang.com/users/profiles/minecraft/<name>`, to turn a name that is not on the server into the
-account UUID the leaderboards are keyed by. Nothing else in the mod ever calls it — every other
+account UUID the leaderboards are keyed by. Nothing else in the mod ever calls it - every other
 lookup already has a UUID in hand.
 
-NovaTiers offers no per-player route, so its full list (roughly 6,500 players, about 1.7 MB) is downloaded once, indexed by UUID in memory, and refreshed on a timer. MCTiers and SubTiers are queried per player, with results cached for `tierCacheMinutes` — an hour by default — and concurrent requests for the same player coalesced into one. See [How long an answer is kept](#how-long-an-answer-is-kept).
+NovaTiers offers no per-player route, so its full list (roughly 6,500 players, about 1.7 MB) is downloaded once, indexed by UUID in memory, and refreshed on a timer. MCTiers and SubTiers are queried per player, with results cached for `tierCacheMinutes` - an hour by default - and concurrent requests for the same player coalesced into one. See [How long an answer is kept](#how-long-an-answer-is-kept).
 
 Every lookup is asynchronous. A player whose data has not arrived yet simply renders with their
-normal nametag until it does, and each site is drawn independently — the badge appears as soon as
+normal nametag until it does, and each site is drawn independently - the badge appears as soon as
 the first site answers and gains the rest over the following frames. Entities without a v4 UUID
 (offline-mode players, NPCs) are skipped outright, as they can never appear on these leaderboards.
 
@@ -426,7 +426,7 @@ the first site answers and gains the rest over the following frames. Entities wi
 
 Because the NovaTiers list has to arrive in full before any NovaTiers badge can appear, a small
 progress bar is drawn in the **bottom-right corner** while it downloads. It shows up for every
-download — at launch, on the timed refresh, and when you run `/justtiers refresh` — and disappears
+download - at launch, on the timed refresh, and when you run `/justtiers refresh` - and disappears
 the moment the download finishes.
 
 `novatiers.com` sends no `Content-Length`, so the size of the list is not knowable in advance. The
@@ -437,7 +437,7 @@ sessions, so the first download after each launch is always the indeterminate on
 never shown against a guess.
 
 If a download fails, the bar is replaced for a few seconds by **NovaTiers unavailable** in red. This
-is worth saying out loud, because a failed refresh is otherwise silent — the mod keeps serving the
+is worth saying out loud, because a failed refresh is otherwise silent - the mod keeps serving the
 tiers it already has, so without the message there is nothing to distinguish a failed refresh from a
 successful one.
 
@@ -446,8 +446,8 @@ Set `showDownloadProgress` to `false`, or untick **Show download progress** on t
 
 ### How long an answer is kept
 
-A tier fetched from MCTiers or SubTiers is trusted for `tierCacheMinutes` — an hour by
-default — and then looked up again.
+A tier fetched from MCTiers or SubTiers is trusted for `tierCacheMinutes` - an hour by
+default - and then looked up again.
 
 The expiry applies to **"unranked" as much as to a tier**, which is the point of it. A
 player nobody had tested when you logged in would otherwise read as untested for your
@@ -456,7 +456,7 @@ their old tier just as long. An hour is short enough that neither outlives your 
 and long enough that nothing is re-fetched often.
 
 The slider is on the config screen's **Data** category and takes effect as soon as you
-press Save, without discarding what is already cached — nudging a slider should not blank
+press Save, without discarding what is already cached - nudging a slider should not blank
 every badge on screen while they are all fetched again.
 
 Set it to its lowest for a testing session, or leave it alone; `/justtiers refresh` still
@@ -466,8 +466,8 @@ drops everything immediately whatever it is set to.
 
 A failing lookup is held off twice over, because one of the two is not enough on its own.
 
-**Per player**, the wait after a failure doubles each time — a minute, two, four, up to
-sixteen — with ±25% of random jitter. The jitter matters more than it looks: without it, a
+**Per player**, the wait after a failure doubles each time - a minute, two, four, up to
+sixteen - with ±25% of random jitter. The jitter matters more than it looks: without it, a
 lobby whose lookups all failed in the same frame would retry in the same frame too, for as
 long as the outage lasted, turning one bad moment into a repeating stampede. A successful
 answer resets the run, so the next failure starts from a minute again.
@@ -475,13 +475,13 @@ answer resets the run, so the next failure starts from a minute again.
 **Per site**, eight consecutive failures across *any* players stop that leaderboard being
 asked at all for thirty seconds. Then exactly one request is let through to test the
 water: if it answers, the site is open again; if it fails, the pause doubles, up to four
-minutes. This is the half that actually protects a full lobby — a per-player delay alone
+minutes. This is the half that actually protects a full lobby - a per-player delay alone
 still means one request per player per period, which for two hundred players is precisely
 the flood a struggling site does not need.
 
 While a site is closed, `/justtiers lookup` reports it as unavailable rather than
 quietly queueing behind it, because that is the truth of the
-situation. `/justtiers refresh` reopens it immediately — that command is you saying *try
+situation. `/justtiers refresh` reopens it immediately - that command is you saying *try
 again now*.
 
 ### When a site is down
@@ -512,19 +512,19 @@ NovaTiers: ok | no lookups yet | 120 cached, 0 in flight, 0 retrying
 
 Reading one site's line left to right:
 
-- **`ok` / `PAUSED`** — whether the site gate is letting requests out at all, and when it
+- **`ok` / `PAUSED`** - whether the site gate is letting requests out at all, and when it
   will next try if not. A gate that is open but has failures behind it says so
   (`ok (7 failures in a row)`), because seven of the eight it takes to close reads as
   healthy right up until it is not.
-- **`3 ok, 9 failed`** — lookups completed this session, and how each ended.
-- **`last ok`, `last fail`** — how long ago each last happened. A site whose last success
+- **`3 ok, 9 failed`** - lookups completed this session, and how each ended.
+- **`last ok`, `last fail`** - how long ago each last happened. A site whose last success
   is hours old but which is not paused is failing slowly, not failing loudly.
-- **`latency`** — the last round trip and the mean, failures included. A ten-second
+- **`latency`** - the last round trip and the mean, failures included. A ten-second
   failure is a timeout; an instant one is a refused connection.
-- **`cached / in flight / retrying`** — players the site holds an answer for, of those how
+- **`cached / in flight / retrying`** - players the site holds an answer for, of those how
   many are still waiting on the network, and how many are sitting out a per-player retry
   delay.
-- **`last error`** — the most recent failure, kept even after the site recovers, since
+- **`last error`** - the most recent failure, kept even after the site recovers, since
   what went wrong is usually the reason a report is being written at all. Long messages
   are cut to one line.
 
@@ -560,7 +560,7 @@ in `build.gradle.kts`, so no extra setup is needed.
 `.github/workflows/build.yml` runs `./gradlew build` on every pull request and every push to
 `main`. That is the unit tests *and* a full compile and packaging of the mod jar. The tests cover
 the logic, but the mixin, the config screen and the renderers are Minecraft-facing and no unit test
-reaches them — a change that breaks the mixin while compiling perfectly well would otherwise get as
+reaches them - a change that breaks the mixin while compiling perfectly well would otherwise get as
 far as a release. The jar is kept as a run artifact; the test report is kept only when something
 failed.
 
@@ -594,8 +594,8 @@ until the mod does.
 #### Checking the publish without publishing
 
 A release is the worst possible place to find out that a token is wrong. This runs the entire
-Modrinth path — authenticating, looking the project up through the live API, assembling the
-version payload — and then prints it and stops instead of creating anything:
+Modrinth path - authenticating, looking the project up through the live API, assembling the
+version payload - and then prints it and stops instead of creating anything:
 
 ```bash
 MODRINTH_TOKEN=... ./gradlew modrinth -Pmodrinth_dry_run=true
@@ -606,15 +606,15 @@ secret, so it can be checked without a token on your machine.
 
 What a dry run proves: the token is valid, the project id resolves, and the version number,
 game versions, loaders and dependencies are what you meant. What it cannot prove: that Modrinth
-will *accept* the upload — game versions are validated server-side, so a Minecraft version
+will *accept* the upload - game versions are validated server-side, so a Minecraft version
 Modrinth has not listed yet will only fail for real.
 
-If a Modrinth upload does fail, the GitHub release has already been made — the release job does
+If a Modrinth upload does fail, the GitHub release has already been made - the release job does
 that first, deliberately, since it depends on nothing outside this repository. Fix the cause and
 re-run the job; it will not trip over the release it already created.
 
 The Modrinth listing body is kept in `Modrinth/description.md` and is **not** part of the release
-job — pushing it overwrites the project body irreversibly. Sync it deliberately, when you mean to:
+job - pushing it overwrites the project body irreversibly. Sync it deliberately, when you mean to:
 
 ```bash
 ./gradlew modrinthSyncBody
@@ -655,7 +655,7 @@ Just-Tiers does not redistribute any of these; they are resolved at build time o
 |---|---|
 | Fabric Loader | Apache-2.0 |
 | Fabric API | Apache-2.0 |
-| YetAnotherConfigLib | LGPL-3.0-or-later — linked at runtime, not redistributed |
+| YetAnotherConfigLib | LGPL-3.0-or-later - linked at runtime, not redistributed |
 | ModMenu (compile-only, optional at runtime) | MIT |
 | Fabric Loom (build only) | MIT |
 | Mixin / MixinExtras | MIT |
@@ -676,8 +676,8 @@ If you represent one of these leaderboards and want a change to how your data, n
 
 ## Credits
 
-- **[TierTagger](https://github.com/mctiers-dev/TierTagger)** by uku and netiyiy — the mod that inspired this one, and the source of the MCTiers and SubTiers gamemode icons.
-- **[MCTiers](https://mctiers.com)**, **[SubTiers](https://subtiers.net)** and **[NovaTiers](https://novatiers.com)** — for running the leaderboards and exposing public APIs.
+- **[TierTagger](https://github.com/mctiers-dev/TierTagger)** by uku and netiyiy - the mod that inspired this one, and the source of the MCTiers and SubTiers gamemode icons.
+- **[MCTiers](https://mctiers.com)**, **[SubTiers](https://subtiers.net)** and **[NovaTiers](https://novatiers.com)** - for running the leaderboards and exposing public APIs.
 
 ---
 
@@ -694,10 +694,10 @@ screen's geometry. New logic belongs on that side of the line wherever it can:
 
 | If you are adding | Put it behind |
 |---|---|
-| Anything that decides what a badge contains or looks like | `render/model/Badge` — the one way a badge is built |
-| Anything the nametag needs to know about the running mod | `render/model/TierView` — `LiveTierView` reads the real config and cache, tests supply their own |
+| Anything that decides what a badge contains or looks like | `render/model/Badge` - the one way a badge is built |
+| Anything the nametag needs to know about the running mod | `render/model/TierView` - `LiveTierView` reads the real config and cache, tests supply their own |
 | A new site color rule | `config/Palette`, which works in ints and never learns the file format |
-| Where something sits on a screen | `gui/layout/` — `GridLayout`, `SkinLayout`, `LookupLayout`, `CreditLine` |
+| Where something sits on a screen | `gui/layout/` - `GridLayout`, `SkinLayout`, `LookupLayout`, `CreditLine` |
 
 The Minecraft-facing classes left over are then thin enough to read: `NametagRenderer` is twenty
 lines, and `PlayerLookupScreen` keeps no coordinates of its own.
@@ -718,7 +718,7 @@ vanilla file, and pack order alone decides whether it or the next mod's copy sur
 The trade is that a private font inherits none of the vanilla fallbacks, so anything drawn
 in it that is not one of those glyphs comes out as a missing-glyph box. Everything that
 draws an icon therefore goes through `render/Icons.java`, which is the only place that
-names the font, and only ever wraps the single glyph character — never a label beside it.
+names the font, and only ever wraps the single glyph character - never a label beside it.
 Two consequences worth remembering when editing this code:
 
 - A component appended to an icon component **inherits** the icon font. Build a glyph and

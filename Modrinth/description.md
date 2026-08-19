@@ -12,7 +12,7 @@ A Minecraft **Fabric** client mod that shows a player's competitive PvP tier dir
 
 [TierTagger](https://github.com/mctiers-dev/TierTagger) is the established mod in this space, and it is good, but it has two limitations that Just-Tiers is built to fix:
 
-1. **No NovaTiers support.** Only MCTiers and SubTiers are available, so gamemodes only NovaTiers runs — Elytra Spear, Spear Mace, Diamond Cart and the rest — cannot be shown at all.
+1. **No NovaTiers support.** Only MCTiers and SubTiers are available, so gamemodes only NovaTiers runs - Elytra Spear, Spear Mace, Diamond Cart and the rest - cannot be shown at all.
 2. **One leaderboard at a time.** You must pick MCTiers *or* SubTiers; you cannot see both at once.
 
 Just-Tiers supports all three leaderboards, and adds an **All** mode that shows each site's best tier side by side in a single nametag.
@@ -67,7 +67,7 @@ These are the default palette:
 | NovaTiers | Purple | `#AA55FF` |
 
 All three can be changed. The config screen offers a **Colorblind-safe** palette (orange,
-sky blue, white — separated by brightness as well as hue, so it works for red-green
+sky blue, white - separated by brightness as well as hue, so it works for red-green
 color blindness) and a **High contrast** one, or you can pick three colors of your own.
 Whichever you choose applies everywhere at once: nametags, lookup and the config screen
 itself.
@@ -76,7 +76,7 @@ itself.
 
 ## Supported gamemodes
 
-Each leaderboard tests its own gamemodes. They are kept separate and never merged — `Vanilla` on MCTiers and `Vanilla` on NovaTiers are different competitions with different testers.
+Each leaderboard tests its own gamemodes. They are kept separate and never merged - `Vanilla` on MCTiers and `Vanilla` on NovaTiers are different competitions with different testers.
 
 The name in brackets is the slug you pass to `/justtiers gamemode` and the value stored in the
 config file. Tab-completion offers exactly these.
@@ -101,11 +101,11 @@ never transmitted anywhere.
 | `mctiers.com` | The account UUID of a player being looked up | Whenever their nametag is drawn (while a mode including MCTiers is active) and when you run `/justtiers lookup` on them. At most once per player per `tierCacheMinutes` (60 by default, configurable 5–1440), however many of those happen |
 | `subtiers.net` | The same, for SubTiers | The same |
 | `novatiers.com` | **Nothing about any player.** NovaTiers has no per-player endpoint, so the mod downloads that site's whole ranked-player list (~1.7 MB) and answers from it locally | At startup, then every 30 minutes by default (configurable, 5–1440) |
-| `api.mojang.com` | A username you typed into `/justtiers lookup` | Only when that name belongs to nobody on the server — anyone in the tab list is resolved locally with no request |
+| `api.mojang.com` | A username you typed into `/justtiers lookup` | Only when that name belongs to nobody on the server - anyone in the tab list is resolved locally with no request |
 
 Every request is a plain `GET`. The only identifying header is a User-Agent naming the
 mod and its version, `Just-Tiers/<version> (+https://github.com/w0x7y/Just-Tiers)`.
-Answers are cached for `tierCacheMinutes` — an hour by default — so the same player is
+Answers are cached for `tierCacheMinutes` - an hour by default - so the same player is
 asked about at most once an hour, however long you play and however many times their
 nametag is drawn. Set it higher for fewer requests, or lower to pick up a tier change
 sooner.
@@ -115,7 +115,7 @@ retry delay doubles, and after eight failures in a row that site is not asked at
 a while, then probed with a single request to see whether it has recovered.
 
 The UUIDs sent are the ones the server already gave your client for the players around
-you. They are public identifiers, and the leaderboards are public pages keyed by them —
+you. They are public identifiers, and the leaderboards are public pages keyed by them -
 looking a player up here sends no more than opening their page on those sites by hand.
 
 **Turning it off.** `/justtiers toggle` stops the per-player lookups entirely, so no
@@ -148,7 +148,7 @@ reads and changes nothing else on your system.
 
 ## Commands
 
-All commands are client-side and start with `/justtiers`. Everything they change is also available on the config screen — `/justtiers gui`, the Mod Menu entry, or a key of your choosing under **Controls → Just-Tiers** (unbound by default).
+All commands are client-side and start with `/justtiers`. Everything they change is also available on the config screen - `/justtiers gui`, the Mod Menu entry, or a key of your choosing under **Controls → Just-Tiers** (unbound by default).
 
 | Command | Description |
 |---|---|
@@ -244,8 +244,8 @@ disclosure accordingly.
 
 ## Credits
 
-- **[TierTagger](https://github.com/mctiers-dev/TierTagger)** by uku and netiyiy — the mod that inspired this one, and the source of the MCTiers and SubTiers gamemode icons.
-- **[MCTiers](https://mctiers.com)**, **[SubTiers](https://subtiers.net)** and **[NovaTiers](https://novatiers.com)** — for running the leaderboards and exposing public APIs.
+- **[TierTagger](https://github.com/mctiers-dev/TierTagger)** by uku and netiyiy - the mod that inspired this one, and the source of the MCTiers and SubTiers gamemode icons.
+- **[MCTiers](https://mctiers.com)**, **[SubTiers](https://subtiers.net)** and **[NovaTiers](https://novatiers.com)** - for running the leaderboards and exposing public APIs.
 
 ---
 
