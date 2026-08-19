@@ -558,10 +558,11 @@ in `build.gradle.kts`, so no extra setup is needed.
 ### Continuous integration
 
 `.github/workflows/build.yml` runs `./gradlew build` on every pull request and every push to
-`main`. That is the unit tests *and* a full compile and packaging of the mod jar, because most of
-this mod is Minecraft-facing code that no unit test can reach — a change that compiles nowhere but breaks
-the mixin would otherwise get as far as a release. The jar is kept as a run artifact; the test
-report is kept only when something failed.
+`main`. That is the unit tests *and* a full compile and packaging of the mod jar. The tests cover
+the logic, but the mixin, the config screen and the renderers are Minecraft-facing and no unit test
+reaches them — a change that breaks the mixin while compiling perfectly well would otherwise get as
+far as a release. The jar is kept as a run artifact; the test report is kept only when something
+failed.
 
 ### Releasing
 
@@ -684,8 +685,26 @@ If you represent one of these leaderboards and want a change to how your data, n
 
 Issues and pull requests are welcome.
 
-Run `./gradlew test` before opening a pull request. The parsing, resolver, cache and config logic is
-deliberately free of Minecraft types so it can all be unit-tested without launching the game.
+Run `./gradlew test` before opening a pull request.
+
+As much of this mod as possible is deliberately free of Minecraft types, so it can be unit-tested
+without launching the game. That now covers the parsers, the resolver, the cache, the config, the
+whole badge pipeline, the decision about what a player wears, the palette rule and the lookup
+screen's geometry. New logic belongs on that side of the line wherever it can:
+
+| If you are adding | Put it behind |
+|---|---|
+| Anything that decides what a badge contains or looks like | `render/model/Badge` — the one way a badge is built |
+| Anything the nametag needs to know about the running mod | `render/model/TierView` — `LiveTierView` reads the real config and cache, tests supply their own |
+| A new site color rule | `config/Palette`, which works in ints and never learns the file format |
+| Where something sits on a screen | `gui/layout/` — `GridLayout`, `SkinLayout`, `LookupLayout`, `CreditLine` |
+
+The Minecraft-facing classes left over are then thin enough to read: `NametagRenderer` is twenty
+lines, and `PlayerLookupScreen` keeps no coordinates of its own.
+
+Decisions that were considered and deliberately not taken are recorded in `docs/adr/`. If a review
+turns down a change for a reason that will come up again, write it down there rather than leaving
+the next person to rediscover it.
 
 When adding a gamemode, three things must stay in sync: the registry in `Gamemodes.java`, the icon codepoint list in `tools/gen_font_provider.py`, and the icon texture itself. Run `python3 tools/gen_font_provider.py` after changing either of the first two; it rewrites `assets/justtiers/font/icons.json` from the codepoint list. The plan document explains the layout in detail.
 
@@ -706,3 +725,5 @@ Two consequences worth remembering when editing this code:
   a label as two children of `Component.empty()`, never the label appended to the glyph.
 - `Segment` carries an `icon` flag. Recolor with `Segment.withColor`, which keeps it;
   rebuilding through the two-argument constructor silently turns an icon back into text.
+  `Badge.recolor` does this for a whole badge and is what the dimmed config-screen preview
+  uses, so reach for that before touching segments one at a time.
