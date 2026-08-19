@@ -3,12 +3,11 @@ package com.w0x7y.justtiers.command;
 import com.w0x7y.justtiers.JustTiers;
 import com.w0x7y.justtiers.JustTiersClient;
 import com.w0x7y.justtiers.api.OnlinePlayers;
-import com.w0x7y.justtiers.cache.TierCache;
 import com.w0x7y.justtiers.config.JustTiersConfig;
 import com.w0x7y.justtiers.config.Palette;
+import com.w0x7y.justtiers.debug.CacheDiagnostics;
 import com.w0x7y.justtiers.debug.DebugReport;
 import com.w0x7y.justtiers.debug.DebugSnapshot;
-import com.w0x7y.justtiers.debug.SiteDiagnostics;
 import com.w0x7y.justtiers.gui.JustTiersKeybinds;
 import com.w0x7y.justtiers.gui.PlayerLookupScreen;
 import com.w0x7y.justtiers.render.model.BadgePosition;
@@ -27,7 +26,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -304,16 +302,6 @@ public final class JustTiersCommands {
     /** Reads the report's contents off the live cache and config in one pass. */
     private static DebugSnapshot diagnostics() {
         JustTiersConfig config = JustTiersClient.config();
-        TierCache cache = JustTiersClient.cache();
-        List<SiteDiagnostics> sites = new ArrayList<>(Source.ALL.size());
-        for (Source source : Source.ALL) {
-            sites.add(new SiteDiagnostics(source,
-                    cache.health(source),
-                    cache.gateStatus(source),
-                    cache.cachedPlayers(source),
-                    cache.pendingLookups(source),
-                    cache.playersAwaitingRetry(source)));
-        }
         return new DebugSnapshot(
                 JustTiers.VERSION,
                 modVersion("minecraft"),
@@ -323,7 +311,7 @@ public final class JustTiersCommands {
                 Duration.ofMinutes(config.getTierCacheMinutes()),
                 JustTiersClient.novaSource().indexedPlayerCount(),
                 config.getNovaRefreshMinutes(),
-                sites);
+                CacheDiagnostics.of(JustTiersClient.cache()));
     }
 
     /**
