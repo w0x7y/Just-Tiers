@@ -1,5 +1,6 @@
 package com.w0x7y.justtiers.gui.layout;
 
+import java.util.Objects;
 import java.util.OptionalInt;
 
 /**
@@ -88,6 +89,24 @@ public final class GridLayout {
         }
         int index = row * columns + column;
         return index < itemCount ? OptionalInt.of(index) : OptionalInt.empty();
+    }
+
+    /**
+     * A grid is its six numbers and nothing else, so two built from the same
+     * measurements are the same grid. {@link LookupLayout} is a record that holds these,
+     * and a record is only a value if what it holds is.
+     */
+    @Override
+    public boolean equals(Object other) {
+        return other instanceof GridLayout grid
+                && itemCount == grid.itemCount && columns == grid.columns
+                && rows == grid.rows && tileWidth == grid.tileWidth
+                && tileHeight == grid.tileHeight && gap == grid.gap;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(itemCount, columns, rows, tileWidth, tileHeight, gap);
     }
 
     /**

@@ -2,7 +2,9 @@ package com.w0x7y.justtiers.gui;
 
 import com.w0x7y.justtiers.render.Icons;
 import com.w0x7y.justtiers.render.SiteColors;
-import com.w0x7y.justtiers.gui.layout.GridLayout;
+import com.w0x7y.justtiers.gui.layout.CreditLine;
+import com.w0x7y.justtiers.gui.layout.LookupLayout;
+import com.w0x7y.justtiers.gui.layout.LookupMetrics;
 import com.w0x7y.justtiers.gui.layout.SkinLayout;
 import com.w0x7y.justtiers.lookup.LookupCell;
 import com.w0x7y.justtiers.lookup.LookupSection;
@@ -38,20 +40,17 @@ import java.util.OptionalInt;
  * <p>Unlike the nametag, this screen always draws the gamemode icons: on a nametag an
  * icon says which gamemode earned a tier, but here it is the only thing naming the
  * column, and a row of bare tiers would say nothing about what they were earned in.
+ *
+ * <p>Where everything sits is {@link LookupLayout}'s answer, worked out once in
+ * {@link #init()} from what the font measures. This class keeps no coordinates of its
+ * own.
  */
 public final class PlayerLookupScreen extends Screen {
 
-    private static final int PANEL_PADDING = 10;
-    private static final int SECTION_GAP = 10;
-    private static final int BOX_PADDING = 4;
-    private static final int CELL_GAP = 2;
     private static final int CELL_TEXT_GAP = 2;
     private static final int CELL_SIDE_PADDING = 3;
-    private static final int ROW_GAP = 4;
-    private static final int LABEL_GAP = 6;
-    private static final int SCREEN_MARGIN = 8;
     private static final int BUTTON_HEIGHT = 20;
-    private static final int BUTTON_GAP = 6;
+    private static final int BUTTON_WIDTH = 100;
 
     private static final int PANEL_BACKGROUND = 0xC0000000;
     private static final int PANEL_BORDER = 0xFF3A3A3A;
@@ -67,38 +66,14 @@ public final class PlayerLookupScreen extends Screen {
     private static final String NOT_TESTED = "---";
     private static final String SITE_SEPARATOR = " · ";
     private static final int SKIN_SIZE = 64;
-    private static final int[] SKIN_SCALES = {3, 2, 1};
 
     private final LookupSession session;
 
-    private final List<Row> rows = new ArrayList<>(Source.ALL.size());
-    private final List<Link> links = new ArrayList<>(Source.ALL.size());
-
-    private int panelX;
-    private int panelY;
-    private int panelWidth;
-    private int panelHeight;
-    private int nameY;
-    private int skinY;
-    private int skinScale = SKIN_SCALES[0];
-    private int tiersY;
-    private int noteY;
-    private int footerY;
-    private int creditX;
-    private int firstSeparatorY;
-    private int secondSeparatorY;
-    private int thirdSeparatorY;
+    private LookupLayout layout;
+    private CreditLine credit;
     private int cellWidth;
     private int cellHeight;
     private int iconWidth;
-
-    /** One site's row: the box, and the grid its cells sit in inside that box. */
-    private record Row(Source source, GridLayout grid, int x, int y, int width, int height) {
-    }
-
-    /** A site name in the footer credit, and the page it opens. */
-    private record Link(Source source, int x, int width) {
-    }
 
     public PlayerLookupScreen(String name) {
         super(Component.translatable("justtiers.lookup.header", name));
@@ -107,109 +82,28 @@ public final class PlayerLookupScreen extends Screen {
 
     @Override
     protected void init() {
-        int doneY = layout();
-        addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, button -> onClose())
-                .pos(width / 2 - 50, doneY).size(100, BUTTON_HEIGHT).build());
-    }
-
-    // ---------------------------------------------------------------- layout
-
-    /**
-     * Places everything and returns the y for the Done button. The whole panel is sized
-     * once, up front, from the sites' gamemode counts rather than from the answers that
-     * have arrived — a panel that resized itself as each site replied would shift under
-     * the cursor mid-read.
-     */
-    private int layout() {
         measureCells();
+        layout = LookupLayout.of(metrics());
+        credit = CreditLine.centeredIn(layout.panelX(), layout.panelWidth(),
+                font.width(Component.translatable("justtiers.lookup.credit")),
+                font.width(" "), font.width(SITE_SEPARATOR), siteNameWidths());
 
-        int labelWidth = labelWidth();
-        int available = Math.max(cellWidth,
-                width - 2 * SCREEN_MARGIN - 2 * PANEL_PADDING - labelWidth - 2 * BOX_PADDING);
+        addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, button -> onClose())
+                .pos(width / 2 - BUTTON_WIDTH / 2, layout.doneButtonY())
+                .size(BUTTON_WIDTH, BUTTON_HEIGHT).build());
+    }
 
-        List<GridLayout> grids = new ArrayList<>(Source.ALL.size());
-        int widest = 0;
+    // ---------------------------------------------------------------- measuring
+
+    /** What only the running game can measure. Every decision from here is arithmetic. */
+    private LookupMetrics metrics() {
+        List<Integer> counts = new ArrayList<>(Source.ALL.size());
         for (Source source : Source.ALL) {
-            int count = Gamemodes.of(source).size();
-            GridLayout grid = GridLayout.of(count, available, cellWidth, cellHeight,
-                    CELL_GAP, count);
-            grids.add(grid);
-            widest = Math.max(widest, grid.contentWidth());
+            counts.add(Gamemodes.of(source).size());
         }
-
-        panelWidth = Math.min(width - 2 * SCREEN_MARGIN,
-                labelWidth + widest + 2 * BOX_PADDING + 2 * PANEL_PADDING);
-        panelX = (width - panelWidth) / 2;
-
-        skinScale = chooseSkinScale(grids);
-        panelHeight = place(grids, labelWidth, 0);
-        panelY = Math.max(SCREEN_MARGIN,
-                (height - panelHeight - BUTTON_HEIGHT - BUTTON_GAP) / 2);
-        place(grids, labelWidth, panelY);
-
-        layoutFooterLinks();
-        return panelY + panelHeight + BUTTON_GAP;
-    }
-
-    /** The largest skin that still leaves the Done button on screen. */
-    private int chooseSkinScale(List<GridLayout> grids) {
-        int labelWidth = labelWidth();
-        for (int scale : SKIN_SCALES) {
-            skinScale = scale;
-            int needed = place(grids, labelWidth, 0)
-                    + BUTTON_GAP + BUTTON_HEIGHT + 2 * SCREEN_MARGIN;
-            if (needed <= height) {
-                return scale;
-            }
-        }
-        return SKIN_SCALES[SKIN_SCALES.length - 1];
-    }
-
-    /**
-     * Stacks the panel's blocks from {@code top} downwards and returns the panel height.
-     * Called once with a top of zero to measure, then again to place.
-     */
-    private int place(List<GridLayout> grids, int labelWidth, int top) {
-        int y = top + PANEL_PADDING;
-
-        nameY = y;
-        y += nameHeight();
-        y += SECTION_GAP / 2;
-        firstSeparatorY = y;
-        y += SECTION_GAP / 2;
-
-        skinY = y;
-        y += SkinLayout.HEIGHT * skinScale;
-        y += SECTION_GAP / 2;
-        secondSeparatorY = y;
-        y += SECTION_GAP / 2;
-
-        tiersY = y;
-        y += font.lineHeight + 5;
-
-        rows.clear();
-        int boxX = panelX + PANEL_PADDING + labelWidth;
-        int boxWidth = panelWidth - 2 * PANEL_PADDING - labelWidth;
-        for (int i = 0; i < Source.ALL.size(); i++) {
-            GridLayout grid = grids.get(i);
-            int boxHeight = grid.contentHeight() + 2 * BOX_PADDING;
-            rows.add(new Row(Source.ALL.get(i), grid, boxX, y, boxWidth, boxHeight));
-            y += boxHeight + ROW_GAP;
-        }
-        y -= ROW_GAP;
-
-        // Reserved whether or not the note is showing: it only becomes true once the last
-        // site answers, and the panel must not grow a line under the cursor when it does.
-        noteY = y + 5;
-        y = noteY + font.lineHeight;
-
-        y += SECTION_GAP / 2;
-        thirdSeparatorY = y;
-        y += SECTION_GAP / 2;
-
-        footerY = y;
-        y += font.lineHeight + PANEL_PADDING;
-        return y - top;
+        return new LookupMetrics(width, height, font.lineHeight,
+                Math.round(font.lineHeight * NAME_SCALE), widestSiteName(),
+                cellWidth, cellHeight, counts);
     }
 
     private void measureCells() {
@@ -222,40 +116,20 @@ public final class PlayerLookupScreen extends Screen {
         cellHeight = font.lineHeight + 5;
     }
 
-    private int labelWidth() {
+    private int widestSiteName() {
         int widest = 0;
         for (Source source : Source.ALL) {
             widest = Math.max(widest, font.width(source.displayName()));
         }
-        return widest + LABEL_GAP;
+        return widest;
     }
 
-    private int nameHeight() {
-        return Math.round(font.lineHeight * NAME_SCALE);
-    }
-
-    private void layoutFooterLinks() {
-        links.clear();
-        Component prefix = Component.translatable("justtiers.lookup.credit");
-        int total = font.width(prefix) + font.width(" ");
-        for (int i = 0; i < Source.ALL.size(); i++) {
-            total += font.width(Source.ALL.get(i).displayName());
-            if (i > 0) {
-                total += font.width(SITE_SEPARATOR);
-            }
+    private List<Integer> siteNameWidths() {
+        List<Integer> widths = new ArrayList<>(Source.ALL.size());
+        for (Source source : Source.ALL) {
+            widths.add(font.width(source.displayName()));
         }
-
-        creditX = panelX + (panelWidth - total) / 2;
-        int x = creditX + font.width(prefix) + font.width(" ");
-        for (int i = 0; i < Source.ALL.size(); i++) {
-            if (i > 0) {
-                x += font.width(SITE_SEPARATOR);
-            }
-            Source source = Source.ALL.get(i);
-            int textWidth = font.width(source.displayName());
-            links.add(new Link(source, x, textWidth));
-            x += textWidth;
-        }
+        return widths;
     }
 
     // ---------------------------------------------------------------- drawing
@@ -265,40 +139,42 @@ public final class PlayerLookupScreen extends Screen {
                                    int mouseX, int mouseY, float delta) {
         super.extractRenderState(graphics, mouseX, mouseY, delta);
 
-        graphics.fill(panelX, panelY, panelX + panelWidth, panelY + panelHeight,
-                PANEL_BACKGROUND);
-        graphics.outline(panelX, panelY, panelWidth, panelHeight, PANEL_BORDER);
-        separator(graphics, firstSeparatorY);
-        separator(graphics, secondSeparatorY);
-        separator(graphics, thirdSeparatorY);
+        graphics.fill(layout.panelX(), layout.panelY(),
+                layout.panelRight(), layout.panelBottom(), PANEL_BACKGROUND);
+        graphics.outline(layout.panelX(), layout.panelY(),
+                layout.panelWidth(), layout.panelHeight(), PANEL_BORDER);
+        separator(graphics, layout.firstSeparatorY());
+        separator(graphics, layout.secondSeparatorY());
+        separator(graphics, layout.thirdSeparatorY());
 
         drawName(graphics);
         Optional<Component> error = session.error();
         if (error.isPresent()) {
-            drawError(graphics, error.get());
+            graphics.centeredText(font, error.get(), width / 2, layout.skinCenterY(),
+                    UNAVAILABLE_COLOR);
         } else {
             drawSkin(graphics);
             graphics.centeredText(font, Component.translatable("justtiers.lookup.tiers"),
-                    width / 2, tiersY, Colors.SECONDARY);
+                    width / 2, layout.tiersY(), Colors.SECONDARY);
             drawRows(graphics, mouseX, mouseY);
             if (session.rankedNowhere()) {
                 graphics.centeredText(font,
                         Component.translatable("justtiers.lookup.none", session.name()),
-                        width / 2, noteY, Colors.SECONDARY);
+                        width / 2, layout.noteY(), Colors.SECONDARY);
             }
         }
         drawFooter(graphics, mouseX, mouseY);
     }
 
     private void separator(GuiGraphicsExtractor graphics, int y) {
-        graphics.horizontalLine(panelX + 1, panelX + panelWidth - 2, y, SEPARATOR);
+        graphics.horizontalLine(layout.panelX() + 1, layout.panelRight() - 2, y, SEPARATOR);
     }
 
     private void drawName(GuiGraphicsExtractor graphics) {
         String name = session.name();
         int nameWidth = Math.round(font.width(name) * NAME_SCALE);
         graphics.pose().pushMatrix();
-        graphics.pose().translate((width - nameWidth) / 2f, (float) nameY);
+        graphics.pose().translate((width - nameWidth) / 2f, (float) layout.nameY());
         graphics.pose().scale(NAME_SCALE, NAME_SCALE);
         graphics.text(font, name, 0, 0, NAME_COLOR, true);
         graphics.pose().popMatrix();
@@ -312,54 +188,50 @@ public final class PlayerLookupScreen extends Screen {
         PlayerSkin skin = session.skin();
         Identifier texture = skin.body().texturePath();
         boolean slim = skin.model() == PlayerModelType.SLIM;
-        int left = (width - SkinLayout.width(slim) * skinScale) / 2;
+        int scale = layout.skinScale();
+        int left = (width - SkinLayout.width(slim) * scale) / 2;
 
         for (SkinLayout.Piece piece : SkinLayout.pieces(slim)) {
             graphics.blit(RenderPipelines.GUI_TEXTURED, texture,
-                    left + piece.x() * skinScale, skinY + piece.y() * skinScale,
+                    left + piece.x() * scale, layout.skinY() + piece.y() * scale,
                     piece.u(), piece.v(),
-                    piece.width() * skinScale, piece.height() * skinScale,
+                    piece.width() * scale, piece.height() * scale,
                     piece.width(), piece.height(), SKIN_SIZE, SKIN_SIZE);
         }
     }
 
-    private void drawError(GuiGraphicsExtractor graphics, Component message) {
-        graphics.centeredText(font, message, width / 2,
-                skinY + (SkinLayout.HEIGHT * skinScale) / 2, UNAVAILABLE_COLOR);
-    }
-
     private void drawRows(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
-        for (Row row : rows) {
-            int textY = row.y() + (row.height() - font.lineHeight) / 2;
-            graphics.text(font, row.source().displayName(),
-                    row.x() - LABEL_GAP - font.width(row.source().displayName()), textY,
-                    Colors.opaque(SiteColors.of(row.source())));
-            graphics.outline(row.x(), row.y(), row.width(), row.height(),
-                    Colors.opaque(SiteColors.of(row.source())));
+        for (int i = 0; i < layout.rows().size(); i++) {
+            Source source = Source.ALL.get(i);
+            LookupLayout.Row row = layout.rows().get(i);
+            int color = Colors.opaque(SiteColors.of(source));
+            int textY = row.textTop(font.lineHeight);
 
-            Optional<LookupSection> section = session.section(row.source());
+            graphics.text(font, source.displayName(),
+                    row.labelRight() - font.width(source.displayName()), textY, color);
+            graphics.outline(row.x(), row.y(), row.width(), row.height(), color);
+
+            Optional<LookupSection> section = session.section(source);
             if (section.isEmpty()) {
                 graphics.centeredText(font, Component.translatable("justtiers.lookup.pending"),
-                        row.x() + row.width() / 2, textY, Colors.SECONDARY);
+                        row.centerX(), textY, Colors.SECONDARY);
             } else if (section.get().status() == LookupSection.Status.UNAVAILABLE) {
                 graphics.centeredText(font,
                         Component.translatable("justtiers.lookup.unavailable"),
-                        row.x() + row.width() / 2, textY, UNAVAILABLE_COLOR);
+                        row.centerX(), textY, UNAVAILABLE_COLOR);
             } else {
-                drawCells(graphics, row, section.get(), mouseX, mouseY);
+                drawCells(graphics, row, source, section.get(), mouseX, mouseY);
             }
         }
     }
 
-    private void drawCells(GuiGraphicsExtractor graphics, Row row, LookupSection section,
-                           int mouseX, int mouseY) {
-        OptionalInt hovered = cellAt(row, mouseX, mouseY);
+    private void drawCells(GuiGraphicsExtractor graphics, LookupLayout.Row row, Source source,
+                           LookupSection section, int mouseX, int mouseY) {
+        OptionalInt hovered = row.cellAt(mouseX, mouseY);
         List<LookupCell> cells = section.cells();
         for (int i = 0; i < cells.size() && i < row.grid().itemCount(); i++) {
-            int x = cellsLeft(row) + row.grid().xOf(i);
-            int y = row.y() + BOX_PADDING + row.grid().yOf(i);
             boolean isHovered = hovered.isPresent() && hovered.getAsInt() == i;
-            drawCell(graphics, cells.get(i), row.source(), x, y, isHovered);
+            drawCell(graphics, cells.get(i), source, row.cellX(i), row.cellY(i), isHovered);
             if (isHovered) {
                 graphics.setTooltipForNextFrame(font, tooltip(cells.get(i)), mouseX, mouseY);
             }
@@ -395,18 +267,22 @@ public final class PlayerLookupScreen extends Screen {
     }
 
     private void drawFooter(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+        int footerY = layout.footerY();
         graphics.text(font, Component.translatable("justtiers.lookup.credit"),
-                creditX, footerY, Colors.SECONDARY);
-        for (int i = 1; i < links.size(); i++) {
-            Link link = links.get(i);
-            graphics.text(font, SITE_SEPARATOR,
-                    link.x() - font.width(SITE_SEPARATOR), footerY, Colors.SECONDARY);
-        }
-        for (Link link : links) {
-            int color = Colors.opaque(SiteColors.of(link.source()));
-            graphics.text(font, link.source().displayName(), link.x(), footerY, color);
-            if (isOver(link, mouseX, mouseY)) {
-                graphics.horizontalLine(link.x(), link.x() + link.width() - 1,
+                credit.x(), footerY, Colors.SECONDARY);
+
+        OptionalInt hovered = linkAt(mouseX, mouseY);
+        for (int i = 0; i < credit.spans().size(); i++) {
+            CreditLine.Span span = credit.spans().get(i);
+            Source source = Source.ALL.get(i);
+            int color = Colors.opaque(SiteColors.of(source));
+            if (i > 0) {
+                graphics.text(font, SITE_SEPARATOR, span.x() - font.width(SITE_SEPARATOR),
+                        footerY, Colors.SECONDARY);
+            }
+            graphics.text(font, source.displayName(), span.x(), footerY, color);
+            if (hovered.isPresent() && hovered.getAsInt() == i) {
+                graphics.horizontalLine(span.x(), span.x() + span.width() - 1,
                         footerY + font.lineHeight - 1, color);
             }
         }
@@ -414,33 +290,22 @@ public final class PlayerLookupScreen extends Screen {
 
     // ---------------------------------------------------------------- input
 
-    /**
-     * Every box is as wide as the widest site's row, so a site with fewer gamemodes has
-     * room to spare; its cells are centred in it rather than left hanging off one edge.
-     */
-    private int cellsLeft(Row row) {
-        return row.x() + (row.width() - row.grid().contentWidth()) / 2;
-    }
-
-    private OptionalInt cellAt(Row row, double mouseX, double mouseY) {
-        return row.grid().indexAt(
-                (int) mouseX - cellsLeft(row),
-                (int) mouseY - row.y() - BOX_PADDING);
-    }
-
-    private boolean isOver(Link link, double mouseX, double mouseY) {
-        return mouseX >= link.x() && mouseX < link.x() + link.width()
-                && mouseY >= footerY && mouseY < footerY + font.lineHeight;
+    /** The site name under the cursor, if the cursor is on the footer line at all. */
+    private OptionalInt linkAt(double mouseX, double mouseY) {
+        if (mouseY < layout.footerY() || mouseY >= layout.footerY() + font.lineHeight) {
+            return OptionalInt.empty();
+        }
+        return credit.spanAt(mouseX);
     }
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         if (event.button() == 0) {
-            for (Link link : links) {
-                if (isOver(link, event.x(), event.y())) {
-                    ConfirmLinkScreen.confirmLinkNow(this, link.source().homeUrl());
-                    return true;
-                }
+            OptionalInt clicked = linkAt(event.x(), event.y());
+            if (clicked.isPresent()) {
+                ConfirmLinkScreen.confirmLinkNow(this,
+                        Source.ALL.get(clicked.getAsInt()).homeUrl());
+                return true;
             }
         }
         return super.mouseClicked(event, doubleClick);
