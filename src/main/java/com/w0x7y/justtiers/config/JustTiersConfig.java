@@ -165,7 +165,11 @@ public class JustTiersConfig {
      * a way to lose them.
      */
     public int getCustomColor(Source source) {
-        return Palette.CUSTOM.colorOf(source, customColors);
+        if (customColors == null) {
+            return source.defaultColor();
+        }
+        // Per site, so one typo in a hand-edited file costs one color rather than three.
+        return HexColor.parse(customColors.get(source.name())).orElseGet(source::defaultColor);
     }
 
     public void setCustomColor(Source source, int rgb) {
@@ -191,13 +195,9 @@ public class JustTiersConfig {
         if (cached != null) {
             return cached;
         }
-        Map<Source, Integer> resolved = new EnumMap<>(Source.class);
-        for (Source source : Source.ALL) {
-            resolved.put(source, getPalette().colorOf(source, customColors));
-        }
-        Map<Source, Integer> copy = Map.copyOf(resolved);
-        resolvedColors = copy;
-        return copy;
+        Map<Source, Integer> resolved = getPalette().colors(this::getCustomColor);
+        resolvedColors = resolved;
+        return resolved;
     }
 
     /** How long a fetched tier is trusted before it is looked up again. */

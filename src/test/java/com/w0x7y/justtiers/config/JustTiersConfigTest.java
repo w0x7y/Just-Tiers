@@ -26,6 +26,40 @@ class JustTiersConfigTest {
         assertEquals(30, config.getNovaRefreshMinutes());
     }
 
+    /**
+     * The on-disk spelling of a color is read here and nowhere else — Palette works in
+     * ints and never learns the file format exists.
+     */
+    @Test
+    void aStoredCustomColorIsParsedOutOfItsHex() {
+        JustTiersConfig config = new JustTiersConfig();
+        config.setCustomColor(Source.MCTIERS, 0x123456);
+
+        assertEquals(0x123456, config.getCustomColor(Source.MCTIERS));
+    }
+
+    @Test
+    void aSiteWithNothingStoredKeepsItsOwnColor() {
+        JustTiersConfig config = new JustTiersConfig();
+
+        for (Source source : Source.ALL) {
+            assertEquals(source.defaultColor(), config.getCustomColor(source));
+        }
+    }
+
+    @Test
+    void aStoredCustomColorSurvivesSwitchingToAPresetAndBack() {
+        JustTiersConfig config = new JustTiersConfig();
+        config.setCustomColor(Source.SUBTIERS, 0xABCDEF);
+        config.setPalette(Palette.COLORBLIND);
+
+        assertEquals(0x56B4E9, config.colorOf(Source.SUBTIERS));
+        assertEquals(0xABCDEF, config.getCustomColor(Source.SUBTIERS));
+
+        config.setPalette(Palette.CUSTOM);
+        assertEquals(0xABCDEF, config.colorOf(Source.SUBTIERS));
+    }
+
     @Test
     void everySettingTheNametagReadsComesOutInOneValue() {
         JustTiersConfig config = new JustTiersConfig();
