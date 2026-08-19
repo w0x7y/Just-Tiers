@@ -15,19 +15,23 @@ import java.util.Map;
  * <p>The brackets, the icons and the side the badge sits on are all
  * {@link NametagStyle} choices. The badge always carries the single space that separates
  * it from the name, on whichever side the name is, so callers only ever concatenate.
+ *
+ * <p>Package-private: this is the layout half of {@link Badge}, which is what the rest
+ * of the mod builds badges through. Its own tests sit in this package and exercise it
+ * directly.
  */
-public final class NametagModel {
+final class NametagModel {
 
-    public static final int BRACKET_COLOR = 0x555555;
+    static final int BRACKET_COLOR = 0x555555;
     /** Bitmap glyphs are multiplied by the text color, so icons must be white. */
-    public static final int ICON_COLOR = 0xFFFFFF;
+    static final int ICON_COLOR = 0xFFFFFF;
 
     /** The badge in its default shape: bracketed, with icons, in front of the name. */
-    public static List<Segment> build(List<ResolvedTier> tiers) {
+    static List<Segment> build(List<ResolvedTier> tiers) {
         return build(tiers, NametagStyle.DEFAULT);
     }
 
-    public static List<Segment> build(List<ResolvedTier> tiers, NametagStyle style) {
+    static List<Segment> build(List<ResolvedTier> tiers, NametagStyle style) {
         List<Segment> entries = entries(tiers, style.icons(), style.colors());
         if (entries.isEmpty()) {
             return List.of();
@@ -56,17 +60,15 @@ public final class NametagModel {
 
     /**
      * The tier entries alone, separated by single spaces — no brackets and no spacing to
-     * a name. Shared with {@code /justtiers lookup}, which lists a whole site's
-     * placements on its own line and wants exactly this run of icons and labels without
-     * the nametag's wrapping.
+     * a name: the run of icons and labels the badge wraps.
      */
-    public static List<Segment> entries(List<ResolvedTier> tiers, boolean icons) {
+    static List<Segment> entries(List<ResolvedTier> tiers, boolean icons) {
         return entries(tiers, icons, NametagStyle.DEFAULT.colors());
     }
 
     /** As {@link #entries(List, boolean)}, in whatever colors the caller was given. */
-    public static List<Segment> entries(List<ResolvedTier> tiers, boolean icons,
-                                        Map<Source, Integer> colors) {
+    static List<Segment> entries(List<ResolvedTier> tiers, boolean icons,
+                                 Map<Source, Integer> colors) {
         if (tiers == null || tiers.isEmpty()) {
             return List.of();
         }
@@ -89,8 +91,8 @@ public final class NametagModel {
         return List.copyOf(segments);
     }
 
-    /** Concatenated text, ignoring color. Used by tests and debug logging. */
-    public static String plainText(List<Segment> segments) {
+    /** Concatenated text, ignoring color. Reached through {@link Badge#plainText()}. */
+    static String plainText(List<Segment> segments) {
         StringBuilder builder = new StringBuilder();
         for (Segment segment : segments) {
             builder.append(segment.text());

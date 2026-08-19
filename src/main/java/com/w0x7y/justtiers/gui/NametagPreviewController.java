@@ -2,8 +2,8 @@ package com.w0x7y.justtiers.gui;
 
 import com.w0x7y.justtiers.gui.state.PreviewState;
 import com.w0x7y.justtiers.preview.PreviewSample;
-import com.w0x7y.justtiers.render.Segments;
-import com.w0x7y.justtiers.render.model.Segment;
+import com.w0x7y.justtiers.render.Nametags;
+import com.w0x7y.justtiers.render.model.Badge;
 import dev.isxander.yacl3.api.Controller;
 import dev.isxander.yacl3.api.Option;
 import dev.isxander.yacl3.api.utils.Dimension;
@@ -17,7 +17,6 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 
-import java.util.List;
 import java.util.function.Supplier;
 
 /**
@@ -81,16 +80,11 @@ public final class NametagPreviewController implements Controller<Component> {
      * borrow YACL's color-multiply; pass null for an undimmed tag.
      */
     private MutableComponent tag(PreviewState current, PreviewWidget widget, long timeMillis) {
-        List<Segment> segments = PreviewSample.segments(current.displayMode(),
-                current.selectedGamemodes(), current.showRetired(), timeMillis,
-                current.style());
+        Badge badge = current.badge(timeMillis);
         if (widget != null && !current.enabled()) {
-            segments = segments.stream()
-                    .map(segment -> segment.withColor(widget.dim(segment.color())))
-                    .toList();
+            badge = badge.recolor(widget::dim);
         }
-        return Segments.compose(segments, PreviewName.component(),
-                current.style().position());
+        return Nametags.compose(badge, PreviewName.component());
     }
 
     private Component caption(PreviewState current) {
