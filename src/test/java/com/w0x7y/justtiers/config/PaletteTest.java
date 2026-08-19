@@ -3,10 +3,11 @@ package com.w0x7y.justtiers.config;
 import com.w0x7y.justtiers.tier.Source;
 import org.junit.jupiter.api.Test;
 
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.ToIntFunction;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -14,30 +15,38 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PaletteTest {
 
-    private static Map<String, String> custom(String mctiers, String subtiers, String nova) {
-        Map<String, String> colors = new HashMap<>();
-        colors.put(Source.MCTIERS.name(), mctiers);
-        colors.put(Source.SUBTIERS.name(), subtiers);
-        colors.put(Source.NOVATIERS.name(), nova);
-        return colors;
+    /** Custom colors from wherever a caller keeps them; this one keeps them in a map. */
+    private static ToIntFunction<Source> custom(int mctiers, int subtiers, int nova) {
+        Map<Source, Integer> colors = new EnumMap<>(Source.class);
+        colors.put(Source.MCTIERS, mctiers);
+        colors.put(Source.SUBTIERS, subtiers);
+        colors.put(Source.NOVATIERS, nova);
+        return source -> colors.getOrDefault(source, source.defaultColor());
     }
+
+    /** A caller a preset must never reach for. */
+    private static final ToIntFunction<Source> NEVER_ASKED = source -> {
+        throw new AssertionError("a preset asked for a custom color for " + source);
+    };
 
     @Test
     void theDefaultPaletteIsWhatTheSitesAlreadyUse() {
         for (Source source : Source.ALL) {
-            assertEquals(source.defaultColor(), Palette.DEFAULT.colorOf(source, Map.of()));
+            assertEquals(source.defaultColor(), Palette.DEFAULT.colorOf(source, NEVER_ASKED));
         }
     }
 
     @Test
     void presetsCarryTheirDocumentedColors() {
-        assertEquals(0xE69F00, Palette.COLORBLIND.colorOf(Source.MCTIERS, Map.of()));
-        assertEquals(0x56B4E9, Palette.COLORBLIND.colorOf(Source.SUBTIERS, Map.of()));
-        assertEquals(0xFFFFFF, Palette.COLORBLIND.colorOf(Source.NOVATIERS, Map.of()));
+        assertEquals(Map.of(Source.MCTIERS, 0xE69F00,
+                        Source.SUBTIERS, 0x56B4E9,
+                        Source.NOVATIERS, 0xFFFFFF),
+                Palette.COLORBLIND.colors(NEVER_ASKED));
 
-        assertEquals(0xFFFFFF, Palette.HIGH_CONTRAST.colorOf(Source.MCTIERS, Map.of()));
-        assertEquals(0xFFAA00, Palette.HIGH_CONTRAST.colorOf(Source.SUBTIERS, Map.of()));
-        assertEquals(0x00FFFF, Palette.HIGH_CONTRAST.colorOf(Source.NOVATIERS, Map.of()));
+        assertEquals(Map.of(Source.MCTIERS, 0xFFFFFF,
+                        Source.SUBTIERS, 0xFFAA00,
+                        Source.NOVATIERS, 0x00FFFF),
+                Palette.HIGH_CONTRAST.colors(NEVER_ASKED));
     }
 
     @Test
@@ -46,44 +55,61 @@ class PaletteTest {
             if (palette.isCustom()) {
                 continue;
             }
-            Set<Integer> colors = new HashSet<>();
-            for (Source source : Source.ALL) {
-                colors.add(palette.colorOf(source, Map.of()));
-            }
+            Set<Integer> colors = new HashSet<>(palette.colors(NEVER_ASKED).values());
             assertEquals(Source.ALL.size(), colors.size(), palette.id());
         }
     }
 
+    /**
+     * The rule the config and the config screen used to spell out separately, each in
+     * terms of its own storage: a preset never consults the custom colors, and Custom
+     * consults nothing else.
+     */
     @Test
     void aPresetIgnoresTheCustomColors() {
-        Map<String, String> colors = custom("#111111", "#222222", "#333333");
+        ToIntFunction<Source> colors = custom(0x111111, 0x222222, 0x333333);
+
         assertEquals(0xFFFF55, Palette.DEFAULT.colorOf(Source.MCTIERS, colors));
         assertEquals(0xE69F00, Palette.COLORBLIND.colorOf(Source.MCTIERS, colors));
     }
 
     @Test
     void customUsesTheSuppliedColors() {
-        Map<String, String> colors = custom("#111111", "#222222", "#333333");
-        assertEquals(0x111111, Palette.CUSTOM.colorOf(Source.MCTIERS, colors));
-        assertEquals(0x222222, Palette.CUSTOM.colorOf(Source.SUBTIERS, colors));
-        assertEquals(0x333333, Palette.CUSTOM.colorOf(Source.NOVATIERS, colors));
+        assertEquals(Map.of(Source.MCTIERS, 0x111111,
+                        Source.SUBTIERS, 0x222222,
+                        Source.NOVATIERS, 0x333333),
+                Palette.CUSTOM.colors(custom(0x111111, 0x222222, 0x333333)));
     }
 
+    /**
+     * Which is exactly what the config screen relies on: the color pickers do not exist
+     * yet while the preview supplier that reads them is being built.
+     */
     @Test
-    void aBadCustomColorCostsOnlyItsOwnSite() {
-        Map<String, String> colors = custom("#111111", "not a color", null);
-        assertEquals(0x111111, Palette.CUSTOM.colorOf(Source.MCTIERS, colors));
-        assertEquals(Source.SUBTIERS.defaultColor(),
-                Palette.CUSTOM.colorOf(Source.SUBTIERS, colors));
-        assertEquals(Source.NOVATIERS.defaultColor(),
-                Palette.CUSTOM.colorOf(Source.NOVATIERS, colors));
-    }
-
-    @Test
-    void customWithNothingStoredIsTheDefaultPalette() {
+    void customWithNoOneToAskIsTheDefaultPalette() {
         for (Source source : Source.ALL) {
-            assertEquals(source.defaultColor(), Palette.CUSTOM.colorOf(source, Map.of()));
             assertEquals(source.defaultColor(), Palette.CUSTOM.colorOf(source, null));
+        }
+        assertEquals(Palette.DEFAULT.colors(NEVER_ASKED), Palette.CUSTOM.colors(null));
+    }
+
+    @Test
+    void everyPaletteAnswersForEverySite() {
+        for (Palette palette : Palette.values()) {
+            assertEquals(Source.ALL.size(),
+                    palette.colors(custom(0x111111, 0x222222, 0x333333)).size(), palette.id());
+        }
+    }
+
+    @Test
+    void oneSiteAtATimeAgreesWithTheWholePalette() {
+        ToIntFunction<Source> colors = custom(0x111111, 0x222222, 0x333333);
+        for (Palette palette : Palette.values()) {
+            Map<Source, Integer> all = palette.colors(colors);
+            for (Source source : Source.ALL) {
+                assertEquals(palette.colorOf(source, colors), all.get(source),
+                        palette.id() + "/" + source);
+            }
         }
     }
 

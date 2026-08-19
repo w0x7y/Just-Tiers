@@ -180,15 +180,18 @@ public final class JustTiersScreens {
      */
     private static Map<Source, Integer> pendingColors(Option<Palette> palette,
                                                       Map<Source, Option<Color>> pickers) {
-        Palette pending = palette.pendingValue();
-        Map<Source, Integer> colors = new EnumMap<>(Source.class);
-        for (Source source : Source.ALL) {
-            Option<Color> picker = pickers.get(source);
-            colors.put(source, pending.isCustom() && picker != null
-                    ? picker.pendingValue().getRGB() & 0xFFFFFF
-                    : pending.colorOf(source, Map.of()));
-        }
-        return colors;
+        return palette.pendingValue().colors(source -> pendingCustomColor(pickers, source));
+    }
+
+    /**
+     * One picker's live value. The pickers are filled in after this supplier is built, so
+     * a missing one means the screen is still being assembled, not that a color is gone.
+     */
+    private static int pendingCustomColor(Map<Source, Option<Color>> pickers, Source source) {
+        Option<Color> picker = pickers.get(source);
+        return picker == null
+                ? source.defaultColor()
+                : picker.pendingValue().getRGB() & 0xFFFFFF;
     }
 
     private static ConfigCategory displayCategory(Option<Component> preview,
