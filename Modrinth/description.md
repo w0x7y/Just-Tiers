@@ -12,7 +12,7 @@ A Minecraft **Fabric** client mod that shows a player's competitive PvP tier dir
 
 [TierTagger](https://github.com/mctiers-dev/TierTagger) is the established mod in this space, and it is good, but it has two limitations that Just-Tiers is built to fix:
 
-1. **No NovaTiers support.** Only MCTiers and SubTiers are available, so newer gamemodes(Like elytramace/spearmace) are made unavailable.
+1. **No NovaTiers support.** Only MCTiers and SubTiers are available, so gamemodes only NovaTiers runs — Elytra Spear, Spear Mace, Diamond Cart and the rest — cannot be shown at all.
 2. **One leaderboard at a time.** You must pick MCTiers *or* SubTiers; you cannot see both at once.
 
 Just-Tiers supports all three leaderboards, and adds an **All** mode that shows each site's best tier side by side in a single nametag.
@@ -202,7 +202,7 @@ tracker.
 
 ### This project
 
-Just-Tiers is released under the **MIT License**. See [`LICENSE`]([LICENSE](https://github.com/w0x7y/Just-Tiers/blob/main/LICENSE)).
+Just-Tiers is released under the **MIT License**. See [`LICENSE`](https://github.com/w0x7y/Just-Tiers/blob/main/LICENSE).
 
 ```
 Copyright (c) 2026 Idan Gilboa
