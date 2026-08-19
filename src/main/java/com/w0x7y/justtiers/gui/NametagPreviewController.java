@@ -1,9 +1,9 @@
 package com.w0x7y.justtiers.gui;
 
-import com.w0x7y.justtiers.gui.state.PreviewState;
 import com.w0x7y.justtiers.preview.PreviewSample;
 import com.w0x7y.justtiers.render.Nametags;
 import com.w0x7y.justtiers.render.model.Badge;
+import com.w0x7y.justtiers.render.model.NametagSettings;
 import dev.isxander.yacl3.api.Controller;
 import dev.isxander.yacl3.api.Option;
 import dev.isxander.yacl3.api.utils.Dimension;
@@ -26,8 +26,8 @@ import java.util.function.Supplier;
  * leaderboard lookup; the shape and colors still come from the same {@code NametagModel}
  * the world nametag uses.
  *
- * <p>The widget re-reads its {@link PreviewState} supplier every frame, so it follows
- * pending edits with no listener wiring at all.
+ * <p>The widget re-reads its {@link NametagSettings} supplier every frame, so it
+ * follows pending edits with no listener wiring at all.
  */
 public final class NametagPreviewController implements Controller<Component> {
 
@@ -43,15 +43,15 @@ public final class NametagPreviewController implements Controller<Component> {
     private static final float TAG_SCALE = 2f;
 
     private final Option<Component> option;
-    private final Supplier<PreviewState> state;
+    private final Supplier<NametagSettings> state;
 
-    private NametagPreviewController(Option<Component> option, Supplier<PreviewState> state) {
+    private NametagPreviewController(Option<Component> option, Supplier<NametagSettings> state) {
         this.option = option;
         this.state = state;
     }
 
     /** Builds the preview row. The binding is a no-op: the preview stores nothing. */
-    public static Option<Component> option(Supplier<PreviewState> state) {
+    public static Option<Component> option(Supplier<NametagSettings> state) {
         return Option.<Component>createBuilder()
                 .name(Component.empty())
                 .binding(Component.empty(), Component::empty, value -> {
@@ -79,15 +79,15 @@ public final class NametagPreviewController implements Controller<Component> {
      * The tag as a component. {@code widget} is passed only so a disabled preview can
      * borrow YACL's color-multiply; pass null for an undimmed tag.
      */
-    private MutableComponent tag(PreviewState current, PreviewWidget widget, long timeMillis) {
-        Badge badge = current.badge(timeMillis);
+    private MutableComponent tag(NametagSettings current, PreviewWidget widget, long timeMillis) {
+        Badge badge = current.previewBadge(timeMillis);
         if (widget != null && !current.enabled()) {
             badge = badge.recolor(widget::dim);
         }
         return Nametags.compose(badge, PreviewName.component());
     }
 
-    private Component caption(PreviewState current) {
+    private Component caption(NametagSettings current) {
         return current.enabled()
                 ? Component.translatable("justtiers.preview.example")
                 : Component.translatable("justtiers.preview.off");
@@ -117,7 +117,7 @@ public final class NametagPreviewController implements Controller<Component> {
         public void extractRenderState(GuiGraphicsExtractor graphics,
                                        int mouseX, int mouseY, float delta) {
             Dimension<Integer> dim = getDimension();
-            PreviewState current = state.get();
+            NametagSettings current = state.get();
 
             int left = dim.x() + PLATE_INSET;
             int top = dim.y() + PLATE_INSET;
@@ -170,7 +170,7 @@ public final class NametagPreviewController implements Controller<Component> {
 
         @Override
         public void updateNarration(NarrationElementOutput output) {
-            PreviewState current = state.get();
+            NametagSettings current = state.get();
             output.add(NarratedElementType.TITLE, tag(current, null, System.currentTimeMillis()));
             output.add(NarratedElementType.HINT, caption(current));
         }

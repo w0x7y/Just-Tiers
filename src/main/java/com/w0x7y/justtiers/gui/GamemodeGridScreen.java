@@ -4,7 +4,7 @@ import com.w0x7y.justtiers.render.Icons;
 import com.w0x7y.justtiers.render.SiteColors;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.w0x7y.justtiers.gui.layout.GridLayout;
-import com.w0x7y.justtiers.gui.state.PreviewState;
+import com.w0x7y.justtiers.render.model.NametagSettings;
 import com.w0x7y.justtiers.render.Nametags;
 import com.w0x7y.justtiers.tier.Gamemode;
 import com.w0x7y.justtiers.tier.Gamemodes;
@@ -18,9 +18,7 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 
-import java.util.EnumMap;
 import java.util.List;
-import java.util.Map;
 import java.util.OptionalInt;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -54,7 +52,7 @@ public final class GamemodeGridScreen extends Screen {
     private final Screen parent;
     private final Source source;
     private final List<Gamemode> gamemodes;
-    private final Supplier<PreviewState> baseState;
+    private final Supplier<NametagSettings> baseState;
     private final Consumer<String> onPick;
     private final String selectedSlug;
 
@@ -67,7 +65,7 @@ public final class GamemodeGridScreen extends Screen {
     private int hoveredIndex = -1;
 
     public GamemodeGridScreen(Screen parent, Source source, String selectedSlug,
-                              Supplier<PreviewState> baseState, Consumer<String> onPick) {
+                              Supplier<NametagSettings> baseState, Consumer<String> onPick) {
         super(Component.translatable("justtiers.grid.title", source.displayName()));
         this.parent = parent;
         this.source = source;
@@ -114,13 +112,8 @@ public final class GamemodeGridScreen extends Screen {
     }
 
     /** The pending settings with this site's gamemode swapped for the candidate slug. */
-    private PreviewState stateFor(String slug) {
-        PreviewState base = baseState.get();
-        Map<Source, String> selected = new EnumMap<>(Source.class);
-        selected.putAll(base.selectedGamemodes());
-        selected.put(source, slug);
-        return new PreviewState(base.enabled(), base.displayMode(), selected,
-                base.showRetired(), base.style());
+    private NametagSettings stateFor(String slug) {
+        return baseState.get().withGamemode(source, slug);
     }
 
     @Override
@@ -139,8 +132,8 @@ public final class GamemodeGridScreen extends Screen {
 
     private void extractPreview(GuiGraphicsExtractor graphics) {
         String slug = hoveredIndex >= 0 ? gamemodes.get(hoveredIndex).slug() : selectedSlug;
-        PreviewState state = stateFor(slug);
-        Component tag = Nametags.compose(state.badge(System.currentTimeMillis()),
+        NametagSettings state = stateFor(slug);
+        Component tag = Nametags.compose(state.previewBadge(System.currentTimeMillis()),
                 PreviewName.component());
 
         int tagWidth = Math.round(font.width(tag) * TAG_SCALE);

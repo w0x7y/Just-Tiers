@@ -7,8 +7,10 @@ import com.w0x7y.justtiers.resolve.TierResolver;
 import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
 
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.IntUnaryOperator;
 
 /**
@@ -22,8 +24,10 @@ import java.util.function.IntUnaryOperator;
  * side travels with the segments it was built with, and the sequence is behind a single
  * factory.
  *
- * <p>Deliberately Minecraft-free: {@link com.w0x7y.justtiers.render.Nametags} is the only
- * place a badge meets a {@code Component}, so everything up to that point is unit-testable.
+ * <p>Deliberately Minecraft-free, and so is everything it reads: {@link TierView} stands
+ * in for the running mod, and {@link com.w0x7y.justtiers.render.Nametags} is the only
+ * place a badge meets a {@code Component}. Deciding what a player wears therefore needs
+ * neither the game nor the static hub.
  */
 public record Badge(List<Segment> segments, BadgePosition position) {
 
@@ -40,6 +44,34 @@ public record Badge(List<Segment> segments, BadgePosition position) {
         NametagStyle effective = style == null ? NametagStyle.DEFAULT : style;
         List<Segment> segments = NametagModel.build(tiers, effective);
         return segments.isEmpty() ? NONE : new Badge(segments, effective.position());
+    }
+
+    /**
+     * The badge one player should be wearing right now: the whole decision, from the
+     * settings in force and whatever the sites have said, with nothing left for the
+     * caller to get right. Empty when the mod is off, when the player cannot be on a
+     * leaderboard, or when no site has answered yet.
+     *
+     * <p>Only the sites the display mode actually reads are asked, so switching to a
+     * single-site mode stops the other two from reaching the tag even when their answers
+     * are already cached.
+     */
+    public static Badge forPlayer(TierView view, UUID uuid) {
+        NametagSettings settings = view.settings();
+        if (!settings.enabled() || uuid == null) {
+            return NONE;
+        }
+        // Offline-mode and NPC entities use v3 UUIDs and are never in these leaderboards.
+        if (uuid.version() != 4) {
+            return NONE;
+        }
+
+        Map<Source, Map<String, Tier>> answers = new EnumMap<>(Source.class);
+        for (Source source : settings.displayMode().sources()) {
+            view.peek(source, uuid).ifPresent(tiers -> answers.put(source, tiers));
+        }
+        return forPlayer(settings.displayMode(), answers, settings.selectedGamemodes(),
+                settings.showRetired(), settings.style());
     }
 
     /**

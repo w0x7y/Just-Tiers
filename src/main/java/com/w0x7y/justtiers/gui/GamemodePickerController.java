@@ -2,7 +2,7 @@ package com.w0x7y.justtiers.gui;
 
 import com.w0x7y.justtiers.render.Icons;
 import com.w0x7y.justtiers.render.SiteColors;
-import com.w0x7y.justtiers.gui.state.PreviewState;
+import com.w0x7y.justtiers.render.model.NametagSettings;
 import com.w0x7y.justtiers.tier.Gamemodes;
 import com.w0x7y.justtiers.tier.Source;
 import dev.isxander.yacl3.api.Controller;
@@ -26,10 +26,10 @@ public final class GamemodePickerController implements Controller<String> {
 
     private final Option<String> option;
     private final Source source;
-    private final Supplier<PreviewState> previewState;
+    private final Supplier<NametagSettings> previewState;
 
     public GamemodePickerController(Option<String> option, Source source,
-                                    Supplier<PreviewState> previewState) {
+                                    Supplier<NametagSettings> previewState) {
         this.option = option;
         this.source = source;
         this.previewState = previewState;
