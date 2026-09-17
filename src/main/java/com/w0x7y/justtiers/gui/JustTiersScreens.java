@@ -17,6 +17,8 @@ import dev.isxander.yacl3.api.LabelOption;
 import dev.isxander.yacl3.api.Option;
 import dev.isxander.yacl3.api.OptionDescription;
 import dev.isxander.yacl3.api.OptionGroup;
+import dev.isxander.yacl3.api.StateManager;
+import net.minecraft.client.Minecraft;
 import dev.isxander.yacl3.api.YetAnotherConfigLib;
 import dev.isxander.yacl3.api.controller.ColorControllerBuilder;
 import dev.isxander.yacl3.api.controller.EnumControllerBuilder;
@@ -47,7 +49,7 @@ public final class JustTiersScreens {
     private static final int REFRESH_STEP_MINUTES = 5;
 
     public static Screen create(Screen parent) {
-        JustTiersConfig config = JustTiersClient.config();
+        JustTiersConfig config = JustTiersClient.config().copy();
 
         Option<Boolean> enabled = tickBox("justtiers.option.enabled",
                 config::isEnabled, config::setEnabled);
@@ -58,7 +60,7 @@ public final class JustTiersScreens {
                 .binding(DisplayMode.ALL, config::getDisplayMode, config::setDisplayMode)
                 .controller(opt -> EnumControllerBuilder.create(opt)
                         .enumClass(DisplayMode.class)
-                        .valueFormatter(JustTiersScreens::formatMode))
+                        .formatValue(JustTiersScreens::formatMode))
                 .build();
 
         Option<Boolean> showRetired = tickBox("justtiers.option.showRetired",
@@ -70,7 +72,7 @@ public final class JustTiersScreens {
                 .binding(BadgePosition.BEFORE, config::getBadgePosition, config::setBadgePosition)
                 .controller(opt -> EnumControllerBuilder.create(opt)
                         .enumClass(BadgePosition.class)
-                        .valueFormatter(position ->
+                        .formatValue(position ->
                                 Component.translatable("justtiers.badge." + position.id())))
                 .build();
 
@@ -89,7 +91,7 @@ public final class JustTiersScreens {
                 .binding(Palette.DEFAULT, config::getPalette, config::setPalette)
                 .controller(opt -> EnumControllerBuilder.create(opt)
                         .enumClass(Palette.class)
-                        .valueFormatter(value -> Component.translatable(value.displayKey())))
+                        .formatValue(value -> Component.translatable(value.displayKey())))
                 .build();
 
         // Read lazily, so the pickers can hand this supplier to the grid screen even
@@ -111,7 +113,11 @@ public final class JustTiersScreens {
             colorPickers.put(source, Option.<Color>createBuilder()
                     .name(Component.translatable("justtiers.option.customColor",
                             source.displayName()))
-                    .description(description("justtiers.option.customColor.desc"))
+                    .description(value -> description(!enabled.pendingValue()
+                            ? "justtiers.option.gamemode.disabled"
+                            : palette.pendingValue().isCustom()
+                            ? "justtiers.option.customColor.desc"
+                            : "justtiers.option.customColor.inactive"))
                     .binding(new Color(source.defaultColor()),
                             () -> new Color(config.getCustomColor(source)),
                             color -> config.setCustomColor(source, color.getRGB()))
@@ -123,7 +129,9 @@ public final class JustTiersScreens {
             pickers.put(source, Option.<String>createBuilder()
                     .name(Component.translatable("justtiers.option.gamemode",
                             source.displayName()))
-                    .description(gamemodeDescription(source))
+                    .description(value -> gamemodeDescription(source, ControlAvailability.of(
+                            enabled.pendingValue(), displayMode.pendingValue(), palette.pendingValue())
+                            .reasonFor(source)))
                     .binding(JustTiersConfig.defaultGamemode(source),
                             () -> config.selectedGamemode(source),
                             slug -> config.setSelectedGamemode(source, slug))
@@ -154,16 +162,16 @@ public final class JustTiersScreens {
 
         Option<Component> preview = NametagPreviewController.option(previewState);
 
-        return YetAnotherConfigLib.createBuilder()
+        YetAnotherConfigLib library = YetAnotherConfigLib.createBuilder()
                 .title(Component.translatable("justtiers.config.title"))
                 .category(displayCategory(preview, enabled, displayMode, showRetired,
                         badgePosition, showIcons, showBrackets, hideOwnBadge, palette,
                         colorPickers, pickers))
                 .category(dataCategory(config))
                 .category(aboutCategory())
-                .save(JustTiersClient::saveConfig)
-                .build()
-                .generateScreen(parent);
+                .save(() -> JustTiersClient.saveConfig(config))
+                .build();
+        return new ConfigScreen(library, parent);
     }
 
     private static Map<Source, String> pendingGamemodes(Map<Source, Option<String>> pickers) {
@@ -241,7 +249,7 @@ public final class JustTiersScreens {
                 .controller(opt -> IntegerSliderControllerBuilder.create(opt)
                         .range(REFRESH_MIN_MINUTES, REFRESH_MAX_MINUTES)
                         .step(REFRESH_STEP_MINUTES)
-                        .valueFormatter(minutes ->
+                        .formatValue(minutes ->
                                 Component.translatable("justtiers.option.novaRefresh.value",
                                         String.valueOf(minutes))))
                 .build();
@@ -253,7 +261,7 @@ public final class JustTiersScreens {
                 .controller(opt -> IntegerSliderControllerBuilder.create(opt)
                         .range(REFRESH_MIN_MINUTES, REFRESH_MAX_MINUTES)
                         .step(REFRESH_STEP_MINUTES)
-                        .valueFormatter(minutes ->
+                        .formatValue(minutes ->
                                 Component.translatable("justtiers.option.tierCache.value",
                                         String.valueOf(minutes))))
                 .build();
@@ -261,13 +269,22 @@ public final class JustTiersScreens {
         Option<Boolean> showProgress = tickBox("justtiers.option.downloadProgress",
                 config::isShowDownloadProgress, config::setShowDownloadProgress);
 
+        // Client-thread state local to this screen. The label also reads the current
+        // index on demand, so scheduled refreshes update it without rebuilding options.
+        String[] refreshState = {"justtiers.data.refreshReady"};
         ButtonOption refresh = ButtonOption.createBuilder()
                 .name(Component.translatable("justtiers.option.refresh"))
                 .text(Component.translatable("justtiers.option.refresh.text"))
                 .description(description("justtiers.option.refresh.desc"))
                 .action((screen, option) -> {
-                    JustTiersClient.cache().invalidateAll();
-                    JustTiersClient.novaSource().refresh();
+                    option.setAvailable(false);
+                    refreshState[0] = "justtiers.command.refreshing";
+                    JustTiersClient.refreshData().whenComplete((ignored, error) ->
+                            Minecraft.getInstance().execute(() -> {
+                                refreshState[0] = error == null ? "justtiers.data.refreshComplete"
+                                        : "justtiers.data.refreshFailed";
+                                option.setAvailable(true);
+                            }));
                 })
                 .build();
 
@@ -277,8 +294,9 @@ public final class JustTiersScreens {
                 .option(tierCacheMinutes)
                 .option(showProgress)
                 .option(refresh)
-                .option(LabelOption.create(Component.translatable("justtiers.data.indexed",
-                        String.valueOf(JustTiersClient.novaSource().indexedPlayerCount()))))
+                .option(liveLabel(() -> Component.translatable("justtiers.data.indexed",
+                        String.valueOf(JustTiersClient.novaSource().indexedPlayerCount()))
+                        .append("\n").append(Component.translatable(refreshState[0]))))
                 .build();
     }
 
@@ -297,19 +315,21 @@ public final class JustTiersScreens {
                 .build();
     }
 
-    /**
-     * A gamemode row is greyed in three different situations, and the description is
-     * fixed once at build time, so it carries the explanation for all of them rather
-     * than only the one that happens to apply as the screen opens.
-     */
-    private static OptionDescription gamemodeDescription(Source source) {
-        return OptionDescription.createBuilder()
-                .text(Component.translatable("justtiers.option.gamemode.desc",
-                                source.displayName()),
-                        Component.empty(),
-                        Component.translatable("justtiers.option.gamemode.inactive"),
-                        Component.translatable("justtiers.option.gamemode.disabled"))
-                .build();
+    private static OptionDescription gamemodeDescription(Source source, ControlAvailability.Reason reason) {
+        return switch (reason) {
+            case AVAILABLE -> OptionDescription.of(Component.translatable(
+                    "justtiers.option.gamemode.desc", source.displayName()));
+            case MOD_DISABLED -> description("justtiers.option.gamemode.disabled");
+            case MODE_IS_ALL -> description("justtiers.option.gamemode.inactive");
+            case OTHER_SITE -> OptionDescription.of(Component.translatable(
+                    "justtiers.option.gamemode.otherSite", source.displayName()));
+        };
+    }
+
+    /** Read-only state whose mapped value is sampled whenever YACL draws the label. */
+    private static LabelOption liveLabel(Supplier<Component> text) {
+        return LabelOption.createBuilder().state(StateManager.createImmutable(text)
+                .xmap(Supplier::get, value -> () -> value)).build();
     }
 
     /**

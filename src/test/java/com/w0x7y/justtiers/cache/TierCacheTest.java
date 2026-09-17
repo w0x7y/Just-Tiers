@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/** Lookups remain nonblocking, expire and retry correctly, and obsolete work cannot change current retry state. */
 class TierCacheTest {
 
     private static final UUID PLAYER = UUID.randomUUID();
@@ -153,7 +154,7 @@ class TierCacheTest {
     @Test
     void aFailedFetchIsNotCachedAndIsRetriedOnceTheDelayHasPassed() {
         FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
-        TierCache cache = new TierCache(List.of(fake), Duration.ZERO);
+        TierCache cache = new TierCache(List.of(fake), CachePolicy.DEFAULT.withBaseRetry(Duration.ZERO));
 
         cache.peek(Source.MCTIERS, PLAYER);
         fake.pending.completeExceptionally(new RuntimeException("network down"));
@@ -167,7 +168,7 @@ class TierCacheTest {
     @Test
     void aFailedFetchIsNotRetriedWhileTheDelayIsStillRunning() {
         FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
-        TierCache cache = new TierCache(List.of(fake), Duration.ofMinutes(10));
+        TierCache cache = new TierCache(List.of(fake), CachePolicy.DEFAULT.withBaseRetry(Duration.ofMinutes(10)));
 
         cache.peek(Source.MCTIERS, PLAYER);
         fake.pending.completeExceptionally(new RuntimeException("network down"));
@@ -182,7 +183,7 @@ class TierCacheTest {
     @Test
     void aFailedFetchIsNeverReportedAsAnUnrankedPlayer() {
         FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
-        TierCache cache = new TierCache(List.of(fake), Duration.ofMinutes(10));
+        TierCache cache = new TierCache(List.of(fake), CachePolicy.DEFAULT.withBaseRetry(Duration.ofMinutes(10)));
 
         cache.peek(Source.MCTIERS, PLAYER);
         fake.pending.completeExceptionally(new RuntimeException("site down"));
@@ -194,7 +195,7 @@ class TierCacheTest {
     @Test
     void invalidatingClearsTheRetryDelaySoRefreshRetriesImmediately() {
         FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
-        TierCache cache = new TierCache(List.of(fake), Duration.ofMinutes(10));
+        TierCache cache = new TierCache(List.of(fake), CachePolicy.DEFAULT.withBaseRetry(Duration.ofMinutes(10)));
 
         cache.peek(Source.MCTIERS, PLAYER);
         fake.pending.completeExceptionally(new RuntimeException("site down"));
@@ -267,7 +268,7 @@ class TierCacheTest {
         // succeeds the site has answered, so peek() must stop reporting "not yet known"
         // rather than blanking the badge for the rest of the delay.
         FakeSource fake = new FakeSource(Source.MCTIERS, Map.of("axe", new Tier(1, true, false)));
-        TierCache cache = new TierCache(List.of(fake), Duration.ofMinutes(10));
+        TierCache cache = new TierCache(List.of(fake), CachePolicy.DEFAULT.withBaseRetry(Duration.ofMinutes(10)));
 
         cache.peek(Source.MCTIERS, PLAYER);
         fake.pending.completeExceptionally(new RuntimeException("site down"));
@@ -286,7 +287,7 @@ class TierCacheTest {
         // Only an answer spends the backoff; a second failure must not hand peek() a
         // free retry, or a failing site gets hammered every frame again.
         FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
-        TierCache cache = new TierCache(List.of(fake), Duration.ofMinutes(10));
+        TierCache cache = new TierCache(List.of(fake), CachePolicy.DEFAULT.withBaseRetry(Duration.ofMinutes(10)));
 
         cache.peek(Source.MCTIERS, PLAYER);
         fake.pending.completeExceptionally(new RuntimeException("site down"));
@@ -671,4 +672,57 @@ class TierCacheTest {
         assertEquals("RuntimeException: site down",
                 it.cache.health(Source.MCTIERS).lastError().orElseThrow());
     }
+    @Test
+    void aFailureBetweenCompletionChecksNeverEscapesPeek() {
+        class RacingFuture extends CompletableFuture<Map<String, Tier>> {
+            boolean armed;
+            @Override public boolean isDone() {
+                if (armed) {
+                    armed = false;
+                    completeExceptionally(new RuntimeException("HTTP timeout"));
+                }
+                return super.isDone();
+            }
+        }
+        RacingFuture response = new RacingFuture();
+        TierSource source = new TierSource() {
+            public Source source() { return Source.MCTIERS; }
+            public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) { return response; }
+        };
+        TierCache cache = new TierCache(List.of(source));
+        cache.load(Source.MCTIERS, PLAYER);
+        response.armed = true;
+        assertTrue(assertDoesNotThrow(() -> cache.peek(Source.MCTIERS, PLAYER)).isEmpty());
+    }
+
+    @Test
+    void discardedFailuresCannotCloseARefreshedGate() {
+        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
+        TierCache cache = new TierCache(List.of(fake));
+        var discarded = new java.util.ArrayList<CompletableFuture<Map<String, Tier>>>();
+        for (int i = 0; i < 8; i++) {
+            cache.load(Source.MCTIERS, UUID.randomUUID());
+            discarded.add(fake.pending);
+        }
+        cache.invalidateAll();
+        discarded.forEach(future -> future.completeExceptionally(new RuntimeException("old failure")));
+        assertFalse(cache.gateStatus(Source.MCTIERS).closed());
+        assertEquals(0, cache.playersAwaitingRetry(Source.MCTIERS));
+        assertEquals(8, cache.health(Source.MCTIERS).failures(), "history still records old requests");
+    }
+
+    @Test
+    void aDiscardedSuccessCannotEraseTheNewRequestsBackoff() {
+        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
+        TierCache cache = new TierCache(List.of(fake));
+        cache.load(Source.MCTIERS, PLAYER);
+        var discarded = fake.pending;
+        cache.invalidate(Source.MCTIERS);
+        cache.load(Source.MCTIERS, PLAYER);
+        fake.pending.completeExceptionally(new RuntimeException("new failure"));
+        discarded.complete(Map.of());
+        assertEquals(1, cache.playersAwaitingRetry(Source.MCTIERS));
+        assertEquals(1, cache.gateStatus(Source.MCTIERS).consecutiveFailures());
+    }
+
 }

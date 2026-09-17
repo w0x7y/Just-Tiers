@@ -24,21 +24,6 @@ import java.util.Optional;
 public final class LookupReport {
 
     /**
-     * One section per site, always in {@link Source} declaration order so repeated
-     * lookups do not reshuffle. A source missing from {@code answers}, or mapped to an
-     * empty optional, is reported {@link LookupSection.Status#UNAVAILABLE} rather than
-     * unranked: a site that did not answer has said nothing about this player, and a row
-     * of dashes would be saying something.
-     */
-    public static List<LookupSection> build(Map<Source, Optional<Map<String, Tier>>> answers) {
-        List<LookupSection> sections = new ArrayList<>(Source.ALL.size());
-        for (Source source : Source.ALL) {
-            sections.add(section(source, answers.getOrDefault(source, Optional.empty())));
-        }
-        return List.copyOf(sections);
-    }
-
-    /**
      * One site's row, from that site's answer alone. The lookup screen fills each row in
      * the moment its site replies rather than waiting for the slowest of the three, so a
      * section has to stand on its own.
@@ -56,7 +41,7 @@ public final class LookupReport {
     /**
      * A cell per gamemode the site is known to run, in its declared order. A slug the
      * site has started using since this build is skipped rather than guessed at — the
-     * same rule {@code TierResolver.rankAll} follows — because a column with no icon and
+     * same rule {@code TierResolver.highestOn} follows — because a column with no icon and
      * no name would be worse than a missing one.
      */
     private static List<LookupCell> cells(Source source, Map<String, Tier> tiers) {

@@ -11,14 +11,18 @@ import com.w0x7y.justtiers.tier.Gamemodes;
 import com.w0x7y.justtiers.tier.Source;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.AbstractButton;
+import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.client.input.InputWithModifiers;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
-import net.minecraft.sounds.SoundEvents;
 
 import java.util.List;
+import java.util.ArrayList;
 import java.util.OptionalInt;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -61,7 +65,7 @@ public final class GamemodeGridScreen extends Screen {
     private int originY;
     private int viewportHeight;
     private int scroll;
-    private int focusedIndex;
+    private final List<TileButton> tiles = new ArrayList<>();
     private int hoveredIndex = -1;
 
     public GamemodeGridScreen(Screen parent, Source source, String selectedSlug,
@@ -73,7 +77,7 @@ public final class GamemodeGridScreen extends Screen {
         this.gamemodes = Gamemodes.of(source);
         this.baseState = baseState;
         this.onPick = onPick;
-        this.focusedIndex = Math.max(0, indexOf(selectedSlug));
+
     }
 
     private int indexOf(String slug) {
@@ -88,6 +92,12 @@ public final class GamemodeGridScreen extends Screen {
     @Override
     protected void init() {
         layoutGrid();
+        tiles.clear();
+        for (int i = 0; i < gamemodes.size(); i++) {
+            TileButton tile = new TileButton(i);
+            tiles.add(addWidget(tile));
+        }
+        positionTiles();
         addRenderableWidget(Button.builder(
                         Component.translatable("justtiers.grid.back"), button -> onClose())
                 .pos(width / 2 - 50, height - 30).size(100, 20).build());
@@ -105,6 +115,25 @@ public final class GamemodeGridScreen extends Screen {
         originY = GRID_TOP;
         viewportHeight = Math.max(0, height - FOOTER_HEIGHT - originY);
         scroll = Math.clamp(scroll, 0, maxScroll());
+        positionTiles();
+    }
+
+    private void positionTiles() {
+        for (TileButton tile : tiles) {
+            tile.setX(originX + grid.xOf(tile.index));
+            tile.setY(originY + grid.yOf(tile.index) - scroll);
+        }
+    }
+
+    @Override
+    protected void setInitialFocus() {
+        if (!tiles.isEmpty()) setFocused(tiles.get(Math.max(0, indexOf(selectedSlug))));
+    }
+
+    @Override
+    public void setFocused(GuiEventListener listener) {
+        super.setFocused(listener);
+        if (listener instanceof TileButton tile) scrollTo(tile.index);
     }
 
     private int maxScroll() {
@@ -131,15 +160,20 @@ public final class GamemodeGridScreen extends Screen {
     }
 
     private void extractPreview(GuiGraphicsExtractor graphics) {
-        String slug = hoveredIndex >= 0 ? gamemodes.get(hoveredIndex).slug() : selectedSlug;
+        int focused = getFocused() instanceof TileButton tile ? tile.index : indexOf(selectedSlug);
+        int candidate = minecraft.getLastInputType().isKeyboard() || hoveredIndex < 0
+                ? focused : hoveredIndex;
+        String slug = candidate >= 0 ? gamemodes.get(candidate).slug() : selectedSlug;
         NametagSettings state = stateFor(slug);
         Component tag = Nametags.compose(state.previewBadge(System.currentTimeMillis()),
                 PreviewName.component());
 
-        int tagWidth = Math.round(font.width(tag) * TAG_SCALE);
+        float scale = Math.min(TAG_SCALE, (float) Math.max(1, width - 16)
+                / Math.max(1, font.width(tag)));
+        int tagWidth = Math.round(font.width(tag) * scale);
         graphics.pose().pushMatrix();
         graphics.pose().translate((width - tagWidth) / 2f, (float) PREVIEW_Y);
-        graphics.pose().scale(TAG_SCALE, TAG_SCALE);
+        graphics.pose().scale(scale, scale);
         graphics.text(font, tag, 0, 0, 0xFFFFFFFF, true);
         graphics.pose().popMatrix();
     }
@@ -150,7 +184,9 @@ public final class GamemodeGridScreen extends Screen {
         }
         graphics.enableScissor(0, originY, width, originY + viewportHeight);
         for (int i = 0; i < gamemodes.size(); i++) {
-            extractTile(graphics, i);
+            tiles.get(i).extractRenderState(graphics,
+                    hoveredIndex == i ? tiles.get(i).getX() + 1 : -1,
+                    hoveredIndex == i ? tiles.get(i).getY() + 1 : -1, 0);
         }
         graphics.disableScissor();
     }
@@ -163,7 +199,7 @@ public final class GamemodeGridScreen extends Screen {
             return;   // scrolled out of the viewport
         }
 
-        boolean highlighted = index == hoveredIndex || index == focusedIndex;
+        boolean highlighted = tiles.get(index).isHoveredOrFocused();
         graphics.fill(x, y, x + TILE, y + TILE, highlighted ? TILE_HOVERED : TILE_BACKGROUND);
         if (gamemode.slug().equals(selectedSlug)) {
             // The only color on this screen besides the title: which site you are in.
@@ -178,8 +214,11 @@ public final class GamemodeGridScreen extends Screen {
         graphics.text(font, icon, 0, 0, 0xFFFFFFFF, false);
         graphics.pose().popMatrix();
 
-        String label = font.plainSubstrByWidth(gamemode.displayName(), TILE - 6);
-        graphics.centeredText(font, label, x + TILE / 2, y + TILE - 20, LABEL_COLOR);
+        int labelY = y + TILE - 26;
+        for (var line : font.split(Component.literal(gamemode.displayName()), TILE - 6)) {
+            graphics.text(font, line, x + (TILE - font.width(line)) / 2, labelY, LABEL_COLOR);
+            labelY += font.lineHeight;
+        }
     }
 
     private OptionalInt indexAtScreen(double mouseX, double mouseY) {
@@ -189,22 +228,8 @@ public final class GamemodeGridScreen extends Screen {
         return grid.indexAt((int) mouseX - originX, (int) mouseY - originY + scroll);
     }
 
-    @Override
-    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (event.button() == 0) {
-            OptionalInt hit = indexAtScreen(event.x(), event.y());
-            if (hit.isPresent()) {
-                pick(hit.getAsInt());
-                return true;
-            }
-        }
-        return super.mouseClicked(event, doubleClick);
-    }
-
     private void pick(int index) {
         onPick.accept(gamemodes.get(index).slug());
-        minecraft.getSoundManager().play(
-                SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f));
         minecraft.setScreenAndShow(parent);
     }
 
@@ -213,6 +238,7 @@ public final class GamemodeGridScreen extends Screen {
                                  double horizontal, double vertical) {
         if (maxScroll() > 0) {
             scroll = Math.clamp(scroll - (int) (vertical * 16), 0, maxScroll());
+            positionTiles();
             return true;
         }
         return super.mouseScrolled(mouseX, mouseY, horizontal, vertical);
@@ -227,16 +253,10 @@ public final class GamemodeGridScreen extends Screen {
             case InputConstants.KEY_DOWN -> GridLayout.Direction.DOWN;
             default -> null;
         };
-        if (direction != null) {
-            focusedIndex = grid.move(focusedIndex, direction);
-            scrollTo(focusedIndex);
-            return true;
-        }
-        if (event.key() == InputConstants.KEY_RETURN
-                || event.key() == InputConstants.KEY_NUMPADENTER
-                || event.key() == InputConstants.KEY_SPACE) {
-            if (focusedIndex >= 0 && focusedIndex < gamemodes.size()) {
-                pick(focusedIndex);
+        if (direction != null && getFocused() instanceof TileButton tile) {
+            int next = grid.move(tile.index, direction);
+            if (next != tile.index) {
+                setFocused(tiles.get(next));
                 return true;
             }
         }
@@ -253,6 +273,44 @@ public final class GamemodeGridScreen extends Screen {
             scroll = bottom - viewportHeight;
         }
         scroll = Math.clamp(scroll, 0, maxScroll());
+        positionTiles();
+    }
+
+    /** Native focus, activation and narration, with only the tile artwork customized. */
+    private final class TileButton extends AbstractButton {
+        private final int index;
+
+        private TileButton(int index) {
+            super(0, 0, TILE, TILE, Component.literal(gamemodes.get(index).displayName()));
+            this.index = index;
+            setTooltip(Tooltip.create(getMessage()));
+        }
+
+        @Override
+        public void onPress(InputWithModifiers input) {
+            pick(index);
+        }
+
+        @Override
+        public boolean isMouseOver(double mouseX, double mouseY) {
+            return mouseY >= originY && mouseY < originY + viewportHeight
+                    && super.isMouseOver(mouseX, mouseY);
+        }
+
+        @Override
+        public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+            return isMouseOver(event.x(), event.y()) && super.mouseClicked(event, doubleClick);
+        }
+
+        @Override
+        protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
+            extractTile(graphics, index);
+        }
+
+        @Override
+        protected void updateWidgetNarration(NarrationElementOutput output) {
+            defaultButtonNarrationText(output);
+        }
     }
 
     @Override

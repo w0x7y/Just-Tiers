@@ -89,12 +89,26 @@ public class JustTiersClient implements ClientModInitializer {
     }
 
     public static void saveConfig() {
-        config.save(configPath);
+        saveConfig(config);
+    }
+
+    /** Commit a screen's draft only after persistence has succeeded. */
+    public static void saveConfig(JustTiersConfig candidate) {
+        candidate.save(configPath);
+        config = candidate.copy();
         // The interval is a live setting, so a changed slider takes effect now rather
         // than at next launch.
         scheduleNovaRefresh(config.getNovaRefreshMinutes());
         // Live too, and applied without discarding what is already cached.
         cache.setTtl(Duration.ofMinutes(config.getTierCacheMinutes()));
+    }
+
+    /** A manual refresh resets retry state and reports the bulk download's result. */
+    public static java.util.concurrent.CompletableFuture<Void> refreshData() {
+        cache.invalidateAll();
+        return novaSource.refresh().whenComplete((ignored, error) -> {
+            if (error == null) cache.invalidate(Source.NOVATIERS);
+        });
     }
 
     /**

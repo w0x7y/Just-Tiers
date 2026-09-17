@@ -9,11 +9,10 @@ import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.resources.DefaultPlayerSkin;
 import net.minecraft.world.entity.player.PlayerSkin;
 
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
+import com.w0x7y.justtiers.gui.state.SuccessfulLookupCache;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -33,8 +32,8 @@ public final class PlayerSkins {
      * the player list every time, so someone who changes skin mid-session is drawn as
      * they are now rather than as they were the first time they were looked up.
      */
-    private static final Map<UUID, CompletableFuture<PlayerSkin>> FETCHED =
-            new ConcurrentHashMap<>();
+    private static final SuccessfulLookupCache<UUID, PlayerSkin> FETCHED =
+            new SuccessfulLookupCache<>(PlayerSkins::fetch);
 
     /**
      * One thread, because {@code fetchProfile} blocks and this is never more than a
@@ -56,7 +55,10 @@ public final class PlayerSkins {
         if (online.isPresent()) {
             return CompletableFuture.completedFuture(online.get());
         }
-        return FETCHED.computeIfAbsent(player.uuid(), PlayerSkins::fetch);
+        return FETCHED.get(player.uuid()).exceptionally(error -> {
+            JustTiers.LOGGER.debug("Could not fetch the skin for {}: {}", player.uuid(), error.toString());
+            return DefaultPlayerSkin.get(player.uuid());
+        });
     }
 
     private static Optional<PlayerSkin> fromPlayerList(UUID uuid) {
@@ -83,18 +85,15 @@ public final class PlayerSkins {
                 .thenComposeAsync(result -> {
                     GameProfile profile = result == null ? null : result.profile();
                     if (profile == null) {
+                        return CompletableFuture.failedFuture(new IllegalStateException("Profile unavailable"));
+                    }
+                    if (!profile.properties().containsKey("textures")) {
                         return CompletableFuture.completedFuture(DefaultPlayerSkin.get(uuid));
                     }
                     return minecraft.getSkinManager().get(profile)
-                            .thenApply(skin -> skin.orElseGet(() -> DefaultPlayerSkin.get(uuid)));
-                }, (Executor) minecraft::execute)
-                .exceptionally(error -> {
-                    // Not a warning: a missing skin costs the screen a Steve and nothing
-                    // else, and Mojang rate-limiting profile fetches is routine.
-                    JustTiers.LOGGER.debug("Could not fetch the skin for {}: {}",
-                            uuid, error.toString());
-                    return DefaultPlayerSkin.get(uuid);
-                });
+                            .thenApply(skin -> skin.orElseThrow(() ->
+                                    new IllegalStateException("Skin download unavailable")));
+                }, (Executor) minecraft::execute);
     }
 
     private PlayerSkins() {

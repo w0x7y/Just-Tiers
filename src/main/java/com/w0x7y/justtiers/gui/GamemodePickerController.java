@@ -12,6 +12,8 @@ import dev.isxander.yacl3.gui.AbstractWidget;
 import dev.isxander.yacl3.gui.YACLScreen;
 import dev.isxander.yacl3.gui.controllers.ControllerWidget;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.input.KeyEvent;
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.network.chat.Component;
 
 import java.util.function.Supplier;
@@ -98,6 +100,18 @@ public final class GamemodePickerController implements Controller<String> {
             playDownSound();
             openGrid();
             return true;
+        }
+
+        @Override
+        public boolean keyPressed(KeyEvent event) {
+            if (isAvailable() && isFocused() && (event.key() == InputConstants.KEY_RETURN
+                    || event.key() == InputConstants.KEY_NUMPADENTER
+                    || event.key() == InputConstants.KEY_SPACE)) {
+                playDownSound();
+                openGrid();
+                return true;
+            }
+            return super.keyPressed(event);
         }
 
         private void openGrid() {

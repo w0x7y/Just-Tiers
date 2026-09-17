@@ -14,6 +14,13 @@ import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.client.gui.narration.NarratedElementType;
+import net.minecraft.client.input.KeyEvent;
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.gui.screens.ConfirmLinkScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -26,13 +33,15 @@ import net.minecraft.world.entity.player.PlayerSkin;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
 
 /**
  * The screen {@code /justtiers lookup} opens: a player's name, their skin, and one row
  * per site showing every gamemode that site runs — the tier they hold in it, or dashes
- * where they have never been tested.
+ * where they have no listed placement.
  *
  * <p>Rows fill in one at a time as their site answers. Everything the screen draws lives
  * in a {@link LookupSession}, so this class only ever reads and never waits.
@@ -67,7 +76,13 @@ public final class PlayerLookupScreen extends Screen {
     private static final String SITE_SEPARATOR = " · ";
     private static final int SKIN_SIZE = 64;
 
-    private final LookupSession session;
+    private LookupSession session;
+    private EditBox nameField;
+    private Button lookupButton;
+    private int scroll;
+    private final List<ContentControl> contentControls = new ArrayList<>();
+    private final Map<Source, List<ContentControl>> cellControls = new EnumMap<>(Source.class);
+    private final List<ContentControl> links = new ArrayList<>();
 
     private LookupLayout layout;
     private CreditLine credit;
@@ -88,6 +103,24 @@ public final class PlayerLookupScreen extends Screen {
                 font.width(Component.translatable("justtiers.lookup.credit")),
                 font.width(" "), font.width(SITE_SEPARATOR), siteNameWidths());
 
+        contentControls.clear();
+        cellControls.clear();
+        links.clear();
+        scroll = Math.clamp(scroll, 0, layout.maxScroll());
+        String typedName = nameField == null ? session.name() : nameField.getValue();
+        int searchWidth = Math.min(width - 16, 320);
+        int left = (width - searchWidth) / 2;
+        nameField = addRenderableWidget(new EditBox(font, left, 8, searchWidth - 86, 20,
+                Component.translatable("justtiers.lookup.name")));
+        nameField.setMaxLength(64);
+        nameField.setValue(typedName);
+        nameField.setHint(Component.translatable("justtiers.lookup.name"));
+        lookupButton = addRenderableWidget(Button.builder(Component.translatable("justtiers.lookup.search"),
+                button -> startLookup()).pos(left + searchWidth - 80, 8).size(80, 20).build());
+        nameField.setResponder(value -> lookupButton.active = !value.isBlank());
+        lookupButton.active = !typedName.isBlank();
+        addContentControls();
+        updateContentControls();
         addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, button -> onClose())
                 .pos(width / 2 - BUTTON_WIDTH / 2, layout.doneButtonY())
                 .size(BUTTON_WIDTH, BUTTON_HEIGHT).build());
@@ -139,6 +172,10 @@ public final class PlayerLookupScreen extends Screen {
                                    int mouseX, int mouseY, float delta) {
         super.extractRenderState(graphics, mouseX, mouseY, delta);
 
+        updateContentControls();
+        graphics.enableScissor(layout.panelX(), layout.panelY(), layout.panelRight(), layout.viewportBottom());
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(0, -scroll);
         graphics.fill(layout.panelX(), layout.panelY(),
                 layout.panelRight(), layout.panelBottom(), PANEL_BACKGROUND);
         graphics.outline(layout.panelX(), layout.panelY(),
@@ -150,8 +187,11 @@ public final class PlayerLookupScreen extends Screen {
         drawName(graphics);
         Optional<Component> error = session.error();
         if (error.isPresent()) {
-            graphics.centeredText(font, error.get(), width / 2, layout.skinCenterY(),
-                    UNAVAILABLE_COLOR);
+            int errorY = layout.skinY();
+            for (var line : font.split(error.get(), layout.panelWidth() - 20)) {
+                graphics.text(font, line, (width - font.width(line)) / 2, errorY, UNAVAILABLE_COLOR);
+                errorY += font.lineHeight + 2;
+            }
         } else {
             drawSkin(graphics);
             graphics.centeredText(font, Component.translatable("justtiers.lookup.tiers"),
@@ -159,11 +199,19 @@ public final class PlayerLookupScreen extends Screen {
             drawRows(graphics, mouseX, mouseY);
             if (session.rankedNowhere()) {
                 graphics.centeredText(font,
-                        Component.translatable("justtiers.lookup.none", session.name()),
+                        Component.translatable("justtiers.lookup.none"),
                         width / 2, layout.noteY(), Colors.SECONDARY);
             }
         }
         drawFooter(graphics, mouseX, mouseY);
+        graphics.pose().popMatrix();
+        graphics.disableScissor();
+        if (layout.maxScroll() > 0) {
+            int thumbHeight = Math.max(8, layout.viewportHeight() * layout.viewportHeight() / layout.panelHeight());
+            int thumbY = layout.panelY() + scroll * (layout.viewportHeight() - thumbHeight) / layout.maxScroll();
+            graphics.fill(layout.panelRight() - 3, thumbY, layout.panelRight() - 1,
+                    thumbY + thumbHeight, Colors.SECONDARY);
+        }
     }
 
     private void separator(GuiGraphicsExtractor graphics, int y) {
@@ -227,13 +275,16 @@ public final class PlayerLookupScreen extends Screen {
 
     private void drawCells(GuiGraphicsExtractor graphics, LookupLayout.Row row, Source source,
                            LookupSection section, int mouseX, int mouseY) {
-        OptionalInt hovered = row.cellAt(mouseX, mouseY);
+        OptionalInt hovered = inViewport(mouseY) ? row.cellAt(mouseX, mouseY + scroll) : OptionalInt.empty();
         List<LookupCell> cells = section.cells();
         for (int i = 0; i < cells.size() && i < row.grid().itemCount(); i++) {
-            boolean isHovered = hovered.isPresent() && hovered.getAsInt() == i;
+            boolean isHovered = (hovered.isPresent() && hovered.getAsInt() == i)
+                    || cellControls.get(source).get(i).isFocused();
             drawCell(graphics, cells.get(i), source, row.cellX(i), row.cellY(i), isHovered);
             if (isHovered) {
-                graphics.setTooltipForNextFrame(font, tooltip(cells.get(i)), mouseX, mouseY);
+                graphics.setTooltipForNextFrame(font, tooltip(cells.get(i)),
+                        cellControls.get(source).get(i).isFocused() ? row.cellX(i) : mouseX,
+                        cellControls.get(source).get(i).isFocused() ? row.cellY(i) - scroll + cellHeight : mouseY);
             }
         }
     }
@@ -281,7 +332,7 @@ public final class PlayerLookupScreen extends Screen {
                         footerY, Colors.SECONDARY);
             }
             graphics.text(font, source.displayName(), span.x(), footerY, color);
-            if (hovered.isPresent() && hovered.getAsInt() == i) {
+            if ((hovered.isPresent() && hovered.getAsInt() == i) || links.get(i).isFocused()) {
                 graphics.horizontalLine(span.x(), span.x() + span.width() - 1,
                         footerY + font.lineHeight - 1, color);
             }
@@ -292,22 +343,167 @@ public final class PlayerLookupScreen extends Screen {
 
     /** The site name under the cursor, if the cursor is on the footer line at all. */
     private OptionalInt linkAt(double mouseX, double mouseY) {
-        if (mouseY < layout.footerY() || mouseY >= layout.footerY() + font.lineHeight) {
+        if (!inViewport(mouseY) || mouseY + scroll < layout.footerY()
+                || mouseY + scroll >= layout.footerY() + font.lineHeight) {
             return OptionalInt.empty();
         }
         return credit.spanAt(mouseX);
     }
 
-    @Override
-    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (event.button() == 0) {
-            OptionalInt clicked = linkAt(event.x(), event.y());
-            if (clicked.isPresent()) {
-                ConfirmLinkScreen.confirmLinkNow(this,
-                        Source.ALL.get(clicked.getAsInt()).homeUrl());
-                return true;
+    private boolean inViewport(double mouseY) {
+        return mouseY >= layout.panelY() && mouseY < layout.viewportBottom();
+    }
+
+    private void startLookup() {
+        String name = nameField.getValue().trim();
+        if (name.isEmpty()) return;
+        session = LookupSession.start(name);
+        scroll = 0;
+        updateContentControls();
+    }
+
+    private void addContentControls() {
+        for (int sourceIndex = 0; sourceIndex < Source.ALL.size(); sourceIndex++) {
+            Source source = Source.ALL.get(sourceIndex);
+            LookupLayout.Row row = layout.rows().get(sourceIndex);
+            List<ContentControl> cells = new ArrayList<>();
+            for (int i = 0; i < row.grid().itemCount(); i++) {
+                ContentControl control = new ContentControl(row.cellX(i), row.cellY(i),
+                        cellWidth, cellHeight, Component.empty(), null);
+                cells.add(control);
+                contentControls.add(addWidget(control));
+            }
+            cellControls.put(source, cells);
+        }
+        for (int i = 0; i < Source.ALL.size(); i++) {
+            Source source = Source.ALL.get(i);
+            CreditLine.Span span = credit.spans().get(i);
+            ContentControl control = new ContentControl(span.x(), layout.footerY(),
+                    span.width(), font.lineHeight, Component.translatable("justtiers.lookup.visitSite",
+                    source.displayName()), () -> ConfirmLinkScreen.confirmLinkNow(this, source.homeUrl()));
+            links.add(control);
+            contentControls.add(addWidget(control));
+        }
+    }
+
+    private void updateContentControls() {
+        for (Source source : Source.ALL) {
+            Optional<LookupSection> section = session.section(source);
+            List<ContentControl> controls = cellControls.get(source);
+            for (int i = 0; i < controls.size(); i++) {
+                ContentControl control = controls.get(i);
+                control.active = section.isPresent() && i < section.get().cells().size();
+                if (control.active) {
+                    control.setMessage(Component.literal(source.displayName() + ": ")
+                            .append(tooltip(section.get().cells().get(i))));
+                }
             }
         }
-        return super.mouseClicked(event, doubleClick);
+        contentControls.forEach(control -> control.setY(control.contentY - scroll));
+    }
+
+    @Override
+    public void tick() {
+        updateContentControls();
+    }
+
+    @Override
+    public void setFocused(GuiEventListener listener) {
+        super.setFocused(listener);
+        if (listener instanceof ContentControl control) {
+            scroll = layout.scrollTo(control.contentY, control.getHeight(), scroll);
+            updateContentControls();
+        }
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontal, double vertical) {
+        if (inViewport(mouseY) && layout.maxScroll() > 0) {
+            scroll = Math.clamp(scroll - (int) (vertical * 16), 0, layout.maxScroll());
+            updateContentControls();
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, horizontal, vertical);
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        if (nameField.isFocused() && (event.key() == InputConstants.KEY_RETURN
+                || event.key() == InputConstants.KEY_NUMPADENTER)) {
+            startLookup();
+            return true;
+        }
+        if (event.key() == InputConstants.KEY_PAGEDOWN || event.key() == InputConstants.KEY_PAGEUP) {
+            int step = event.key() == InputConstants.KEY_PAGEDOWN ? 1 : -1;
+            scroll = Math.clamp(scroll + step * layout.viewportHeight(), 0, layout.maxScroll());
+            updateContentControls();
+            return true;
+        }
+        return super.keyPressed(event);
+    }
+
+    @Override
+    public Component getNarrationMessage() {
+        var message = Component.translatable("justtiers.lookup.header", session.name());
+        Optional<Component> error = session.error();
+        if (error.isPresent()) {
+            return message.append(". ").append(error.get());
+        }
+        for (Source source : Source.ALL) {
+            var section = session.section(source);
+            if (section.isEmpty() || section.get().status() == LookupSection.Status.UNAVAILABLE) {
+                message.append(". " + source.displayName() + ": ")
+                        .append(Component.translatable(section.isEmpty() ? "justtiers.lookup.pending"
+                                : "justtiers.lookup.unavailable"));
+            }
+        }
+        return message;
+    }
+
+    /** Focusable text content. Links activate; cells are read-only and narrated in full. */
+    private final class ContentControl extends AbstractWidget {
+        private final int contentY;
+        private final Runnable activate;
+
+        private ContentControl(int x, int y, int width, int height, Component message, Runnable activate) {
+            super(x, y, width, height, message);
+            this.contentY = y;
+            this.activate = activate;
+        }
+
+        @Override
+        protected void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
+            // The content is drawn with the panel's common scroll transform.
+        }
+
+        @Override
+        public boolean isMouseOver(double x, double y) {
+            return inViewport(y) && super.isMouseOver(x, y);
+        }
+
+        @Override
+        public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+            return isMouseOver(event.x(), event.y()) && super.mouseClicked(event, doubleClick);
+        }
+
+        @Override
+        public void onClick(MouseButtonEvent event, boolean doubleClick) {
+            if (activate != null) activate.run();
+        }
+
+        @Override
+        public boolean keyPressed(KeyEvent event) {
+            if (isFocused() && active && activate != null && (event.key() == InputConstants.KEY_RETURN
+                    || event.key() == InputConstants.KEY_NUMPADENTER || event.key() == InputConstants.KEY_SPACE)) {
+                activate.run();
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        protected void updateWidgetNarration(NarrationElementOutput output) {
+            output.add(NarratedElementType.TITLE, getMessage());
+        }
     }
 }

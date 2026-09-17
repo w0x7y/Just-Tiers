@@ -1,6 +1,8 @@
 package com.w0x7y.justtiers.gui;
 
 import com.w0x7y.justtiers.JustTiers;
+import com.w0x7y.justtiers.render.SiteColors;
+import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.JustTiersClient;
 import com.w0x7y.justtiers.download.DownloadProgress;
 import com.w0x7y.justtiers.gui.layout.ProgressBarLayout;
@@ -31,8 +33,6 @@ public final class DownloadHud implements HudElement {
 
     private static final int BACKDROP = 0x90000000;
     private static final int TRACK_COLOR = 0xFF3F3F3F;
-    /** NovaTiers purple: this indicator is about NovaTiers, and color here means the site. */
-    private static final int FILL_COLOR = 0xFFAA55FF;
     private static final int TEXT_COLOR = 0xFFFFFFFF;
     private static final int FAILURE_COLOR = 0xFFFF5555;
 
@@ -101,7 +101,7 @@ public final class DownloadHud implements HudElement {
             double fraction = ProgressBarLayout.fraction(snapshot.bytesRead(), snapshot.total());
             int filled = (int) Math.round(TRACK_WIDTH * fraction);
             graphics.fill(trackLeft, trackTop, trackLeft + filled, trackTop + TRACK_HEIGHT,
-                    FILL_COLOR);
+                    Colors.opaque(SiteColors.of(Source.NOVATIERS)));
             readout = ProgressBarLayout.formatPercent(fraction);
         } else {
             // No content-length from novatiers.com, so the first download of a session can
@@ -114,7 +114,7 @@ public final class DownloadHud implements HudElement {
             int clampedRight = Math.min(trackLeft + TRACK_WIDTH, segmentLeft + segmentWidth);
             if (clampedRight > clampedLeft) {
                 graphics.fill(clampedLeft, trackTop, clampedRight, trackTop + TRACK_HEIGHT,
-                        FILL_COLOR);
+                        Colors.opaque(SiteColors.of(Source.NOVATIERS)));
             }
             readout = ProgressBarLayout.formatBytes(snapshot.bytesRead());
         }

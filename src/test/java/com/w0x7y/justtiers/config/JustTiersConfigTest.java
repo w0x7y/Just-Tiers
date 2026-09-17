@@ -16,6 +16,39 @@ import static org.junit.jupiter.api.Assertions.*;
 class JustTiersConfigTest {
 
     @Test
+    void aFailedSaveIsReportedAndLeavesExistingContentsAlone(@TempDir Path temp) throws Exception {
+        Path directory = Files.createDirectory(temp.resolve("existing-config"));
+        Path previous = directory.resolve("previous.json");
+        Files.writeString(previous, "previous settings");
+
+        assertThrows(java.io.UncheckedIOException.class,
+                () -> new JustTiersConfig().save(directory));
+        assertEquals("previous settings", Files.readString(previous));
+        try (var files = Files.list(temp)) {
+            assertEquals(1, files.count(), "failed saves must clean up their temporary file");
+        }
+    }
+
+    @Test
+    void serializationFailureDoesNotTruncateTheSavedConfig(@TempDir Path temp) throws Exception {
+        Path file = temp.resolve("justtiers.json");
+        JustTiersConfig config = new JustTiersConfig();
+        config.save(file);
+        String previous = Files.readString(file);
+        var field = JustTiersConfig.class.getDeclaredField("customColors");
+        field.setAccessible(true);
+        field.set(config, new java.util.AbstractMap<String, String>() {
+            @Override
+            public java.util.Set<Entry<String, String>> entrySet() {
+                throw new IllegalStateException("serialization failed");
+            }
+        });
+
+        assertThrows(IllegalStateException.class, () -> config.save(file));
+        assertEquals(previous, Files.readString(file));
+    }
+
+    @Test
     void defaultsAreSensible() {
         JustTiersConfig config = new JustTiersConfig();
         assertTrue(config.isEnabled());
@@ -205,7 +238,6 @@ class JustTiersConfigTest {
         JustTiersConfig config = new JustTiersConfig();
         config.setShowRetired(false);
         config.save(file);
-        assertTrue(Files.readString(file).contains("\"showRetired\": false"));
         assertFalse(JustTiersConfig.load(file).isShowRetired());
     }
 

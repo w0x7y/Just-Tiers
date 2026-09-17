@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/** Name resolution deduplicates requests and retries failures without inventing nonexistent accounts. */
 class MojangNameSourceTest {
 
     private static final String NAME = "Notch";
@@ -229,12 +230,15 @@ class MojangNameSourceTest {
     }
 
     @Test
-    void aMalformedAnswerIsNotMistakenForAUuid() throws Exception {
-        respond(200, "{\"name\":\"Notch\"}");
-        assertTrue(source().resolve(NAME).get().isEmpty());
-
-        respond(200, "not json at all");
-        assertTrue(new MojangNameSource(client, baseUrl).resolve(NAME).get().isEmpty());
+    void malformedAnswersFailAndAreRetriedAfterRecovery() throws Exception {
+        for (String malformed : List.of("{\"name\":\"Notch\"}", "not json at all",
+                "{\"id\":\"not-a-uuid\"}", "[]", "null", "")) {
+            MojangNameSource source = source();
+            respond(200, malformed);
+            assertThrows(ExecutionException.class, () -> source.resolve(NAME).get(), malformed);
+            respond(200, "{\"id\":\"069a79f444e94726a5befca90e38aaf5\",\"name\":\"Notch\"}");
+            assertEquals(NOTCH, source.resolve(NAME).get().orElseThrow().uuid());
+        }
     }
 
     @Test
@@ -250,12 +254,6 @@ class MojangNameSourceTest {
         assertEquals(NOTCH,
                 new MojangNameSource(client, baseUrl + "/").resolve(NAME).get()
                         .orElseThrow().uuid());
-    }
-
-    @Test
-    void theResolvedUuidIsTheV4FormTheLeaderboardsAreKeyedBy() throws Exception {
-        respond(200, "{\"id\":\"069a79f444e94726a5befca90e38aaf5\",\"name\":\"Notch\"}");
-        assertEquals(4, source().resolve(NAME).get().orElseThrow().uuid().version());
     }
 
     @Test

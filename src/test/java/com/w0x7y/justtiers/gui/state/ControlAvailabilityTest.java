@@ -7,11 +7,12 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/** Disabled controls stay visible, with a reason matching the active mode and palette. */
 class ControlAvailabilityTest {
 
     @Test
     void everythingIsLiveInASingleSiteModeForThatSite() {
-        var state = ControlAvailability.of(true, DisplayMode.MCTIERS_ONLY);
+        var state = ControlAvailability.of(true, DisplayMode.MCTIERS_ONLY, Palette.DEFAULT);
         assertTrue(state.displayMode());
         assertTrue(state.showRetired());
         assertTrue(state.appearance());
@@ -22,7 +23,7 @@ class ControlAvailabilityTest {
 
     @Test
     void noGamemodeIsSelectableInAllMode() {
-        var state = ControlAvailability.of(true, DisplayMode.ALL);
+        var state = ControlAvailability.of(true, DisplayMode.ALL, Palette.DEFAULT);
         assertTrue(state.displayMode());
         for (Source source : Source.values()) {
             assertFalse(state.gamemode(source));
@@ -32,7 +33,7 @@ class ControlAvailabilityTest {
 
     @Test
     void disablingTheModGreysEverythingButTheMasterSwitch() {
-        var state = ControlAvailability.of(false, DisplayMode.MCTIERS_ONLY);
+        var state = ControlAvailability.of(false, DisplayMode.MCTIERS_ONLY, Palette.DEFAULT);
         assertFalse(state.displayMode());
         assertFalse(state.showRetired());
         assertFalse(state.appearance());
@@ -44,7 +45,7 @@ class ControlAvailabilityTest {
 
     @Test
     void reasonDistinguishesTheOtherSitesFromAllMode() {
-        var state = ControlAvailability.of(true, DisplayMode.SUBTIERS_ONLY);
+        var state = ControlAvailability.of(true, DisplayMode.SUBTIERS_ONLY, Palette.DEFAULT);
         assertEquals(ControlAvailability.Reason.AVAILABLE, state.reasonFor(Source.SUBTIERS));
         assertEquals(ControlAvailability.Reason.OTHER_SITE, state.reasonFor(Source.MCTIERS));
         assertEquals(ControlAvailability.Reason.OTHER_SITE, state.reasonFor(Source.NOVATIERS));
@@ -55,8 +56,8 @@ class ControlAvailabilityTest {
         // Where the badge sits and what chrome it carries means the same thing whichever
         // sites are being shown, so only the master switch may grey those rows.
         for (DisplayMode mode : DisplayMode.values()) {
-            assertTrue(ControlAvailability.of(true, mode).appearance(), mode.toString());
-            assertFalse(ControlAvailability.of(false, mode).appearance(), mode.toString());
+            assertTrue(ControlAvailability.of(true, mode, Palette.DEFAULT).appearance(), mode.toString());
+            assertFalse(ControlAvailability.of(false, mode, Palette.DEFAULT).appearance(), mode.toString());
         }
     }
 
@@ -64,7 +65,7 @@ class ControlAvailabilityTest {
     void everyModeAndToggleCombinationIsCovered() {
         for (DisplayMode mode : DisplayMode.values()) {
             for (boolean enabled : new boolean[]{true, false}) {
-                var state = ControlAvailability.of(enabled, mode);
+                var state = ControlAvailability.of(enabled, mode, Palette.DEFAULT);
                 for (Source source : Source.values()) {
                     assertEquals(state.gamemode(source),
                             state.reasonFor(source) == ControlAvailability.Reason.AVAILABLE);
@@ -98,8 +99,4 @@ class ControlAvailabilityTest {
         assertEquals(withDefault.reasons(), withCustom.reasons());
     }
 
-    @Test
-    void theTwoArgumentFormStillMeansTheDefaultPalette() {
-        assertFalse(ControlAvailability.of(true, DisplayMode.ALL).customColors());
-    }
 }

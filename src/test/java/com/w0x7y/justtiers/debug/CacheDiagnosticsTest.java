@@ -193,7 +193,7 @@ class CacheDiagnosticsTest {
 
     @Test
     void aCacheWithNoSourcesAtAllStillReportsEverySite() {
-        TierCache empty = new TierCache(List.of(), Duration.ofMinutes(5));
+        TierCache empty = new TierCache(List.of(), CachePolicy.DEFAULT.withBaseRetry(Duration.ofMinutes(5)));
 
         assertEquals(Source.ALL.size(), CacheDiagnostics.of(empty).size());
     }

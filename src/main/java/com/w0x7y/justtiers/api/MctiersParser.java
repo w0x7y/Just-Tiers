@@ -20,20 +20,15 @@ public final class MctiersParser {
 
     public static Map<String, Tier> parseRankings(String json) {
         Map<String, Tier> result = new LinkedHashMap<>();
-        if (json == null || json.isBlank()) {
-            return result;
-        }
-
         JsonObject root;
         try {
             JsonElement parsed = GSON.fromJson(json, JsonElement.class);
             if (parsed == null || !parsed.isJsonObject()) {
-                return result;
+                throw new TierLookupException("Rankings response must be a JSON object");
             }
             root = parsed.getAsJsonObject();
         } catch (RuntimeException e) {
-            JustTiers.LOGGER.warn("Ignoring malformed rankings payload", e);
-            return result;
+            throw new TierLookupException("Malformed rankings response", e);
         }
 
         for (Map.Entry<String, JsonElement> entry : root.entrySet()) {
@@ -55,6 +50,9 @@ public final class MctiersParser {
                 // A single bad gamemode entry must never sink the whole profile.
                 JustTiers.LOGGER.warn("Skipping unparseable ranking '{}'", entry.getKey(), e);
             }
+        }
+        if (!root.isEmpty() && result.isEmpty()) {
+            throw new TierLookupException("Rankings response contained no valid rankings");
         }
         return result;
     }

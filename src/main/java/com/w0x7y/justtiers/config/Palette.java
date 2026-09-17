@@ -11,10 +11,8 @@ import java.util.function.ToIntFunction;
  * meaning in this UI — which site something came from — so a palette answers for all
  * three sites or it is not a palette.
  *
- * <p>There is one colorblind preset rather than one per condition. Its colors separate
- * by luminance as well as by hue, so the same three work for protanopia, deuteranopia and
- * tritanopia; a second preset differing only slightly would be a worse answer than one
- * that works for everybody.
+ * <p>The alternative preset offers orange, blue and white. Color perception varies;
+ * custom colors and explicit site labels in the lookup screen remain available.
  */
 public enum Palette {
 

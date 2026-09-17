@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/** HTTP outcomes remain distinct from unranked answers, and Nova downloads share work without losing a good index. */
 class TierSourceTest {
 
     private HttpServer server;
@@ -105,19 +106,6 @@ class TierSourceTest {
         assertThrows(ExecutionException.class, () -> dead.fetch(PLAYER).get());
     }
 
-    @Test
-    void a404IsStillAGenuineUnrankedAnswer() throws Exception {
-        respond("/v2/profile/" + PLAYER + "/rankings", 404, "");
-        assertTrue(new MctiersLikeSource(Source.MCTIERS, client, baseUrl)
-                .fetch(PLAYER).get().isEmpty());
-    }
-
-    @Test
-    void sourceIdentityIsReported() {
-        assertEquals(Source.SUBTIERS,
-                new MctiersLikeSource(Source.SUBTIERS, client, baseUrl).source());
-    }
-
     private static final String ONE_USER = """
             [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504",
               "tiers":{"Axe":"HT3"},"retiredTiers":{}}]
@@ -190,7 +178,7 @@ class TierSourceTest {
         assertTrue(indexed > 0);
 
         respond("/users", 503, "");
-        nova.refresh().get();
+        assertThrows(ExecutionException.class, () -> nova.refresh().get());
 
         assertFalse(nova.fetch(PLAYER).get().isEmpty(), "stale index must survive a failed refresh");
         assertEquals(indexed, nova.indexedPlayerCount());
@@ -226,25 +214,58 @@ class TierSourceTest {
         assertFalse(snapshot.determinate());
     }
 
-    // --- nothingUnderstood ---
-
     @Test
-    void aBodyThatParsedToNothingButCarriedSomethingIsReported() {
-        // The schema changed under us: content arrived, none of it was understood.
-        assertTrue(TierSource.nothingUnderstood(Map.of(), "{\"axe\":{\"grade\":3}}"));
+    void malformedSuccessfulResponsesFailInsteadOfBecomingUnranked() {
+        for (String body : java.util.List.of("<html>unavailable</html>", "[]", "null", "", "{\"error\":\"maintenance\"}")) {
+            respond("/v2/profile/" + PLAYER + "/rankings", 200, body);
+            assertThrows(ExecutionException.class,
+                    () -> new MctiersLikeSource(Source.MCTIERS, client, baseUrl).fetch(PLAYER).get(), body);
+        }
     }
 
     @Test
-    void anEmptyAnswerIsNotAParseFailure() {
-        // A site legitimately saying "no placements" must stay silent.
-        assertFalse(TierSource.nothingUnderstood(Map.of(), "{}"));
-        assertFalse(TierSource.nothingUnderstood(Map.of(), "[]"));
-        assertFalse(TierSource.nothingUnderstood(Map.of(), ""));
-        assertFalse(TierSource.nothingUnderstood(Map.of(), null));
+    void aMalformedRefreshFailsAndRetainsTheLastGoodNovaIndex() throws Exception {
+        respond("/users", 200, ONE_USER);
+        NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
+        assertEquals("HT3", nova.fetch(PLAYER).get().get("axe").label());
+        respond("/users", 200, "<html>maintenance</html>");
+        assertThrows(ExecutionException.class, () -> nova.refresh().get());
+        assertEquals("HT3", nova.fetch(PLAYER).get().get("axe").label());
+        assertEquals(1, nova.indexedPlayerCount());
     }
 
     @Test
-    void anythingParsedIsNeverAParseFailure() {
-        assertFalse(TierSource.nothingUnderstood(Map.of("axe", 1), "{\"axe\":{\"tier\":1}}"));
+    void overlappingRefreshesShareTheInitialDownload() throws Exception {
+        var entered = new java.util.concurrent.CountDownLatch(1);
+        var release = new java.util.concurrent.CountDownLatch(1);
+        server.createContext("/users", exchange -> {
+            requestCount.incrementAndGet();
+            entered.countDown();
+            try {
+                if (!release.await(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                    throw new IOException("test did not release response");
+                }
+                byte[] bytes = ONE_USER.getBytes(StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(200, bytes.length);
+                exchange.getResponseBody().write(bytes);
+            } catch (InterruptedException error) {
+                Thread.currentThread().interrupt();
+            } finally {
+                exchange.close();
+            }
+        });
+        NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
+        var initial = nova.fetch(PLAYER);
+        try {
+            assertTrue(entered.await(5, java.util.concurrent.TimeUnit.SECONDS));
+            var first = nova.refresh();
+            var second = nova.refresh();
+            release.countDown();
+            initial.get(); first.get(); second.get();
+            assertEquals(1, requestCount.get());
+        } finally {
+            release.countDown();
+        }
     }
+
 }

@@ -14,7 +14,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.DoubleSupplier;
-import java.util.function.Function;
 import java.util.function.LongSupplier;
 
 /**
@@ -40,6 +39,9 @@ public final class TierCache {
     private final Map<Source, Map<UUID, Attempt>> attempts = new EnumMap<>(Source.class);
     private final Map<Source, SiteGate> gates = new EnumMap<>(Source.class);
     private final Map<Source, SiteHealth> health = new EnumMap<>(Source.class);
+    /** Per-site locks serialize claims, invalidation and completion, never network waits. */
+    private final Map<Source, Object> locks = new EnumMap<>(Source.class);
+    private final Map<Source, Long> generations = new EnumMap<>(Source.class);
 
     private volatile CachePolicy policy;
     private final Backoff backoff;
@@ -70,11 +72,6 @@ public final class TierCache {
         this(sources, CachePolicy.DEFAULT);
     }
 
-    /** Retained for callers that only care about the first retry delay. */
-    public TierCache(List<TierSource> sources, Duration retryDelay) {
-        this(sources, CachePolicy.DEFAULT.withBaseRetry(retryDelay));
-    }
-
     public TierCache(List<TierSource> sources, CachePolicy policy) {
         this(sources, policy, System::nanoTime, () -> ThreadLocalRandom.current().nextDouble());
     }
@@ -98,6 +95,8 @@ public final class TierCache {
             this.gates.put(source, new SiteGate(policy.siteFailureThreshold(),
                     policy.basePause(), policy.maxPause(), clock));
             this.health.put(source, new SiteHealth(clock));
+            this.locks.put(source, new Object());
+            this.generations.put(source, 0L);
         }
     }
 
@@ -134,9 +133,9 @@ public final class TierCache {
             entry = null;
         }
         if (entry != null) {
-            return entry.future.isDone()
-                    ? Optional.ofNullable(entry.future.getNow(null))
-                    : Optional.empty();
+            // Completion can race the earlier failure check. Once done, its outcome is
+            // immutable, so only inspect failure after observing completion.
+            return completedAnswer(entry.future);
         }
 
         // Nothing cached, so this would start a fetch. That is what the retry delay and
@@ -147,6 +146,11 @@ public final class TierCache {
         }
 
         CompletableFuture<Map<String, Tier>> future = load(source, uuid);
+        return completedAnswer(future);
+    }
+
+    private static Optional<Map<String, Tier>> completedAnswer(
+            CompletableFuture<Map<String, Tier>> future) {
         if (!future.isDone() || future.isCompletedExceptionally()) {
             return Optional.empty();
         }
@@ -170,54 +174,76 @@ public final class TierCache {
             return CompletableFuture.completedFuture(Map.of());
         }
 
-        Entry existing = entries.get(source).get(uuid);
-        if (existing != null && isStale(existing)) {
-            entries.get(source).remove(uuid, existing);
+        Entry entry;
+        long generation;
+        synchronized (locks.get(source)) {
+            Entry existing = entries.get(source).get(uuid);
+            if (existing != null && isStale(existing)) {
+                entries.get(source).remove(uuid, existing);
+                existing = null;
+            }
+            if (existing != null) {
+                return existing.future;
+            }
+            if (!gates.get(source).allowRequest()) {
+                return CompletableFuture.failedFuture(
+                        new IllegalStateException(source.displayName() + " is not being asked "
+                                + "right now: too many failures in a row"));
+            }
+            // Publish the claim before calling external code. Even a source that finishes
+            // immediately cannot notify a caller before its retry state has been recorded.
+            entry = new Entry(new CompletableFuture<>());
+            entries.get(source).put(uuid, entry);
+            generation = generations.get(source);
         }
-        Entry cached = entries.get(source).get(uuid);
-        if (cached != null) {
-            return cached.future;
-        }
-        if (!gates.get(source).allowRequest()) {
-            return CompletableFuture.failedFuture(
-                    new IllegalStateException(source.displayName() + " is not being asked "
-                            + "right now: too many failures in a row"));
-        }
-        return entries.get(source).computeIfAbsent(uuid, fetch(source, tierSource)).future;
-    }
 
-    private Function<UUID, Entry> fetch(Source source, TierSource tierSource) {
-        return key -> {
-            // Timed from here rather than from inside the source: what a user waits on is
-            // the whole round trip, including whatever queueing the source does before the
-            // request goes out.
-            long startedAtNanos = clock.getAsLong();
-            Entry entry = new Entry(tierSource.fetch(key));
-            entry.future.whenComplete((tiers, error) -> {
-                long settledAtNanos = clock.getAsLong();
-                entry.settle(settledAtNanos);
-                long latencyNanos = settledAtNanos - startedAtNanos;
-                if (error == null) {
-                    attempts.get(source).remove(key);
-                    gates.get(source).recordSuccess();
-                    health.get(source).recordSuccess(latencyNanos);
-                } else {
-                    attempts.get(source).compute(key, (ignored, previous) -> {
-                        int failures = previous == null ? 1 : previous.failures() + 1;
-                        return new Attempt(failures,
-                                clock.getAsLong() + backoff.delayAfter(failures, random));
-                    });
-                    gates.get(source).recordFailure();
-                    health.get(source).recordFailure(latencyNanos, error);
+        long started = clock.getAsLong();
+        CompletableFuture<Map<String, Tier>> response;
+        try {
+            response = tierSource.fetch(uuid);
+        } catch (RuntimeException error) {
+            response = CompletableFuture.failedFuture(error);
+        }
+        response.whenComplete((tiers, error) -> {
+            long settled = clock.getAsLong();
+            long latency = settled - started;
+            synchronized (locks.get(source)) {
+                entry.settle(settled);
+                // Invalidating a site detaches old requests from its operational state.
+                // Historical metrics still include them: a refresh does not erase the
+                // outage that prompted it.
+                if (generations.get(source) == generation) {
+                    if (error == null) {
+                        attempts.get(source).remove(uuid);
+                        gates.get(source).recordSuccess();
+                    } else {
+                        Attempt previous = attempts.get(source).get(uuid);
+                        int failures = previous == null ? 1
+                                : Math.min(Integer.MAX_VALUE - 1, previous.failures()) + 1;
+                        attempts.get(source).put(uuid, new Attempt(failures,
+                                settled + backoff.delayAfter(failures, random)));
+                        gates.get(source).recordFailure();
+                    }
                 }
-            });
-            return entry;
-        };
+                if (error == null) {
+                    health.get(source).recordSuccess(latency);
+                } else {
+                    health.get(source).recordFailure(latency, error);
+                }
+            }
+            // Complete outside the lock: callers may synchronously start other work.
+            if (error == null) {
+                entry.future.complete(tiers);
+            } else {
+                entry.future.completeExceptionally(error);
+            }
+        });
+        return entry.future;
     }
 
     private boolean isStale(Entry entry) {
         CachePolicy current = policy;
-        return current.expires() && entry.settled
+        return current.expires() && entry.future.isDone() && entry.settled
                 && clock.getAsLong() - entry.settledAtNanos >= current.ttl().toNanos();
     }
 
@@ -284,17 +310,17 @@ public final class TierCache {
     }
 
     public void invalidateAll() {
-        entries.values().forEach(Map::clear);
-        attempts.values().forEach(Map::clear);
-        Source.ALL.forEach(source -> gates.get(source).recordSuccess());
+        Source.ALL.forEach(this::invalidate);
     }
 
     /** Clears cached entries for a single source, leaving every other source's cache intact. */
     public void invalidate(Source source) {
-        entries.get(source).clear();
-        attempts.get(source).clear();
-        // A manual refresh is the user saying "try again now", which includes a site the
-        // gate had given up on.
-        gates.get(source).recordSuccess();
+        synchronized (locks.get(source)) {
+            generations.put(source, generations.get(source) + 1);
+            entries.get(source).clear();
+            attempts.get(source).clear();
+            // A manual refresh also reopens a site the gate had given up on.
+            gates.get(source).recordSuccess();
+        }
     }
 }

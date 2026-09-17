@@ -5,7 +5,6 @@ import com.w0x7y.justtiers.tier.Source;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Lays out the tier badge that goes with a player's name, as
@@ -26,13 +25,8 @@ final class NametagModel {
     /** Bitmap glyphs are multiplied by the text color, so icons must be white. */
     static final int ICON_COLOR = 0xFFFFFF;
 
-    /** The badge in its default shape: bracketed, with icons, in front of the name. */
-    static List<Segment> build(List<ResolvedTier> tiers) {
-        return build(tiers, NametagStyle.DEFAULT);
-    }
-
     static List<Segment> build(List<ResolvedTier> tiers, NametagStyle style) {
-        List<Segment> entries = entries(tiers, style.icons(), style.colors());
+        List<Segment> entries = entries(tiers, style);
         if (entries.isEmpty()) {
             return List.of();
         }
@@ -62,13 +56,7 @@ final class NametagModel {
      * The tier entries alone, separated by single spaces — no brackets and no spacing to
      * a name: the run of icons and labels the badge wraps.
      */
-    static List<Segment> entries(List<ResolvedTier> tiers, boolean icons) {
-        return entries(tiers, icons, NametagStyle.DEFAULT.colors());
-    }
-
-    /** As {@link #entries(List, boolean)}, in whatever colors the caller was given. */
-    static List<Segment> entries(List<ResolvedTier> tiers, boolean icons,
-                                 Map<Source, Integer> colors) {
+    private static List<Segment> entries(List<ResolvedTier> tiers, NametagStyle style) {
         if (tiers == null || tiers.isEmpty()) {
             return List.of();
         }
@@ -79,14 +67,13 @@ final class NametagModel {
                 segments.add(new Segment(" ", BRACKET_COLOR));
             }
             ResolvedTier resolved = tiers.get(i);
-            if (icons) {
+            if (style.icons()) {
                 segments.add(new Segment(String.valueOf(resolved.gamemode().icon()),
                         ICON_COLOR, true));
             }
             Source source = resolved.gamemode().source();
             segments.add(new Segment(resolved.tier().label(),
-                    colors == null ? source.defaultColor()
-                            : colors.getOrDefault(source, source.defaultColor())));
+                    style.colorOf(source)));
         }
         return List.copyOf(segments);
     }
