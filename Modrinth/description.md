@@ -6,11 +6,11 @@ Fabric API for 26.2 and YetAnotherConfigLib 3.9.4 or newer for 26.2. ModMenu is 
 
 ![Nametag showcase](https://cdn.modrinth.com/data/8zkz6d1C/images/195de1f0351ecc64b1d7505f03aa71a3ef173b35.jpeg)
 
-## New in 1.1.3
+## New in 1.1.4
 
-The new bracketed JT icon uses yellow, cyan and purple to represent the three leaderboards.
-The icon is now included in the mod metadata for ModMenu.
-[Full release notes](https://github.com/w0x7y/Just-Tiers/blob/main/docs/releases/v1.1.3.md).
+All 33 packaged images have been compressed to reduce the mod download size.
+The mod icon remains 32x32 pixels, and gamemode textures retain their dimensions.
+[Full release notes](https://github.com/w0x7y/Just-Tiers/blob/main/docs/releases/v1.1.4.md).
 
 ## What you can do
 
