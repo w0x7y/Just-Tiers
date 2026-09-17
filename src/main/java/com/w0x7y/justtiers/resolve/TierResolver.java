@@ -6,7 +6,6 @@ import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -18,12 +17,6 @@ import java.util.Optional;
  * Pure and Minecraft-free so it can be unit-tested directly.
  */
 public final class TierResolver {
-
-    public static List<ResolvedTier> resolve(DisplayMode mode,
-                                             Map<Source, Map<String, Tier>> tiersBySource,
-                                             Map<Source, String> selectedGamemodes) {
-        return resolve(mode, tiersBySource, selectedGamemodes, true);
-    }
 
     /**
      * When {@code showRetired} is false, retired tiers are discarded before anything else
@@ -131,35 +124,22 @@ public final class TierResolver {
      * toward the active tier, then toward the site's declared gamemode order.
      */
     public static Optional<ResolvedTier> highestOn(Source source, Map<String, Tier> tiers) {
-        return rankAll(source, tiers).stream().findFirst();
-    }
-
-    /**
-     * Every placement the player holds on one site, best first, under exactly the
-     * ordering {@link #highestOn} picks its winner by. {@code /justtiers lookup} lists
-     * the whole thing; the nametag only ever wants the head of it.
-     */
-    public static List<ResolvedTier> rankAll(Source source, Map<String, Tier> tiers) {
         if (tiers == null || tiers.isEmpty()) {
-            return List.of();
+            return Optional.empty();
         }
-
-        List<Gamemode> order = Gamemodes.of(source);
-        List<ResolvedTier> candidates = new ArrayList<>(tiers.size());
-        for (Gamemode gamemode : order) {
+        Gamemode bestMode = null;
+        Tier bestTier = null;
+        // Walking the registry supplies the final tie-break and ignores unknown slugs.
+        // The nametag only needs one placement, so no sorted list is built per frame.
+        for (Gamemode gamemode : Gamemodes.of(source)) {
             Tier tier = tiers.get(gamemode.slug());
-            if (tier != null) {
-                candidates.add(new ResolvedTier(gamemode, tier));
+            if (tier != null && (bestTier == null || tier.compareTo(bestTier) < 0)) {
+                bestMode = gamemode;
+                bestTier = tier;
             }
         }
-        // Gamemodes the site added after this build are skipped rather than guessed at.
-
-        // Candidates were appended while walking `order`, so they are already in the
-        // site's declared order; List.sort is stable, which settles the last tiebreak
-        // without a third comparator doing a linear indexOf on every comparison.
-        candidates.sort(Comparator.comparingInt((ResolvedTier r) -> r.tier().rank())
-                .thenComparing(r -> r.tier().retired()));
-        return List.copyOf(candidates);
+        return bestMode == null ? Optional.empty()
+                : Optional.of(new ResolvedTier(bestMode, bestTier));
     }
 
     private TierResolver() {

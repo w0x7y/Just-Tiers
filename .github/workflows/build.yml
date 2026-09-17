@@ -10,15 +10,30 @@ on:
 
 # A force-push mid-build should not leave two runs racing for the same cache.
 concurrency:
-  group: build-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  build:
+  lint-workflows:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check GitHub Actions workflows
+        uses: docker://rhysd/actionlint:1.7.7
+
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
 
@@ -44,15 +59,18 @@ jobs:
       - name: Upload the jar
         uses: actions/upload-artifact@v4
         with:
-          name: just-tiers-${{ github.sha }}
+          name: just-tiers-${{ matrix.os }}-${{ github.sha }}
           path: build/libs/*.jar
           if-no-files-found: error
 
-      # Only when something failed: a green run's reports say nothing worth storing.
+      # Keep reports from both platforms so passed and failed assertions are reviewable.
       - name: Upload the test report
-        if: failure()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: test-report-${{ github.sha }}
-          path: build/reports/tests/test
+          name: test-report-${{ matrix.os }}-${{ github.sha }}
+          path: |
+            build/reports/tests/test
+            build/test-results/test
+          retention-days: 14
           if-no-files-found: ignore

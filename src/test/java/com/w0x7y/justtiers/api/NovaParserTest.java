@@ -9,6 +9,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/** Nova identities and placements normalize consistently, with malformed data kept distinct from an empty leaderboard. */
 class NovaParserTest {
 
     private static final String USERS_JSON = """
@@ -107,11 +108,12 @@ class NovaParserTest {
     }
 
     @Test
-    void malformedInputYieldsEmptyMap() {
-        assertTrue(NovaParser.parseUsers(null).isEmpty());
-        assertTrue(NovaParser.parseUsers("").isEmpty());
-        assertTrue(NovaParser.parseUsers("not json").isEmpty());
-        assertTrue(NovaParser.parseUsers("{\"a\":1}").isEmpty());
+    void malformedBodiesAreNotAnEmptyLeaderboard() {
+        for (String body : new String[]{null, "", "not json", "{\"a\":1}", "null",
+                "[{\"name\":\"Nobody\"}]"}) {
+            assertThrows(TierLookupException.class, () -> NovaParser.parseUsers(body));
+        }
+        assertTrue(NovaParser.parseUsers(" [] ").isEmpty());
     }
 
     @Test
@@ -132,4 +134,22 @@ class NovaParserTest {
         assertEquals(Optional.empty(), NovaParser.parseUuid("zzz"));
         assertEquals(Optional.empty(), NovaParser.parseUuid(null));
     }
+    @Test
+    void anIndexContainingOnlyUnparseablePlacementsIsNotAnEmptyLeaderboard() {
+        String body = """
+                [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504",
+                  "tiers":{"Axe":"unknown tier"}}]
+                """;
+        assertThrows(TierLookupException.class, () -> NovaParser.parseUsers(body));
+    }
+
+    @Test
+    void aBrokenPlacementDoesNotDiscardTheSamePlayersValidPlacements() {
+        String body = """
+                [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504",
+                  "tiers":{"SMP":{"unexpected":"object"},"Axe":"HT2"}}]
+                """;
+        assertEquals("HT2", NovaParser.parseUsers(body).get(X_SUS).get("axe").label());
+    }
+
 }

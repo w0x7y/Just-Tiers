@@ -118,9 +118,9 @@ public final class LookupSession {
     }
 
     /**
-     * True when every site has answered and not one of them has ever placed this player.
-     * Deliberately silent until the last row is in: a verdict about all three sites
-     * cannot be reached from two of them.
+     * True once every request has settled, at least one site answered, and none of
+     * the reachable sites returned a listed placement. An unavailable site says
+     * nothing about the player's tiers.
      */
     public boolean rankedNowhere() {
         if (!complete()) {

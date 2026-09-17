@@ -25,11 +25,6 @@ public record ControlAvailability(boolean displayMode,
         reasons = Map.copyOf(reasons);
     }
 
-    /** As {@link #of(boolean, DisplayMode, Palette)}, with the default palette. */
-    public static ControlAvailability of(boolean enabled, DisplayMode mode) {
-        return of(enabled, mode, Palette.DEFAULT);
-    }
-
     public static ControlAvailability of(boolean enabled, DisplayMode mode, Palette palette) {
         Map<Source, Reason> reasons = new EnumMap<>(Source.class);
         for (Source source : Source.ALL) {

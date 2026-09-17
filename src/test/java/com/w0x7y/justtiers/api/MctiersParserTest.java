@@ -7,6 +7,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/** Current rankings survive partial bad data, while invalid payloads cannot masquerade as unranked players. */
 class MctiersParserTest {
 
     private static final String MARLOWWW_JSON = """
@@ -52,17 +53,16 @@ class MctiersParserTest {
     }
 
     @Test
-    void emptyAndNullBodiesYieldEmptyMaps() {
-        assertTrue(MctiersParser.parseRankings(null).isEmpty());
-        assertTrue(MctiersParser.parseRankings("").isEmpty());
-        assertTrue(MctiersParser.parseRankings("   ").isEmpty());
-        assertTrue(MctiersParser.parseRankings("{}").isEmpty());
+    void anEmptyObjectIsAValidUnrankedAnswer() {
+        assertTrue(MctiersParser.parseRankings(" {} ").isEmpty());
     }
 
     @Test
-    void malformedBodiesYieldEmptyMapsRatherThanThrowing() {
-        assertTrue(MctiersParser.parseRankings("not json").isEmpty());
-        assertTrue(MctiersParser.parseRankings("[1,2,3]").isEmpty());
+    void malformedBodiesAreNotValidUnrankedAnswers() {
+        for (String body : new String[]{null, "", "   ", "not json", "[1,2,3]", "null",
+                "{\"error\":\"maintenance\"}", "{\"axe\":{\"grade\":3}}"}) {
+            assertThrows(TierLookupException.class, () -> MctiersParser.parseRankings(body));
+        }
     }
 
     @Test

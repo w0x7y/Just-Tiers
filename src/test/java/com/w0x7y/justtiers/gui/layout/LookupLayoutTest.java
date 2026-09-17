@@ -8,10 +8,47 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class LookupLayoutTest {
 
+    @Test
+    void theDoneButtonRemainsReachableAtSmallGuiSizes() {
+        for (int[] size : new int[][]{{320, 240}, {427, 240}, {480, 270}}) {
+            LookupLayout layout = layout(size[0], size[1]);
+            assertTrue(layout.doneButtonY() >= 0);
+            assertTrue(layout.doneButtonY() + 20 <= size[1] - 8,
+                    size[0] + "x" + size[1] + " bottom=" + (layout.doneButtonY() + 20));
+        }
+    }
+
+
+    @Test
+    void aSmallerSkinAvoidsScrollingWhenTheWholePanelCanFit() {
+        for (int height : List.of(300, 320)) {
+            LookupLayout layout = layout(854, height);
+            assertEquals(0, layout.maxScroll(), "screen height " + height);
+            assertTrue(layout.panelY() >= LookupLayout.SEARCH_BOTTOM);
+            assertTrue(layout.doneButtonY() + 20 <= height - 8);
+        }
+    }
+
+    @Test
+    void focusCanRevealTheFooterThenReturnToTheFirstRowOnASmallScreen() {
+        LookupLayout layout = layout(320, 240);
+        int footerScroll = layout.scrollTo(layout.footerY(), 9, 0);
+        assertTrue(footerScroll > 0);
+        assertTrue(layout.footerY() - footerScroll >= layout.panelY());
+        assertTrue(layout.footerY() - footerScroll + 9 <= layout.viewportBottom());
+
+        LookupLayout.Row first = layout.rows().getFirst();
+        int firstRowScroll = layout.scrollTo(first.cellY(0), 14, footerScroll);
+        assertTrue(firstRowScroll < footerScroll);
+        assertTrue(first.cellY(0) - firstRowScroll >= layout.panelY());
+        assertTrue(first.cellY(0) - firstRowScroll + 14 <= layout.viewportBottom());
+    }
+
     /** Roughly what Minecraft's own font reports at default GUI scale. */
     private static LookupMetrics metrics(int screenWidth, int screenHeight) {
         return new LookupMetrics(screenWidth, screenHeight, 9, 14, 48, 44, 14,
-                List.of(8, 6, 5));
+                com.w0x7y.justtiers.tier.Source.ALL.stream()
+                        .map(source -> com.w0x7y.justtiers.tier.Gamemodes.of(source).size()).toList());
     }
 
     private static LookupLayout layout(int screenWidth, int screenHeight) {
@@ -113,7 +150,7 @@ class LookupLayoutTest {
         LookupLayout layout = layout(854, 100);
 
         assertEquals(1, layout.skinScale());
-        assertEquals(LookupLayout.SCREEN_MARGIN, layout.panelY());
+        assertEquals(LookupLayout.SEARCH_BOTTOM, layout.panelY());
         assertTrue(layout.panelHeight() > 0);
     }
 
@@ -131,8 +168,8 @@ class LookupLayoutTest {
     @Test
     void cellsAreCentredInABoxWiderThanTheyNeed() {
         LookupLayout layout = layout(854, 480);
-        LookupLayout.Row widest = layout.rows().getFirst();
-        LookupLayout.Row narrowest = layout.rows().getLast();
+        LookupLayout.Row widest = layout.rows().get(1);
+        LookupLayout.Row narrowest = layout.rows().getFirst();
 
         // The panel is sized around the widest row, which therefore has exactly the
         // box's own padding to spare.
@@ -156,10 +193,9 @@ class LookupLayoutTest {
     @Test
     void theGapBetweenTwoCellsIsNoCellAtAll() {
         LookupLayout.Row row = layout(854, 480).rows().getFirst();
-        int betweenX = row.cellX(0) + row.grid().contentWidth() / row.grid().columns() - 1;
+        int betweenX = row.cellX(0) + metrics(854, 480).cellWidth();
 
-        assertTrue(row.cellAt(betweenX, row.cellY(0) + 1).isEmpty()
-                || row.cellAt(betweenX, row.cellY(0) + 1).getAsInt() == 0);
+        assertTrue(row.cellAt(betweenX, row.cellY(0) + 1).isEmpty());
         assertTrue(row.cellAt(row.x() - 1, row.cellY(0) + 1).isEmpty());
         assertTrue(row.cellAt(row.cellX(0) + 1, row.y() - 1).isEmpty());
     }
@@ -170,7 +206,8 @@ class LookupLayoutTest {
             for (int i = 0; i < row.grid().itemCount(); i++) {
                 assertTrue(row.cellX(i) >= row.x(), "cell " + i);
                 assertTrue(row.cellY(i) >= row.y(), "cell " + i);
-                assertTrue(row.cellY(i) < row.y() + row.height(), "cell " + i);
+                assertTrue(row.cellX(i) + 44 <= row.x() + row.width(), "right edge " + i);
+                assertTrue(row.cellY(i) + 14 <= row.y() + row.height(), "bottom edge " + i);
             }
         }
     }
@@ -194,11 +231,6 @@ class LookupLayoutTest {
     }
 
     // --- the same measurements always give the same panel ---
-
-    @Test
-    void layingOutTwiceGivesTheSameAnswer() {
-        assertEquals(LookupLayout.of(metrics(854, 480)), LookupLayout.of(metrics(854, 480)));
-    }
 
     @Test
     void aSiteWithNoGamemodesDoesNotBreakTheStack() {

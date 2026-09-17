@@ -1,5 +1,5 @@
 plugins {
-    id("net.fabricmc.fabric-loom") version "1.17-SNAPSHOT"
+    id("net.fabricmc.fabric-loom") version "1.17.21"
     id("com.modrinth.minotaur") version "2.9.0"
     id("java")
 }
@@ -42,12 +42,17 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-tasks.test { useJUnitPlatform() }
+tasks.test {
+    useJUnitPlatform()
+    // ResourceContractTest also checks translation keys assembled by the client code.
+    inputs.dir("src/main/java")
+}
 
+val resourceVersion = project.version.toString()
 tasks.processResources {
-    inputs.property("version", project.version)
+    inputs.property("version", resourceVersion)
     filesMatching(listOf("fabric.mod.json", "justtiers-version.properties")) {
-        expand("version" to project.version)
+        expand("version" to resourceVersion)
     }
 }
 

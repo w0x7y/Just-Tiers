@@ -74,7 +74,11 @@ public final class MojangNameSource {
         String key = name.toLowerCase(Locale.ROOT);
         CompletableFuture<Optional<PlayerRef>> cached = cache.get(key);
         if (cached != null) {
-            return cached;
+            if (!cached.isCompletedExceptionally()) {
+                return cached;
+            }
+            // A waiting caller can observe failure before its eviction callback runs.
+            cache.remove(key, cached);
         }
 
         // computeIfAbsent, not request-then-putIfAbsent: two lookups of the same name
@@ -124,21 +128,22 @@ public final class MojangNameSource {
         try {
             JsonElement parsed = GSON.fromJson(body, JsonElement.class);
             if (parsed == null || !parsed.isJsonObject()) {
-                return Optional.empty();
+                throw new TierLookupException("Mojang profile must be a JSON object");
             }
             JsonObject object = parsed.getAsJsonObject();
             if (!object.has("id") || object.get("id").isJsonNull()) {
-                return Optional.empty();
+                throw new TierLookupException("Mojang profile is missing its UUID");
             }
+            var uuid = NovaParser.parseUuid(object.get("id").getAsString())
+                    .orElseThrow(() -> new TierLookupException("Mojang profile has an invalid UUID"));
             String name = object.has("name") && !object.get("name").isJsonNull()
                     ? object.get("name").getAsString()
                     : requestedName;
-            return NovaParser.parseUuid(object.get("id").getAsString())
-                    .map(uuid -> new PlayerRef(name, uuid));
+            return Optional.of(new PlayerRef(name, uuid));
         } catch (RuntimeException e) {
-            JustTiers.LOGGER.warn("Ignoring malformed Mojang profile response for {}",
-                    requestedName, e);
-            return Optional.empty();
+            // A malformed HTTP 200 is a failed lookup, never evidence that the account
+            // does not exist. Failing also lets resolve evict this request and retry.
+            throw new TierLookupException("Malformed Mojang profile for " + requestedName, e);
         }
     }
 }

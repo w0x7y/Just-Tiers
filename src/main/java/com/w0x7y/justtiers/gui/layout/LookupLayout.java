@@ -24,6 +24,7 @@ public record LookupLayout(int panelX, int panelY, int panelWidth, int panelHeig
                            int skinScale, int nameY, int skinY, int tiersY, int noteY,
                            int footerY,
                            int firstSeparatorY, int secondSeparatorY, int thirdSeparatorY,
+                           int viewportHeight, int doneButtonY,
                            List<Row> rows) {
 
     static final int PANEL_PADDING = 10;
@@ -35,6 +36,8 @@ public record LookupLayout(int panelX, int panelY, int panelWidth, int panelHeig
     static final int SCREEN_MARGIN = 8;
     static final int BUTTON_HEIGHT = 20;
     static final int BUTTON_GAP = 6;
+    /** Room for the name field and lookup button, outside the scrollable content. */
+    static final int SEARCH_BOTTOM = 36;
 
     /** Largest first: the skin is drawn as big as fits. */
     private static final int[] SKIN_SCALES = {3, 2, 1};
@@ -114,7 +117,7 @@ public record LookupLayout(int panelX, int panelY, int panelWidth, int panelHeig
 
         int skinScale = skinScale(metrics, grids);
         int panelHeight = height(metrics, grids, skinScale);
-        int panelY = Math.max(SCREEN_MARGIN,
+        int panelY = Math.max(SEARCH_BOTTOM,
                 (metrics.screenHeight() - panelHeight - BUTTON_HEIGHT - BUTTON_GAP) / 2);
 
         return place(metrics, grids, skinScale, panelX, panelY, panelWidth, panelHeight,
@@ -125,7 +128,7 @@ public record LookupLayout(int panelX, int panelY, int panelWidth, int panelHeig
     private static int skinScale(LookupMetrics metrics, List<GridLayout> grids) {
         for (int scale : SKIN_SCALES) {
             int needed = height(metrics, grids, scale)
-                    + BUTTON_GAP + BUTTON_HEIGHT + 2 * SCREEN_MARGIN;
+                    + BUTTON_GAP + BUTTON_HEIGHT + SEARCH_BOTTOM + SCREEN_MARGIN;
             if (needed <= metrics.screenHeight()) {
                 return scale;
             }
@@ -194,9 +197,12 @@ public record LookupLayout(int panelX, int panelY, int panelWidth, int panelHeig
 
         int footerY = y;
 
+        int doneY = Math.min(panelY + panelHeight + BUTTON_GAP,
+                metrics.screenHeight() - SCREEN_MARGIN - BUTTON_HEIGHT);
+        int viewportHeight = Math.max(0, doneY - BUTTON_GAP - panelY);
         return new LookupLayout(panelX, panelY, panelWidth, panelHeight, skinScale,
                 nameY, skinY, tiersY, noteY, footerY,
-                firstSeparatorY, secondSeparatorY, thirdSeparatorY, rows);
+                firstSeparatorY, secondSeparatorY, thirdSeparatorY, viewportHeight, doneY, rows);
     }
 
     /** How tall the skin is drawn, at the scale that was chosen. */
@@ -217,7 +223,21 @@ public record LookupLayout(int panelX, int panelY, int panelWidth, int panelHeig
         return panelY + panelHeight;
     }
 
-    public int doneButtonY() {
-        return panelBottom() + BUTTON_GAP;
+    public int viewportBottom() {
+        return panelY + viewportHeight;
+    }
+
+    public int maxScroll() {
+        return Math.max(0, panelHeight - viewportHeight);
+    }
+
+    /** Scroll a focused control completely into view, in content coordinates. */
+    public int scrollTo(int top, int height, int scroll) {
+        int next = scroll;
+        if (top < panelY + next) next = top - panelY;
+        else if (top + height > viewportBottom() + next) {
+            next = top + height - viewportBottom();
+        }
+        return Math.clamp(next, 0, maxScroll());
     }
 }

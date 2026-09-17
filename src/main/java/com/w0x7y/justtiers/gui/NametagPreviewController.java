@@ -129,18 +129,23 @@ public final class NametagPreviewController implements Controller<Component> {
             int contentX = dim.x() + CONTENT_INSET;
             int tagY = dim.y() + CONTENT_INSET;
 
-            // Drawn at 2x so the 8x8 gamemode glyphs are legible; the per-segment
-            // colors survive the scale because they live in the component's Style.
+            Component preview = tag(current, this, System.currentTimeMillis());
+            int contentWidth = Math.max(1, dim.width() - 2 * CONTENT_INSET);
+            float scale = Math.min(TAG_SCALE,
+                    (float) contentWidth / Math.max(1, textRenderer.width(preview)));
+            // Prefer 2x glyphs, but keep the whole tag inside a narrow option column.
             graphics.pose().pushMatrix();
             graphics.pose().translate(contentX, tagY);
-            graphics.pose().scale(TAG_SCALE, TAG_SCALE);
-            graphics.text(textRenderer, tag(current, this, System.currentTimeMillis()),
-                    0, 0, 0xFFFFFFFF, true);
+            graphics.pose().scale(scale, scale);
+            graphics.text(textRenderer, preview, 0, 0, 0xFFFFFFFF, true);
             graphics.pose().popMatrix();
 
-            int captionY = tagY + Math.round(textRenderer.lineHeight * TAG_SCALE) + 6;
-            graphics.text(textRenderer, caption(current), contentX, captionY,
-                    current.enabled() ? CAPTION_COLOR : CAPTION_DISABLED_COLOR, false);
+            int captionY = tagY + Math.round(textRenderer.lineHeight * scale) + 6;
+            for (var line : textRenderer.split(caption(current), contentWidth)) {
+                graphics.text(textRenderer, line, contentX, captionY,
+                        current.enabled() ? CAPTION_COLOR : CAPTION_DISABLED_COLOR, false);
+                captionY += textRenderer.lineHeight;
+            }
         }
 
         @Override

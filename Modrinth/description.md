@@ -1,254 +1,103 @@
 # Just-Tiers
 
-A Minecraft **Fabric** client mod that shows a player's competitive PvP tier directly in their nametag. 3 leaderboards are available: **MCTiers**, **SubTiers** and **NovaTiers**.
-
-![banner](https://cdn.modrinth.com/data/8zkz6d1C/images/dcdc175ec264cb63acc0019e57a5cb6c1b8fdc97.jpeg)
-
-**! The mod is still in beta !**
-
----
-
-## Why this exists
-
-[TierTagger](https://github.com/mctiers-dev/TierTagger) is the established mod in this space, and it is good, but it has two limitations that Just-Tiers is built to fix:
-
-1. **No NovaTiers support.** Only MCTiers and SubTiers are available, so gamemodes only NovaTiers runs - Elytra Spear, Spear Mace, Diamond Cart and the rest - cannot be shown at all.
-2. **One leaderboard at a time.** You must pick MCTiers *or* SubTiers; you cannot see both at once.
-
-Just-Tiers supports all three leaderboards, and adds an **All** mode that shows each site's best tier side by side in a single nametag.
-
----
-
-## Features
-
-- **All three leaderboards** - MCTiers, SubTiers and NovaTiers.
-- **Four display modes** - MCTiers only, SubTiers only, NovaTiers only and All.
-- **Per-site gamemode selection** - pick the gamemode you care about on each site.
-- **Automatic fallback** - not ranked in your chosen gamemode? It shows that player's highest tier on that same site instead.
-- **Gamemode icons** - a small icon shows *which* gamemode earned the tier.
-- **Color-coded by site** - you can always tell where a tier came from.
-- **Look anyone up** - `/justtiers lookup <player>` opens a screen with that player's skin and every gamemode all three sites run, tier by tier, without them being anywhere near you.
-- **Color palettes** - swap the three site colors for a colorblind-safe or high-contrast preset, or pick three of your own.
-- **Shape the badge** - before or after the name, brackets and icons on or off, and your own nametag left plain if you prefer. The config screen previews every combination live.
-- **Retired tiers handled properly** - shown with an `R` prefix in their site's color, still counted when finding a player's highest tier, and hideable entirely with one setting.
-- **In-game config screen** - every setting in one place, with a live nametag preview and an icon grid for picking gamemodes.
-- **Non-blocking** - all lookups are asynchronous and cached; the mod never stalls your frame rate waiting on a web request.
-- **Shows up as it arrives** - a nametag gains its badge the moment the first site answers, then fills in as the others land, rather than waiting on the slowest one.
-- **Keeps up with the leaderboards** - a cached tier is re-checked every hour, so a player tested or re-ranked mid-session stops showing the wrong thing without a restart.
-- **Fails safe** - a site that is down, rate-limiting or unreachable is retried with a growing delay, and one that keeps failing is left alone entirely rather than asked again every minute. A failure is never mistaken for "this player is unranked".
-- **One-paste bug reports** - `/justtiers debug` prints what each site is actually doing right now, and copies it to your clipboard. If tiers stop showing up, that report says why.
-- **Client-side only** - works on any server, nothing to install server-side.
-
----
-
-## Display modes
-
-| Mode | What it shows |
-|---|---|
-| `mctiers_only` | Your selected MCTiers gamemode; falls back to their highest MCTiers tier; shows nothing if untested on MCTiers |
-| `subtiers_only` | Same, for SubTiers |
-| `novatiers_only` | Same, for NovaTiers |
-| `all` *(default)* | The highest tier from **each** site, side by side. Sites where the player is untested are omitted |
-
-Example nametag in `all` mode, where a player is LT3 in NetheriteOP on MCTiers, LT3 in Elytra on SubTiers and HT3 in Spearmace on NovaTiers:
+A client-side Fabric mod that puts PvP tiers from MCTiers, SubTiers and NovaTiers in player
+nametags. **Currently in beta.** Requires Minecraft 26.2, Java 25, Fabric Loader 0.19 or newer,
+Fabric API for 26.2 and YetAnotherConfigLib 3.9.4 or newer for 26.2. ModMenu is optional.
 
 ![Nametag showcase](https://cdn.modrinth.com/data/8zkz6d1C/images/195de1f0351ecc64b1d7505f03aa71a3ef173b35.jpeg)
 
-Each icon shows the gamemode that earned the tier, so you know a tier came from Axe rather than Vanilla.
+## New in 1.1.2
 
-### Colors
+Safer config saves with retry and Undo, more reliable tier lookups, keyboard-accessible
+pickers and links, and scrolling results in small windows. You can edit or retry a player
+lookup without leaving the screen. [Full release notes](https://github.com/w0x7y/Just-Tiers/blob/main/docs/releases/v1.1.2.md).
 
-These are the default palette:
+## What you can do
 
-| Source | Color | Hex |
-|---|---|---|
-| MCTiers | Yellow | `#FFFF55` |
-| SubTiers | Cyan | `#55FFFF` |
-| NovaTiers | Purple | `#AA55FF` |
+- Show one site's selected gamemode, falling back to the player's best placement on that site.
+- Show the best placement from each site together in All mode.
+- Move badges before or after names, hide icons or brackets, and hide your own badge.
+- Choose default, Color vision alternative, high-contrast or custom leaderboard colors.
+- Include retired placements with their R prefix, or show active placements only.
+- Look up a player by name with `/justtiers lookup <player>` and inspect every known gamemode.
 
-All three can be changed. The config screen offers a **Colorblind-safe** palette (orange,
-sky blue, white - separated by brightness as well as hue, so it works for red-green
-color blindness) and a **High contrast** one, or you can pick three colors of your own.
-Whichever you choose applies everywhere at once: nametags, lookup and the config screen
-itself.
+The lookup screen shows the skin and fills in each site as it answers. A dash means no placement
+was reported, not that the player was never tested. Unavailable sites have a separate message.
+You can change the name, retry, scroll results in smaller windows and navigate with the keyboard.
+Tab list and chat names are unchanged.
 
----
+## Install and configure
 
-## Supported gamemodes
+Put the Just-Tiers JAR, Fabric API and YACL in your Minecraft 26.2 instance's `mods` folder.
+Install ModMenu if you want a config button in the mod list. Nothing is required on the server.
 
-Each leaderboard tests its own gamemodes. They are kept separate and never merged - `Vanilla` on MCTiers and `Vanilla` on NovaTiers are different competitions with different testers.
+Open configuration with `/justtiers gui`, ModMenu or the configurable Just-Tiers keybind,
+which starts unbound. The live preview uses example tiers and makes no leaderboard request.
+Gamemode pickers support clicks and keyboard activation. Save applies pending edits; Cancel
+discards them. Screen save failures leave the previous settings intact and show an error.
+A settings command that cannot save warns that its change applies only to the current session.
 
-The name in brackets is the slug you pass to `/justtiers gamemode` and the value stored in the
-config file. Tab-completion offers exactly these.
-
-| Leaderboard | Gamemodes |
+| Command | Action |
 |---|---|
-| **MCTiers** (8) | Axe (`axe`), Mace (`mace`), Netherite OP (`nethop`), Pot (`pot`), SMP (`smp`), Sword (`sword`), UHC (`uhc`), Vanilla (`vanilla`) |
-| **SubTiers** (12) | Bed (`bed`), Bow (`bow`), Creeper (`creeper`), DeBuff (`debuff`), Diamond SMP (`dia_smp`), Diamond Vanilla (`dia_crystal`), Elytra (`elytra`), Manhunt (`manhunt`), Minecart (`minecart`), OG Vanilla (`og_vanilla`), Speed (`speed`), Trident (`trident`) |
-| **NovaTiers** (12) | Axe (`axe`), Diamond Cart (`diamondcart`), Diamond OP (`diamondop`), Elytra (`elytra`), Elytra Spear (`elytraspear`), Modern SMP (`modernsmp`), Pufferfish (`pufferfish`), SMP (`smp`), Spear Mace (`spearmace`), Spleef (`spleef`), UHC (`uhc`), Vanilla (`vanilla`) |
+| `/justtiers` | Show settings and index status |
+| `/justtiers gui` | Open configuration |
+| `/justtiers lookup <player>` | Open a player lookup |
+| `/justtiers toggle` | Toggle nametag tiers |
+| `/justtiers mode <mode>` | `all`, `mctiers_only`, `subtiers_only`, `novatiers_only` |
+| `/justtiers gamemode <slug>` | Set the current site's gamemode; tab-completion lists choices |
+| `/justtiers retired` | Toggle retired tiers in nametags |
+| `/justtiers badge <before\|after>` | Move the badge |
+| `/justtiers icons` or `/justtiers brackets` | Toggle those badge decorations |
+| `/justtiers ownbadge` | Toggle hiding your own badge |
+| `/justtiers palette <palette>` | `default`, `colorblind`, `high_contrast`, `custom` |
+| `/justtiers refresh` | Clear lookup caches and refresh NovaTiers |
+| `/justtiers debug` | Print and copy a diagnostic report |
 
----
+The Data category sets cache and NovaTiers refresh intervals between 5 and 1440 minutes.
+Defaults are 60 and 30 minutes respectively. Palette colors also apply to the download indicator;
+icon artwork retains its original colors. Alternative palettes may help distinguish sites,
+but visibility depends on your vision and the background.
 
-## Data and network use
+## Network use
 
-Just-Tiers reads three public leaderboards, so it has to talk to them. Everything it
-sends is listed below. Nothing is sent to the mod's author, there is no analytics and no
-telemetry, and your account details, chat, inventory, server address and gameplay are
-never transmitted anywhere.
+There is no mod analytics endpoint. MCTiers and SubTiers receive the account UUID being
+looked up. NovaTiers supplies a bulk list, with no per-player identifier in that request.
+Mojang receives a typed name if the tab list cannot resolve it to an account UUID. Displaying
+the skin can also contact Mojang profile/session services and Minecraft's skin texture hosts
+through Minecraft. These services receive connection metadata, including your IP address.
 
-| Contacted | What is sent | When |
-|---|---|---|
-| `mctiers.com` | The account UUID of a player being looked up | Whenever their nametag is drawn (while a mode including MCTiers is active) and when you run `/justtiers lookup` on them. At most once per player per `tierCacheMinutes` (60 by default, configurable 5–1440), however many of those happen |
-| `subtiers.net` | The same, for SubTiers | The same |
-| `novatiers.com` | **Nothing about any player.** NovaTiers has no per-player endpoint, so the mod downloads that site's whole ranked-player list (~1.7 MB) and answers from it locally | At startup, then every 30 minutes by default (configurable, 5–1440) |
-| `api.mojang.com` | A username you typed into `/justtiers lookup` | Only when that name belongs to nobody on the server - anyone in the tab list is resolved locally with no request |
+Automatic nametag lookups stop when nametag tiers are disabled. Explicit lookup screens and
+NovaTiers' startup, scheduled and requested downloads remain available. Hiding the download
+indicator does not stop downloads. Manual refresh and failure retries can make requests before
+a cached answer's usual expiry; the cache interval is not a strict request-rate guarantee.
 
-Every request is a plain `GET`. The only identifying header is a User-Agent naming the
-mod and its version, `Just-Tiers/<version> (+https://github.com/w0x7y/Just-Tiers)`.
-Answers are cached for `tierCacheMinutes` - an hour by default - so the same player is
-asked about at most once an hour, however long you play and however many times their
-nametag is drawn. Set it higher for fewer requests, or lower to pick up a tier change
-sooner.
+Failed or malformed responses are not shown as unranked players. Retries back off, and repeated
+site failures temporarily pause new requests. Failed NovaTiers refreshes retain usable cached
+data. Its first download shows bytes and a moving bar; later percentages are estimates based
+on the last successful download's size, which can change.
 
-When a site fails, the mod backs off rather than retrying on a fixed timer: each player's
-retry delay doubles, and after eight failures in a row that site is not asked at all for
-a while, then probed with a single request to see whether it has recovered.
+Settings are saved in `config/justtiers.json`. Minecraft can cache skins on disk, errors go to
+the client log, and `/justtiers debug` writes its report to the clipboard. The mod does not send
+chat, inventory or the server address to the leaderboard APIs.
 
-The UUIDs sent are the ones the server already gave your client for the players around
-you. They are public identifiers, and the leaderboards are public pages keyed by them -
-looking a player up here sends no more than opening their page on those sites by hand.
+## Reporting problems
 
-**Turning it off.** `/justtiers toggle` stops the per-player lookups entirely, so no
-UUID leaves your machine unless you ask for one by running `/justtiers lookup`
-yourself. Be aware that the NovaTiers list download is on its own timer
-and keeps running; it is an anonymous download of a public file and carries no
-information about you or anyone else.
+Run `/justtiers debug` and include its copied report, reproduction steps and relevant logs or
+screenshots in a [GitHub issue](https://github.com/w0x7y/Just-Tiers/issues). `PAUSED` means the
+mod is waiting before probing a site that repeatedly failed. Diagnostics remain in English.
 
-The mod writes exactly one file, `config/justtiers.json`, holding your own settings. It
-reads and changes nothing else on your system.
+The [README](https://github.com/w0x7y/Just-Tiers#readme) lists all 32 supported gamemodes,
+configuration fields and contributor instructions.
 
----
+## Credits and licensing
 
-## Installation
+Just-Tiers is maintained by Idan Gilboa under the [MIT license](https://github.com/w0x7y/Just-Tiers/blob/main/LICENSE).
+MCTiers and SubTiers icon textures come from [TierTagger](https://github.com/mctiers-dev/TierTagger)
+by uku and netiyiy and retain MPL-2.0 licensing. NovaTiers icons are original project artwork
+under MIT. See [NOTICE](https://github.com/w0x7y/Just-Tiers/blob/main/NOTICE).
 
-1. Install [Fabric Loader](https://fabricmc.net/use/).
-2. Download [Fabric API](https://modrinth.com/mod/fabric-api) and put it in your `mods` folder.
-3. Download [YetAnotherConfigLib](https://modrinth.com/mod/yacl) and put it in your `mods` folder.
-4. Put the Just-Tiers jar in your `mods` folder.
+Code and documentation include AI-assisted work reviewed by the maintainer. The project's
+AI-content disclosure does not replace the third-party artwork attribution above.
 
-### Optionally
-
-* Install [ModMenu](https://modrinth.com/mod/modmenu) for a GUI access to the config.
-
-### Finally
-
-5. Launch the game.
-
----
-
-## Commands
-
-All commands are client-side and start with `/justtiers`. Everything they change is also available on the config screen - `/justtiers gui`, the Mod Menu entry, or a key of your choosing under **Controls → Just-Tiers** (unbound by default).
-
-| Command | Description |
-|---|---|
-| `/justtiers` | Show current settings, the selected gamemode per site, and how many players are in the NovaTiers index |
-| `/justtiers gui` | Open the config screen |
-| `/justtiers lookup <player>` | Look a player up on all three sites and show the result on its own screen. Tab-completes anyone on the server; offline names are resolved through Mojang |
-| `/justtiers toggle` | Turn the nametag display on or off |
-| `/justtiers mode <mode>` | Set display mode: `mctiers_only`, `subtiers_only`, `novatiers_only`, `all` |
-| `/justtiers gamemode <gamemode>` | Set the selected gamemode for the current single-site mode |
-| `/justtiers badge <position>` | Put the badge `before` or `after` the player's name |
-| `/justtiers icons` | Show or hide the gamemode icons inside the badge |
-| `/justtiers brackets` | Show or hide the `[ ]` around the badge |
-| `/justtiers ownbadge` | Show or hide the badge on your own nametag |
-| `/justtiers palette <palette>` | Set the color palette: `default`, `colorblind`, `high_contrast`, `custom` |
-| `/justtiers retired` | Show or hide retired tiers, across every display mode |
-| `/justtiers refresh` | Clear the cache and re-download tier data |
-| `/justtiers debug` | Print a per-site status report and copy it to the clipboard, for pasting into a bug report |
-
----
-
-## When something looks wrong
-
-Tiers not showing up has a handful of causes that look identical from the outside: a site
-is down, you are being rate-limited, the player genuinely is unranked, or the mod has
-stopped asking because a site failed too many times in a row.
-
-`/justtiers debug` tells them apart. It prints a line per site and copies the whole thing
-to your clipboard, it will look something like this:
-
-```
-=== Just-Tiers debug ===
-Just-Tiers *+mc26.2 | Minecraft 26.2 | Fabric Loader 0.19.3
-nametags on | mode all | cache TTL 60m
-NovaTiers index 12345 players | refresh every 30m
-MCTiers: ok | 12 ok, 0 failed | last ok 4s ago | latency 180ms last, 210ms mean | 42 cached, 1 in flight, 0 retrying
-SubTiers: PAUSED, retrying in 28s | 3 ok, 9 failed | last ok 6m ago, last fail 12s ago | latency 4.0s last, 1.2s mean | 8 cached, 0 in flight, 4 retrying
-  last error: TierLookupException: HTTP 503 from subtiers.net
-NovaTiers: ok | no lookups yet | 120 cached, 0 in flight, 0 retrying
-```
-
-`PAUSED` means the mod has stopped asking that site for a while after repeated failures,
-and says when it will try again. That is the mod protecting a struggling site, not a bug.
-
-Paste it into an issue and there is usually nothing left to ask you. The report is
-deliberately in English regardless of your game language, so it stays readable in a bug
-tracker.
-
----
-
-## Licensing
-
-### This project
-
-Just-Tiers is released under the **MIT License**. See [`LICENSE`](https://github.com/w0x7y/Just-Tiers/blob/main/LICENSE).
-
-```
-Copyright (c) 2026 Idan Gilboa
-```
-
-### Bundled third-party assets
-
-Some gamemode icon textures are taken from [TierTagger](https://github.com/mctiers-dev/TierTagger), which is licensed under the **Mozilla Public License 2.0**, Copyright © 2025 MCTiers, mctiers.com.
-
-MPL-2.0 is a file-level copyleft licence, so these files remain under MPL-2.0 even though the rest of the project is MIT. They are not relicensed, and they are attributed in the `NOTICE` file shipped with the source.
-
-| Asset | Licence | Origin |
-|---|---|---|
-| MCTiers gamemode icons (8) | MPL-2.0 | TierTagger, © MCTiers |
-| SubTiers gamemode icons (12) | MPL-2.0 | TierTagger, © MCTiers |
-| NovaTiers gamemode icons (12) | MIT | Original work, part of this project |
-| All source code | MIT | This project |
-
-A full copy of the MPL 2.0 is available at <https://mozilla.org/MPL/2.0/>.
-
-### Trademarks and affiliation
-
-Just-Tiers is an **unofficial**, community-made client mod.
-
-It is not affiliated with, endorsed by, sponsored by, or approved by MCTiers, SubTiers, NovaTiers, Mojang Studios, or Microsoft. All product names, logos, trademarks and leaderboard data are the property of their respective owners and are used here only to identify those services.
-
-If you represent one of these leaderboards and want a change to how your data, name or artwork is used, please open an issue.
-
----
-
-## AI assistance
-
-Parts of the source code and in-game text were written with the help of an AI coding
-agent, working from my design decisions and under my review; the commits that used
-one are marked as such in the Git history. The gamemode icons, the design of the mod and every choice about how it behaves are my own work, and no image on this page or inside this mod was generated by AI. The project carries Modrinth's *Contains AI-generated content*
-disclosure accordingly.
-
----
-
-## Credits
-
-- **[TierTagger](https://github.com/mctiers-dev/TierTagger)** by uku and netiyiy - the mod that inspired this one, and the source of the MCTiers and SubTiers gamemode icons.
-- **[MCTiers](https://mctiers.com)**, **[SubTiers](https://subtiers.net)** and **[NovaTiers](https://novatiers.com)** - for running the leaderboards and exposing public APIs.
-
----
-
-## Contributing
-
-If you want to contribute, you are more than welcome to do so on [GitHub](https://github.com/w0x7y/Just-Tiers).
+Thanks to MCTiers, SubTiers and NovaTiers for their leaderboards and public APIs. Just-Tiers is
+unofficial and is not affiliated with these services, Mojang or Microsoft.

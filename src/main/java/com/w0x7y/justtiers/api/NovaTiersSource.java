@@ -26,6 +26,7 @@ public final class NovaTiersSource implements TierSource {
 
     private volatile CompletableFuture<Map<UUID, Map<String, Tier>>> index;
     private volatile int indexedPlayerCount;
+    private CompletableFuture<Void> refreshInFlight;
 
     public NovaTiersSource(HttpClient client, String baseUrl) {
         this(client, baseUrl, new DownloadProgress());
@@ -72,17 +73,23 @@ public final class NovaTiersSource implements TierSource {
     /**
      * Downloads the list again. A failed refresh keeps the index we already have rather
      * than replacing it with nothing, so a site outage cannot blank every NovaTiers badge
-     * until the next successful refresh. The returned future never fails; it only signals
-     * that the attempt has finished.
+     * until the next successful refresh. Concurrent callers share the current download.
+     * The returned future reports its failure even when lookups retain the old index,
+     * so callers can show an honest refresh result and avoid invalidating good cache data.
      */
     public synchronized CompletableFuture<Void> refresh() {
+        if (refreshInFlight != null && !refreshInFlight.isDone()) {
+            return refreshInFlight;
+        }
         index = loadIndex(usableIndex());
-        return index.handle((idx, error) -> null);
+        return refreshInFlight;
     }
 
     private CompletableFuture<Map<UUID, Map<String, Tier>>> loadIndex(
             CompletableFuture<Map<UUID, Map<String, Tier>>> previous) {
         CompletableFuture<Map<UUID, Map<String, Tier>>> fresh = download();
+        // Both initial loading and explicit refreshes claim this same future.
+        refreshInFlight = fresh.thenApply(ignored -> null);
         if (previous == null) {
             // Nothing worth keeping yet, so let the failure surface to the caller.
             return fresh;
@@ -109,11 +116,6 @@ public final class NovaTiersSource implements TierSource {
                     }
                     String body = response.body();
                     Map<UUID, Map<String, Tier>> parsed = NovaParser.parseUsers(body);
-                    if (TierSource.nothingUnderstood(parsed, body)) {
-                        JustTiers.LOGGER.warn(
-                                "NovaTiers answered HTTP 200 but nothing was understood; "
-                                        + "the response schema may have changed");
-                    }
                     JustTiers.LOGGER.info("Indexed {} NovaTiers players", parsed.size());
                     indexedPlayerCount = parsed.size();
                     return parsed;

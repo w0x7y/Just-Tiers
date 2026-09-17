@@ -6,4 +6,8 @@ public class TierLookupException extends RuntimeException {
     public TierLookupException(String message) {
         super(message);
     }
+
+    public TierLookupException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

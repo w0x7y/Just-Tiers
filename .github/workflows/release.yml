@@ -8,9 +8,22 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  release:
+  lint-workflows:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check GitHub Actions workflows
+        uses: docker://rhysd/actionlint:1.7.7
+
+  release:
+    needs: lint-workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,6 +43,7 @@ jobs:
       # metadata contradicts the release it is attached to, and Modrinth would take it.
       # Cheaper to stop here than to yank a version.
       - name: Check the tag against mod_version
+        id: release-metadata
         run: |
           tagged="${GITHUB_REF_NAME#v}"
           declared="$(grep '^mod_version=' gradle.properties | cut -d= -f2 | tr -d '[:space:]')"
@@ -38,6 +52,12 @@ jobs:
             exit 1
           fi
           echo "releasing $declared"
+          release_type="$(grep '^release_type=' gradle.properties | cut -d= -f2 | tr -d '[:space:]')"
+          case "$release_type" in
+            release) echo 'prerelease=false' >> "$GITHUB_OUTPUT" ;;
+            alpha|beta) echo 'prerelease=true' >> "$GITHUB_OUTPUT" ;;
+            *) echo "::error::unknown release_type=$release_type"; exit 1 ;;
+          esac
 
       - name: Build and test
         run: ./gradlew build --stacktrace
@@ -55,7 +75,12 @@ jobs:
           fi
           {
             echo 'CHANGELOG<<CHANGELOG_EOF'
-            git log --no-merges --pretty=format:'- %s' "$range"
+            release_notes="docs/releases/${GITHUB_REF_NAME}.md"
+            if [ -f "$release_notes" ]; then
+              cat "$release_notes"
+            else
+              git log --no-merges --pretty=format:'- %s' "$range"
+            fi
             echo
             echo 'CHANGELOG_EOF'
           } >> "$GITHUB_ENV"
@@ -68,6 +93,7 @@ jobs:
       - name: Publish the GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PRERELEASE: ${{ steps.release-metadata.outputs.prerelease }}
         run: |
           # The mod jar only. build/libs also holds the sources jar, and a sources jar
           # dropped into a mods folder fails to load — not something to hand someone on
@@ -79,10 +105,12 @@ jobs:
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             echo "release $GITHUB_REF_NAME already exists; replacing its files"
             gh release upload "$GITHUB_REF_NAME" $jar --clobber
+            gh release edit "$GITHUB_REF_NAME" --prerelease="$PRERELEASE"
           else
             gh release create "$GITHUB_REF_NAME" \
               --title "$GITHUB_REF_NAME" \
               --notes "$CHANGELOG" \
+              --prerelease="$PRERELEASE" \
               $jar
           fi
 

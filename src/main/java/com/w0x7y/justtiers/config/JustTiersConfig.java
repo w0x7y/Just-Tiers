@@ -12,9 +12,11 @@ import com.w0x7y.justtiers.tier.Source;
 
 import java.io.IOException;
 import java.io.Reader;
-import java.io.Writer;
+import java.io.UncheckedIOException;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
@@ -289,17 +291,39 @@ public class JustTiersConfig {
         }
     }
 
+    /** Independent draft for a settings screen; Cancel never mutates the live config. */
+    public JustTiersConfig copy() {
+        return GSON.fromJson(GSON.toJson(this), JustTiersConfig.class);
+    }
+
     public void save(Path path) {
+        // Serialize before touching disk, so even a serialization failure preserves the
+        // last saved configuration. A sibling file permits an atomic replacement.
+        String json = GSON.toJson(this);
+        Path temporary = null;
         try {
-            Path parent = path.getParent();
-            if (parent != null) {
-                Files.createDirectories(parent);
-            }
-            try (Writer writer = Files.newBufferedWriter(path)) {
-                GSON.toJson(this, writer);
+            Path destination = path.toAbsolutePath();
+            Path parent = destination.getParent();
+            Files.createDirectories(parent);
+            temporary = Files.createTempFile(parent, ".justtiers-", ".tmp");
+            Files.writeString(temporary, json);
+            try {
+                Files.move(temporary, destination, StandardCopyOption.ATOMIC_MOVE,
+                        StandardCopyOption.REPLACE_EXISTING);
+            } catch (AtomicMoveNotSupportedException unsupported) {
+                Files.move(temporary, destination, StandardCopyOption.REPLACE_EXISTING);
             }
         } catch (IOException e) {
             JustTiers.LOGGER.warn("Could not save config to {}", path, e);
+            throw new UncheckedIOException("Could not save Just-Tiers settings", e);
+        } finally {
+            if (temporary != null) {
+                try {
+                    Files.deleteIfExists(temporary);
+                } catch (IOException cleanup) {
+                    JustTiers.LOGGER.warn("Could not remove temporary config {}", temporary, cleanup);
+                }
+            }
         }
     }
 }

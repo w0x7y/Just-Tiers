@@ -1,73 +1,35 @@
-# 1. TierCache keeps its own observability accessors
+# 1. Keep cache observability in the cache
 
-Date: 2026-08-19
-
-## Status
-
-Accepted
+Date: 2026-08-19. Status: accepted, reviewed 2026-09-17.
 
 ## Context
 
-`TierCache` exposes five accessors that answer nothing about tiers:
-
-```java
-SiteHealth.Snapshot health(Source source);
-SiteGate.Status     gateStatus(Source source);
-int                 cachedPlayers(Source source);
-int                 pendingLookups(Source source);
-int                 playersAwaitingRetry(Source source);
-```
-
-Exactly one production caller uses them, and it folds all five straight
-back into a single record:
-
-```java
-sites.add(new SiteDiagnostics(source,
-        cache.health(source), cache.gateStatus(source),
-        cache.cachedPlayers(source), cache.pendingLookups(source),
-        cache.playersAwaitingRetry(source)));
-```
-
-Read that way it looks like an interface widened for one consumer, and
-the obvious repair is `TierCache.diagnostics(source)` returning the
-record the caller was going to build anyway.
-
-An architecture review raised it as a candidate on exactly that reading.
+TierCache exposes site health, gate status, cached-player count, pending-lookup count and
+players awaiting retry. CacheDiagnostics assembles these into the debug report. Returning
+a SiteDiagnostics record straight from TierCache would shorten that one caller, but make
+the cache depend on its reporting consumer.
 
 ## Decision
 
-The accessors stay. `TierCache` does not learn what a `SiteDiagnostics`
-is.
+Keep the five accessors on TierCache. They expose cache state without choosing the format
+of a diagnostic report. Keep assembly in debug/CacheDiagnostics and test it with distinct
+cached, pending and retrying counts so accidentally swapped fields fail a test.
 
 ## Consequences
 
-**They are the test surface, not debug leakage.** Seventeen call sites
-across seven `TierCacheTest` cases assert the cache's asynchronous
-behaviour through them, and could not assert it any other way:
+The accessors also let asynchronous cache tests observe request state without blocking or
+starting another fetch. Reading diagnostics must not spend a recovery probe or mutate the
+cache. Refresh resets current retry/gate state while preserving completed-request history;
+obsolete callbacks may contribute history but must not reapply superseded retry decisions.
 
-- `inFlightLookupsAreCountedSeparatelyFromSettledOnes`
-- `playersWaitingOutARetryAreCountedWhileTheyWait`
-- `theGateIsVisibleOnceItHasGivenUpOnASite`
-- `refreshingReopensTheGateWithoutRewritingHistory`
-- `aFailureIsTimedAndItsReasonKept`
-- `aSuccessIsTimedFromWhenTheRequestWentOut`
-- `aSiteNobodyHasAskedReportsNothingRatherThanThrowing`
+The cache remains independent of debug presentation. The count named cachedPlayers includes
+entries still pending, so reports must distinguish that total from its in-flight subset.
+Time-based fields describe readings and should not be compared as whole snapshots taken
+at different times. Drive a clock explicitly when testing time boundaries.
 
-A module whose state is a set of in-flight futures, retry deadlines and
-a circuit breaker is only verifiable if it will say what it is holding.
-Counting production callers alone gets this backwards.
+## References
 
-**The repair inverts a dependency.** `TierCache.diagnostics(source)`
-would make `cache/` import `debug/` — the module that fetches and caches
-depending on the module that formats a bug report. Moving
-`SiteDiagnostics` into `cache/` instead would hand a low-level module
-ownership of a reporting concept. Either trade buys about six lines in
-one caller.
-
-**What the review did find.** `SiteDiagnostics` ends in three adjacent
-`int` parameters and nothing tested the mapping, so transposing
-`pendingLookups` and `playersAwaitingRetry` would have left every test
-green and the debug report quietly wrong. That is a defect in the
-assembly, not in the interface, so the assembly moved to
-`debug/CacheDiagnostics` where it is tested against a real cache. The
-accessors were not touched.
+- [TierCache](../../src/main/java/com/w0x7y/justtiers/cache/TierCache.java)
+- [CacheDiagnostics](../../src/main/java/com/w0x7y/justtiers/debug/CacheDiagnostics.java)
+- [CacheDiagnosticsTest](../../src/test/java/com/w0x7y/justtiers/debug/CacheDiagnosticsTest.java)
+- [Current contributor guidance](../../CLAUDE.md)
