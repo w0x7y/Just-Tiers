@@ -1,0 +1,99 @@
+name: Replace Modrinth version
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_id:
+        description: Existing Modrinth version ID to delete and replace
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: modrinth-replace-version
+  cancel-in-progress: false
+
+jobs:
+  replace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: gradle/actions/wrapper-validation@v6.3.0
+      - uses: actions/setup-java@v6.0.1
+        with:
+          java-version: '25'
+          distribution: temurin
+      - uses: gradle/actions/setup-gradle@v6.3.0
+      - name: Build and test the replacement
+        run: ./gradlew build --stacktrace
+      - name: Verify the replacement JAR and the version to delete
+        env:
+          VERSION_ID: ${{ inputs.version_id }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import struct
+          import urllib.parse
+          import urllib.request
+          import zipfile
+          from pathlib import Path
+
+          properties = dict(
+              line.split('=', 1) for line in Path('gradle.properties').read_text().splitlines()
+              if '=' in line and not line.startswith('#')
+          )
+          version = properties['mod_version'] + '+mc' + properties['minecraft_version']
+          jars = [path for path in Path('build/libs').glob('*.jar')
+                  if not path.name.endswith('-sources.jar')]
+          assert len(jars) == 1, 'Expected exactly one distributable JAR'
+          with zipfile.ZipFile(jars[0]) as jar:
+              metadata = json.loads(jar.read('fabric.mod.json'))
+              assert metadata['version'] == version
+              icon = jar.read(metadata['icon'])
+              assert icon[:8] == b'\x89PNG\r\n\x1a\n'
+              assert struct.unpack('>II', icon[16:24]) == (32, 32)
+              assert len(icon) < 4096, 'Packaged icon must stay below 4 KiB'
+
+          version_id = urllib.parse.quote(os.environ['VERSION_ID'], safe='')
+          request = urllib.request.Request(
+              'https://api.modrinth.com/v2/version/' + version_id,
+              headers={'User-Agent': 'w0x7y/Just-Tiers (release replacement)'}
+          )
+          with urllib.request.urlopen(request, timeout=30) as response:
+              existing = json.load(response)
+          assert existing['project_id'] == properties['modrinth_id'], 'Wrong project'
+          assert existing['version_number'] == version, 'Wrong version'
+          old_size = next(file['size'] for file in existing['files'] if file['primary'])
+          new_size = jars[0].stat().st_size
+          assert new_size < old_size, 'Replacement must be smaller'
+          print(f'JAR size: {old_size} -> {new_size} bytes; icon: {len(icon)} bytes')
+          Path('build/replaced-modrinth-version.json').write_text(json.dumps(existing, indent=2))
+          PY
+      - name: Preserve the verified replacement before deleting the old version
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: modrinth-replacement-${{ github.sha }}
+          path: |
+            build/libs/*.jar
+            build/replaced-modrinth-version.json
+          if-no-files-found: error
+      - name: Delete the verified old version and publish the replacement
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          VERSION_ID: ${{ inputs.version_id }}
+        run: |
+          test -n "$MODRINTH_TOKEN"
+          version="$(sed -n 's/^mod_version=//p' gradle.properties | tr -d '[:space:]')"
+          CHANGELOG="$(cat "docs/releases/v${version}.md")"
+          export CHANGELOG
+          curl --fail-with-body --silent --show-error \
+            --connect-timeout 15 --max-time 90 \
+            --request DELETE \
+            --header "Authorization: $MODRINTH_TOKEN" \
+            --header 'User-Agent: w0x7y/Just-Tiers (release replacement)' \
+            "https://api.modrinth.com/v2/version/$VERSION_ID"
+          ./gradlew modrinth --stacktrace
