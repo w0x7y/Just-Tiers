@@ -1,0 +1,35 @@
+name: Sync Modrinth icon
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: modrinth-icon
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Upload the selected project icon
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+        run: |
+          test -n "$MODRINTH_TOKEN"
+          icon='Modrinth/Assets/Icon-modrinth.png'
+          test "$(wc -c < "$icon")" -le 262144
+          project_id="$(sed -n 's/^modrinth_id=//p' gradle.properties | tr -d '[:space:]')"
+          test -n "$project_id"
+          curl --fail-with-body --silent --show-error \
+            --connect-timeout 15 --max-time 90 \
+            --request PATCH \
+            --header "Authorization: $MODRINTH_TOKEN" \
+            --header 'Content-Type: image/png' \
+            --header 'User-Agent: w0x7y/Just-Tiers (Modrinth icon sync)' \
+            --data-binary "@$icon" \
+            "https://api.modrinth.com/v2/project/$project_id/icon?ext=png"
