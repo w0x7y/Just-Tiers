@@ -6,8 +6,8 @@ Just-Tiers is a client-side Fabric mod that adds competitive PvP tiers to Minecr
 nametags using [MCTiers](https://mctiers.com), [SubTiers](https://subtiers.net) and
 [NovaTiers](https://novatiers.com). The mod is in beta.
 
-Version 1.1.3 adds the new bracketed JT icon and includes it in the mod metadata for ModMenu.
-See the [release notes](docs/releases/v1.1.3.md).
+Version 1.1.4 compresses all 33 packaged images to reduce the mod download size.
+See the [release notes](docs/releases/v1.1.4.md).
 
 ## What it shows
 
