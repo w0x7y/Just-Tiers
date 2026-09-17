@@ -6,11 +6,11 @@ Fabric API for 26.2 and YetAnotherConfigLib 3.9.4 or newer for 26.2. ModMenu is 
 
 ![Nametag showcase](https://cdn.modrinth.com/data/8zkz6d1C/images/195de1f0351ecc64b1d7505f03aa71a3ef173b35.jpeg)
 
-## New in 1.1.2
+## New in 1.1.3
 
-Safer config saves with retry and Undo, more reliable tier lookups, keyboard-accessible
-pickers and links, and scrolling results in small windows. You can edit or retry a player
-lookup without leaving the screen. [Full release notes](https://github.com/w0x7y/Just-Tiers/blob/main/docs/releases/v1.1.2.md).
+The new bracketed JT icon uses yellow, cyan and purple to represent the three leaderboards.
+The icon is now included in the mod metadata for ModMenu.
+[Full release notes](https://github.com/w0x7y/Just-Tiers/blob/main/docs/releases/v1.1.3.md).
 
 ## What you can do
 
