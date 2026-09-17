@@ -1,0 +1,13 @@
+Generated using the built-in image_gen tool.
+
+Concept 1
+Use case: logo-brand.
+Create ONE square standalone icon for Just-Tiers, a Minecraft mod that displays PvP rank badges from three leaderboards over player names. Concept 1: stacked tier badge.
+A centered compact stack of exactly three horizontal pixel nametag plates, each offset upward and right behind the plate in front. Back plate outlined in purple #AA55FF, middle plate outlined in cyan #55FFFF, front plate outlined in yellow #FFFF55. Dark charcoal plate interiors. Front plate has very large ivory pixel lettering reading exactly "HT1". Rear plates are blank, visible enough to clearly count three plates. Thick stepped pixel corners and bold clean outlines, restrained pixel bevel highlights, slight dark offset pixel shadow. Flat frontal view, not isometric. Minecraft inventory icon aesthetic refined into a distinctive logo, crisp coarse pixel grid, no smooth rounded corners.
+Background solid near-black charcoal #111318, edge to edge. Badge fills about 80 percent of canvas width with ample breathing room. Square 1024x1024 composition. Readable at tiny 32x32 thumbnail size. No weapons, scenery, player heads, extra text, captions, watermarks, mockup frames, gradients or bloom. Deliver only this single icon.
+
+Concept 3
+Use case: logo-brand.
+Create ONE square standalone icon for Just-Tiers, a Minecraft mod that displays competitive PvP tiers in nametags. Concept 3: bracketed JT.
+The entire mark reads exactly "[JT]" in a bold custom geometric pixel font. Very large yellow #FFFF55 J and cyan #55FFFF T, framed by purple #AA55FF square brackets. Make both letters thick, beautifully spaced and unmistakable: the J has a clear hooked lower stroke; the T has a wide horizontal cap. Brackets tall and thick with squared horizontal tips. All shapes align to a crisp coarse pixel grid, with strong dark negative gaps between brackets and letters. A single restrained darker pixel extrusion offset down and right adds subtle Minecraft inventory depth without distracting from the flat front faces.
+Centered balanced mark on solid near-black charcoal #111318 background edge to edge. Symbol fills approximately 80 percent of canvas width. Square 1024x1024. Deliberately simple and legible at 32x32. No extra words, shields, badges, weapons, scenery, gradients, glow, smooth rounded corners, watermarks, mockup frames or captions. Deliver only this single icon.

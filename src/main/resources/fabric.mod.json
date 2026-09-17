@@ -3,6 +3,7 @@
   "id": "justtiers",
   "version": "${version}",
   "name": "Just-Tiers",
+  "icon": "assets/justtiers/icon.png",
   "description": "Displays a player's PvP tier in their nametag, from MCTiers, SubTiers and NovaTiers.",
   "authors": ["Idan Gilboa"],
   "contact": { "sources": "https://github.com/w0x7y/Just-Tiers" },
