@@ -6,8 +6,8 @@ Just-Tiers is a client-side Fabric mod that adds competitive PvP tiers to Minecr
 nametags using [MCTiers](https://mctiers.com), [SubTiers](https://subtiers.net) and
 [NovaTiers](https://novatiers.com). The mod is in beta.
 
-Version 1.1.4 compresses all 33 packaged images to reduce the mod download size.
-See the [release notes](docs/releases/v1.1.4.md).
+Version 1.1.5 adds builds for Minecraft 1.21.11, 26.1, 26.1.1, 26.1.2 and 26.3
+alongside 26.2. See the [release notes](docs/releases/v1.1.5.md).
 
 ## What it shows
 
@@ -31,16 +31,23 @@ leaves that site's part of the badge absent. The tab list and chat are unchanged
 
 ## Install
 
-Use Minecraft 26.2 with Java 25, Fabric Loader 0.19 or newer, and versions of
-[Fabric API](https://modrinth.com/mod/fabric-api) and
-[YetAnotherConfigLib](https://modrinth.com/mod/yacl) built for Minecraft 26.2.
-YACL 3.9.4 or newer is required. [ModMenu](https://modrinth.com/mod/modmenu) is optional.
-The exact dependency versions used to build this project are in [gradle.properties](gradle.properties).
+Use the Just-Tiers JAR labeled for your exact Minecraft version, with Fabric Loader
+0.19 or newer and matching versions of [Fabric API](https://modrinth.com/mod/fabric-api)
+and [YetAnotherConfigLib](https://modrinth.com/mod/yacl).
+[ModMenu](https://modrinth.com/mod/modmenu) is optional.
+Minecraft 26.3 requires Fabric Loader 0.19.5 or newer.
 
-Put the Just-Tiers mod JAR and its required dependencies in the instance's `mods` folder.
-Use the JAR without `-sources` in its filename. Nothing needs installing on the server.
-The metadata declares Minecraft `~26.2`; compatibility with other release lines has not
-been established.
+| Minecraft | Java | Minimum YACL |
+|---|---|---|
+| 1.21.11 | 21 | 3.8.2 for 1.21.11 |
+| 26.1, 26.1.1, 26.1.2 | 25 | 3.9.4 for 26.1 |
+| 26.2 | 25 | 3.9.4 for 26.2 |
+| 26.3 | 25 | 3.9.7 for 26.3 |
+
+Put one Just-Tiers mod JAR and its required dependencies in the instance's `mods` folder.
+Use the JAR without `-sources` or `-dev` in its filename. Nothing needs installing on the
+server. Each JAR declares its exact Minecraft target. Dependency pins are in
+[gradle/targets](gradle/targets).
 
 ## Commands
 
@@ -215,11 +222,20 @@ cd Just-Tiers
 ./gradlew build
 ./gradlew test
 ./gradlew runClient
+# Build or run another target:
+./gradlew build -Pminecraft_version=1.21.11
+./gradlew runClient -Pminecraft_version=26.1.2
 ```
 
-On Windows use `gradlew.bat`. `build` runs checks and packages the mod in `build/libs/`.
-Minecraft 26.2 is unobfuscated, so the normal JAR is the distributable artifact.
-The sources JAR is for developers. The build pins Loom and declares its dependency repositories.
+On Windows use `gradlew.bat`. `build` runs checks and packages the mod in
+`build/<minecraft-version>/libs/`. The default target remains 26.2. Supported targets are
+1.21.11, 26.1, 26.1.1, 26.1.2, 26.2 and 26.3. Gradle provisions the target's compiler,
+including Java 21 for 1.21.11. Each target has separate generated sources and build outputs.
+
+The 1.21.11 build uses Mojang mappings and Loom's `remapJar`; 26.x builds are unobfuscated.
+Use the normal JAR in the target's `libs` folder. Development JARs and sources JARs are not
+installable mods. See [the compatibility guide](docs/minecraft-compatibility.md) for how
+API differences are handled and how to verify every target.
 
 Tests cover parsing, caching, retries, persistence, tier selection, badge composition,
 progress state, lookup reports and screen geometry. Resource contract tests also verify the

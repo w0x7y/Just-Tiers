@@ -17,7 +17,6 @@ import dev.isxander.yacl3.api.LabelOption;
 import dev.isxander.yacl3.api.Option;
 import dev.isxander.yacl3.api.OptionDescription;
 import dev.isxander.yacl3.api.OptionGroup;
-import dev.isxander.yacl3.api.StateManager;
 import net.minecraft.client.Minecraft;
 import dev.isxander.yacl3.api.YetAnotherConfigLib;
 import dev.isxander.yacl3.api.controller.ColorControllerBuilder;
@@ -49,7 +48,7 @@ public final class JustTiersScreens {
     private static final int REFRESH_STEP_MINUTES = 5;
 
     public static Screen create(Screen parent) {
-        JustTiersConfig config = JustTiersClient.config().copy();
+        JustTiersConfig config = JustTiersClient.settings().draft();
 
         Option<Boolean> enabled = tickBox("justtiers.option.enabled",
                 config::isEnabled, config::setEnabled);
@@ -169,7 +168,7 @@ public final class JustTiersScreens {
                         colorPickers, pickers))
                 .category(dataCategory(config))
                 .category(aboutCategory())
-                .save(() -> JustTiersClient.saveConfig(config))
+                .save(() -> JustTiersClient.settings().commitDraft(config))
                 .build();
         return new ConfigScreen(library, parent);
     }
@@ -326,10 +325,9 @@ public final class JustTiersScreens {
         };
     }
 
-    /** Read-only state whose mapped value is sampled whenever YACL draws the label. */
+    /** Read-only state sampled whenever YACL draws the label. */
     private static LabelOption liveLabel(Supplier<Component> text) {
-        return LabelOption.createBuilder().state(StateManager.createImmutable(text)
-                .xmap(Supplier::get, value -> () -> value)).build();
+        return LabelOption.createBuilder().state(new LiveLabelState<>(text)).build();
     }
 
     /**

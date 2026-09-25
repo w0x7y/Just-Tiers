@@ -38,7 +38,6 @@ public final class JustTiersKeybinds {
     public static void register() {
         openConfig = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.justtiers.open_config",
-                InputConstants.Type.KEYSYM,
                 InputConstants.UNKNOWN.getValue(),
                 CATEGORY));
 

@@ -47,7 +47,7 @@ jobs:
               if '=' in line and not line.startswith('#')
           )
           version = properties['mod_version'] + '+mc' + properties['minecraft_version']
-          jars = [path for path in Path('build/libs').glob('*.jar')
+          jars = [path for path in (Path('build') / properties['minecraft_version'] / 'libs').glob('*.jar')
                   if not path.name.endswith('-sources.jar')]
           assert len(jars) == 1, 'Expected exactly one distributable JAR'
           with zipfile.ZipFile(jars[0]) as jar:
@@ -72,19 +72,20 @@ jobs:
           assert new_size < old_size, 'Replacement must be smaller'
           print(f'JAR size: {old_size} -> {new_size} bytes; icon: {len(icon)} bytes')
           Path('build/replaced-modrinth-version.json').write_text(json.dumps(existing, indent=2))
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as output:
+              output.write(f'ENCODED_VERSION_ID={version_id}\n')
           PY
       - name: Preserve the verified replacement before deleting the old version
         uses: actions/upload-artifact@v7.0.1
         with:
           name: modrinth-replacement-${{ github.sha }}
           path: |
-            build/libs/*.jar
+            build/*/libs/*.jar
             build/replaced-modrinth-version.json
           if-no-files-found: error
       - name: Delete the verified old version and publish the replacement
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
-          VERSION_ID: ${{ inputs.version_id }}
         run: |
           test -n "$MODRINTH_TOKEN"
           version="$(sed -n 's/^mod_version=//p' gradle.properties | tr -d '[:space:]')"
@@ -95,5 +96,5 @@ jobs:
             --request DELETE \
             --header "Authorization: $MODRINTH_TOKEN" \
             --header 'User-Agent: w0x7y/Just-Tiers (release replacement)' \
-            "https://api.modrinth.com/v2/version/$VERSION_ID"
+            "https://api.modrinth.com/v2/version/$ENCODED_VERSION_ID"
           ./gradlew modrinth --stacktrace
