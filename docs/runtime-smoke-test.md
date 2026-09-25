@@ -26,12 +26,49 @@ indicator in-world. The host lacked the `flite` speech library, so narration con
 checked but audible output was not. This evidence does not mark the whole checklist complete.
 Record new game/mod versions, GUI sizes, input method and results for future releases.
 
+## September 25 compatibility checks
+
+All six targets, 1.21.11, 26.1, 26.1.1, 26.1.2, 26.2 and 26.3, passed a local
+development-client smoke run with the dependencies in `gradle/targets/`. The 1.21.11
+client used Java 21; the others used Java 25. Loader was 0.19.3 except on 26.3, which
+used 0.19.5. A temporary test mod in a disposable instance loaded the player class to
+exercise mixin transformation, then opened the configuration screen, gamemode grid
+and invalid-name lookup screen, leaving each visible for 40 client ticks before
+exiting. Every client reached the final success marker without a rendering crash.
+
+The first 26.3 run failed with Loader 0.19.3's MixinExtras 0.5.4 during YACL mixin
+transformation. Loader 0.19.5's MixinExtras 0.5.5 passed the same run; the 26.3 mod
+metadata now requires that loader version. The smoke test mod was not packaged in
+any distributable JAR. The host still lacks `flite`, so audible narration was not
+tested. These checks did not exercise multiplayer nametags, authenticated skin
+lookups, ModMenu, or the full keyboard and resize checklist below.
+
+## September 25 architecture refactor checks
+
+After the settings, lookup and target-policy refactors, all six targets passed again
+with 444 JUnit tests per target, packaged metadata/bytecode validation and a fresh
+development-client run. The disposable test instance opened the config screen, grid
+and invalid-name lookup and loaded the player class to exercise mixin transformation.
+
+The extended client harness changed a real YACL option and checked draft isolation,
+then deliberately blocked config-file replacement. The failed Save preserved active
+settings and kept the screen retryable. After removing the obstruction, retry changed
+both active settings and the saved file and cleared the pending state. The harness
+also checked the translated lookup error in the screen's narration text. These checks
+passed on 1.21.11, 26.1, 26.1.1, 26.1.2, 26.2 and 26.3. The harness and disposable game
+directories remained outside the repository and distributable JARs.
+
+The previously listed limits still apply: multiplayer rendering, ModMenu, authenticated
+skins, audible narration and the full keyboard/resize checklist were not exercised by
+this run.
+
 ## Setup
 
-Use a disposable Minecraft 26.2 instance with Java 25, Fabric Loader, Fabric API and YACL
-matching the project dependencies. Test once without ModMenu, then with it. Keep a copy of
+Use a disposable instance of the Minecraft target with the Java, Fabric Loader, Fabric
+API and YACL versions in `gradle/targets/`. Test once without ModMenu, then with it. Keep a copy of
 any config you care about before testing write failures. A development instance can be
-started with `./gradlew runClient` after a JDK is available on PATH or through JAVA_HOME.
+started with `./gradlew runClient -Pminecraft_version=<version>` after a JDK is available
+on PATH or through JAVA_HOME.
 
 ## Nametags and assets
 

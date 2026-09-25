@@ -44,7 +44,7 @@ import java.util.OptionalInt;
  * where they have no listed placement.
  *
  * <p>Rows fill in one at a time as their site answers. Everything the screen draws lives
- * in a {@link LookupSession}, so this class only ever reads and never waits.
+ * in a {@link MinecraftLookupSession}, so this class only ever reads and never waits.
  *
  * <p>Unlike the nametag, this screen always draws the gamemode icons: on a nametag an
  * icon says which gamemode earned a tier, but here it is the only thing naming the
@@ -76,7 +76,7 @@ public final class PlayerLookupScreen extends Screen {
     private static final String SITE_SEPARATOR = " · ";
     private static final int SKIN_SIZE = 64;
 
-    private LookupSession session;
+    private MinecraftLookupSession session;
     private EditBox nameField;
     private Button lookupButton;
     private int scroll;
@@ -92,7 +92,7 @@ public final class PlayerLookupScreen extends Screen {
 
     public PlayerLookupScreen(String name) {
         super(Component.translatable("justtiers.lookup.header", name));
-        this.session = LookupSession.start(name);
+        this.session = MinecraftLookupSession.start(name);
     }
 
     @Override
@@ -357,7 +357,7 @@ public final class PlayerLookupScreen extends Screen {
     private void startLookup() {
         String name = nameField.getValue().trim();
         if (name.isEmpty()) return;
-        session = LookupSession.start(name);
+        session = MinecraftLookupSession.start(name);
         scroll = 0;
         updateContentControls();
     }
@@ -380,7 +380,8 @@ public final class PlayerLookupScreen extends Screen {
             CreditLine.Span span = credit.spans().get(i);
             ContentControl control = new ContentControl(span.x(), layout.footerY(),
                     span.width(), font.lineHeight, Component.translatable("justtiers.lookup.visitSite",
-                    source.displayName()), () -> ConfirmLinkScreen.confirmLinkNow(this, source.homeUrl()));
+                    source.displayName()), () -> ConfirmLinkScreen.confirmLinkNow(
+                            this, java.net.URI.create(source.homeUrl())));
             links.add(control);
             contentControls.add(addWidget(control));
         }

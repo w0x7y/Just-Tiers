@@ -1,26 +1,42 @@
+import net.fabricmc.loom.api.LoomGradleExtensionAPI
+
 plugins {
-    id("net.fabricmc.fabric-loom") version "1.17.21"
+    id("net.fabricmc.fabric-loom") version "1.17.21" apply false
+    id("net.fabricmc.fabric-loom-remap") version "1.17.21" apply false
     id("com.modrinth.minotaur") version "2.9.0"
     id("java")
 }
 
-version = "${property("mod_version")}+mc${property("minecraft_version")}"
+val minecraftVersion = property("minecraft_version").toString()
+apply(from = "gradle/target-policy.gradle.kts")
+@Suppress("UNCHECKED_CAST")
+val target = extra["minecraftTarget"] as Map<String, String>
+fun targetProperty(name: String) = target.getValue(name)
+val remapped = targetProperty("mapping_strategy") == "intermediary"
+val javaVersion = targetProperty("java_version").toInt()
+val loaderVersion = targetProperty("loader_version")
+apply(plugin = if (remapped) "net.fabricmc.fabric-loom-remap" else "net.fabricmc.fabric-loom")
+layout.buildDirectory.set(layout.projectDirectory.dir("build/$minecraftVersion"))
+version = "${property("mod_version")}+mc$minecraftVersion"
 group = property("maven_group")!!
 
 base { archivesName = property("archives_base_name") as String }
 
 java {
-    toolchain.languageVersion = JavaLanguageVersion.of(25)
+    toolchain.languageVersion = JavaLanguageVersion.of(javaVersion)
     withSourcesJar()
 }
 
 tasks.withType<JavaCompile>().configureEach {
     options.encoding = "UTF-8"
-    options.release = 25
+    options.release = javaVersion
 }
 
 repositories {
     mavenCentral()
+    maven("https://api.modrinth.com/maven") {
+        content { includeGroup("maven.modrinth") }
+    }
     maven("https://maven.fabricmc.net/")
     maven("https://maven.terraformersmc.com/releases/")
     // YACL's org.quiltmc.parsers transitives are not mirrored to Maven Central.
@@ -28,12 +44,16 @@ repositories {
 }
 
 dependencies {
-    minecraft("com.mojang:minecraft:${property("minecraft_version")}")
-    implementation("net.fabricmc:fabric-loader:${property("loader_version")}")
-    implementation("net.fabricmc.fabric-api:fabric-api:${property("fabric_api_version")}")
-    implementation("dev.isxander:yet-another-config-lib:${property("yacl_version")}")
-    // Only loaded when ModMenu is installed, so it never becomes a runtime dependency.
-    compileOnly("com.terraformersmc:modmenu:${property("modmenu_version")}")
+    add("minecraft", "com.mojang:minecraft:$minecraftVersion")
+    if (remapped) {
+        add("mappings", project.extensions.getByType<LoomGradleExtensionAPI>().officialMojangMappings())
+    }
+    val modImplementation = if (remapped) "modImplementation" else "implementation"
+    add(modImplementation, "net.fabricmc:fabric-loader:$loaderVersion")
+    add(modImplementation, "net.fabricmc.fabric-api:fabric-api:${targetProperty("fabric_api_version")}")
+    add(modImplementation, targetProperty("yacl_dependency"))
+    // Only loaded when ModMenu is installed.
+    add(if (remapped) "modCompileOnly" else "compileOnly", targetProperty("modmenu_dependency"))
     compileOnly("io.github.llamalad7:mixinextras-common:0.5.4")
     annotationProcessor("io.github.llamalad7:mixinextras-common:0.5.4")
 
@@ -48,11 +68,20 @@ tasks.test {
     inputs.dir("src/main/java")
 }
 
-val resourceVersion = project.version.toString()
+// API renames are applied to a generated copy; the authored source stays on 26.2.
+apply(from = "gradle/compatibility.gradle.kts")
+
+val resourceProperties = mapOf(
+    "version" to project.version.toString(),
+    "minecraft" to minecraftVersion,
+    "java" to javaVersion.toString(),
+    "loader" to targetProperty("loader_min_version"),
+    "yacl" to targetProperty("yacl_min_version")
+)
 tasks.processResources {
-    inputs.property("version", resourceVersion)
-    filesMatching(listOf("fabric.mod.json", "justtiers-version.properties")) {
-        expand("version" to resourceVersion)
+    inputs.properties(resourceProperties)
+    filesMatching(listOf("fabric.mod.json", "justtiers-version.properties", "justtiers.mixins.json")) {
+        expand(resourceProperties)
     }
 }
 
@@ -62,8 +91,7 @@ tasks.processResources {
 // unless the task is asked for by name, so a contributor without a token is unaffected.
 modrinth {
     projectId.set(property("modrinth_id") as String)
-    // The full "1.0.2+mc26.2", so two builds of one mod version for different Minecraft
-    // versions do not collide — Modrinth rejects a version number it already has.
+    // Include the Minecraft target so each build has a distinct release number.
     versionNumber.set(project.version as String)
     versionName.set("Just-Tiers ${property("mod_version")} for Minecraft "
             + "${property("minecraft_version")}")
@@ -96,13 +124,9 @@ modrinth {
     syncBodyFrom.set(rootProject.file("Modrinth/description.md").readText())
 }
 
-// The jar to upload. Minecraft 26.2 ships unobfuscated, so Loom has nothing to remap and
-// registers no `remapJar` task — `jar` is the distributable mod jar, not a dev-only one.
-// An obfuscated target would bring `remapJar` back, and uploading `jar` there would ship
-// something that only runs in a development workspace, so pick whichever exists rather
-// than hardcoding today's answer. This sits in afterEvaluate because Loom registers its
-// tasks late; keeping it a TaskProvider is what makes `modrinth` build the jar it uploads.
+// Loom registers packaging tasks late. The legacy target needs the remapped JAR;
+// unobfuscated targets use jar directly. Keep the task provider so publishing builds it.
 afterEvaluate {
-    val modJar = if (tasks.findByName("remapJar") != null) "remapJar" else "jar"
+    val modJar = if (remapped) "remapJar" else "jar"
     modrinth { uploadFile.set(tasks.named(modJar)) }
 }

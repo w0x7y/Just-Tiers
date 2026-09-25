@@ -1,8 +1,10 @@
 # Working on Just-Tiers
 
-Just-Tiers is a client-side Fabric mod for Minecraft 26.2 and Java 25. Fabric API and
-YACL are required; ModMenu is optional. Read `gradle.properties` for exact versions and
-`README.md` for current commands and behavior.
+Just-Tiers is a client-side Fabric mod with per-version builds. Read `gradle/targets/`
+for supported Minecraft versions, compatibility strategies and dependency pins, and `gradle.properties` for the
+default target and mod version. Fabric API and YACL are required; ModMenu is optional.
+Read `README.md` for current commands and behavior.
+Read `CONTEXT.md` for the domain terms used in source and tests.
 
 ## Build and verification
 
@@ -17,11 +19,17 @@ when no Java runtime is available.
 ./gradlew test --tests 'com.w0x7y.justtiers.cache.TierCacheTest'
 ./gradlew runClient
 python3 tools/gen_font_provider.py
+python3 -m unittest discover -s tools/tests -v
+python3 tools/minecraft_targets.py list
 ```
 
-`build` runs tests, resource contracts and packaging. Minecraft 26.2 is unobfuscated, so
-Loom has no remapJar task for this target; the JAR without `-sources` in `build/libs/` is
-the distributable mod. A successful build proves compilation and tested model behavior,
+`build` runs tests, resource contracts and packaging. Select a version with
+`-Pminecraft_version=<version>`. Installable JARs are in `build/<version>/libs/`;
+1.21.11 uses `remapJar`, while 26.x uses `jar`. Edit authored sources in `src/main/java`.
+Mechanical API renames live in `gradle/compatibility.gradle.kts`; generated sources are
+build outputs. When changing integration APIs, build every target and run
+`python3 tools/verify_artifact.py <version>`. See `docs/minecraft-compatibility.md`.
+A successful build proves compilation and tested model behavior,
 not runtime mixin application, rendering, keyboard navigation or narration. Follow
 [docs/runtime-smoke-test.md](docs/runtime-smoke-test.md) when changing the client UI.
 
@@ -45,6 +53,10 @@ components, commands and events.
 - `lookup/LookupReport.section` builds one site's lookup state. The lookup includes
   retired tiers independently of nametag settings. Pending and unavailable are distinct
   from a valid unranked answer.
+- `lookup/LookupSession` owns online identity preference, remote resolution, concurrent
+  site requests, partial answers and failed-entry eviction for explicit retry.
+  `gui/MinecraftLookupSession` supplies client scheduling, translations and skins.
+  Publish session state through its owning executor and read it on that same thread.
 
 `PlayerMixin` decorates `Player.getDisplayName` for world nametags. Tab-list and chat
 rendering use different paths and are outside the current feature.
@@ -86,6 +98,13 @@ the old file. Report failures to the player and retain a retry path. Settings co
 retain their changes in the current session when a save fails and explicitly warn that
 the change was not saved.
 Refresh is an immediate action, not a pending setting.
+
+`settings/SettingsApplication` owns active settings and both publication policies.
+Use `draft`/`commitDraft` for screens and `editSession` for commands; do not mutate
+`active()` directly. `settings/RefreshLifecycle` owns refresh scheduling and cache
+invalidation. Saving an unchanged interval must preserve the existing countdown.
+Test these policies with real temporary config files and TierCache, using a controlled
+timer rather than sleeping.
 
 Keep unavailable controls visible with an accurate explanation. Use focusable controls
 for selections and links, and let Enter/Space activate the focused widget. A grid's

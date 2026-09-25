@@ -13,7 +13,14 @@ permissions:
   contents: read
 
 jobs:
+  targets:
+    uses: ./.github/workflows/minecraft-targets.yml
+
   dry-run:
+    needs: targets
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.targets.outputs.matrix) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
@@ -32,4 +39,4 @@ jobs:
       - name: Assemble the version without uploading it
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
-        run: ./gradlew modrinth -Pmodrinth_dry_run=true --stacktrace
+        run: ./gradlew modrinth -Pminecraft_version=${{ matrix.minecraft }} -Pmodrinth_dry_run=true --stacktrace

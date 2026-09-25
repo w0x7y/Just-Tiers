@@ -1,16 +1,19 @@
 # Just-Tiers
 
 A client-side Fabric mod that puts PvP tiers from MCTiers, SubTiers and NovaTiers in player
-nametags. **Currently in beta.** Requires Minecraft 26.2, Java 25, Fabric Loader 0.19 or newer,
-Fabric API for 26.2 and YetAnotherConfigLib 3.9.4 or newer for 26.2. ModMenu is optional.
+nametags. **Currently in beta.** Builds are available for Minecraft 1.21.11, 26.1, 26.1.1, 26.1.2, 26.2 and 26.3.
+Use the JAR for your exact game version, Fabric Loader 0.19 or newer, and Fabric API and
+YetAnotherConfigLib built for that game version. Minecraft 1.21.11 requires Java 21 and
+YACL 3.8.2 or newer; 26.x requires Java 25 and YACL 3.9.4 or newer, or 3.9.7 for 26.3.
+Minecraft 26.3 also requires Fabric Loader 0.19.5 or newer. ModMenu is optional.
 
 ![Nametag showcase](https://cdn.modrinth.com/data/8zkz6d1C/images/195de1f0351ecc64b1d7505f03aa71a3ef173b35.jpeg)
 
-## New in 1.1.4
+## New in 1.1.5
 
-All 33 packaged images have been compressed to reduce the mod download size.
-The mod icon remains 32x32 pixels, and gamemode textures retain their dimensions.
-[Full release notes](https://github.com/w0x7y/Just-Tiers/blob/main/docs/releases/v1.1.4.md).
+Separate JARs now support Minecraft 1.21.11, 26.1, 26.1.1, 26.1.2, 26.2 and 26.3.
+Settings saves and player lookups also have clearer failure and retry behavior.
+[Full release notes](https://github.com/w0x7y/Just-Tiers/blob/main/docs/releases/v1.1.5.md).
 
 ## What you can do
 
@@ -28,7 +31,7 @@ Tab list and chat names are unchanged.
 
 ## Install and configure
 
-Put the Just-Tiers JAR, Fabric API and YACL in your Minecraft 26.2 instance's `mods` folder.
+Put the matching Just-Tiers JAR, Fabric API and YACL in your instance's `mods` folder.
 Install ModMenu if you want a config button in the mod list. Nothing is required on the server.
 
 Open configuration with `/justtiers gui`, ModMenu or the configurable Just-Tiers keybind,

@@ -27,10 +27,10 @@ import net.minecraft.network.chat.Component;
 
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -183,15 +183,15 @@ public final class JustTiersCommands {
                               String onKey, String offKey, ChatFormatting offColor) {
         JustTiersConfig config = JustTiersClient.config();
         boolean now = !get.test(config);
-        set.accept(config, now);
-        if (!saveConfig(context)) return 0;
+        if (!editSettings(context, candidate -> set.accept(candidate, now))) return 0;
         reply(context, now ? ChatFormatting.GREEN : offColor, now ? onKey : offKey);
         return 1;
     }
 
-    private static boolean saveConfig(CommandContext<FabricClientCommandSource> context) {
+    private static boolean editSettings(CommandContext<FabricClientCommandSource> context,
+                                        Consumer<JustTiersConfig> edit) {
         try {
-            JustTiersClient.saveConfig();
+            JustTiersClient.settings().editSession(edit);
             return true;
         } catch (java.io.UncheckedIOException failure) {
             reply(context, ChatFormatting.RED, "justtiers.command.saveFailed");
@@ -244,8 +244,7 @@ public final class JustTiersCommands {
         String raw = StringArgumentType.getString(context, argument);
         for (E value : values) {
             if (id.apply(value).equalsIgnoreCase(raw)) {
-                apply.accept(JustTiersClient.config(), value);
-                if (!saveConfig(context)) return 0;
+                if (!editSettings(context, config -> apply.accept(config, value))) return 0;
                 reply(context, ChatFormatting.GREEN, confirmation.apply(value));
                 return 1;
             }
@@ -271,8 +270,7 @@ public final class JustTiersCommands {
             return 0;
         }
 
-        JustTiersClient.config().setSelectedGamemode(source.get(), slug);
-        if (!saveConfig(context)) return 0;
+        if (!editSettings(context, config -> config.setSelectedGamemode(source.get(), slug))) return 0;
         reply(context, ChatFormatting.GREEN, "justtiers.command.gamemode.set",
                 source.get().displayName(), gamemode.get().displayName());
         return 1;

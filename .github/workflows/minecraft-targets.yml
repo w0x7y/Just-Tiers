@@ -1,0 +1,32 @@
+name: Discover Minecraft targets
+
+on:
+  workflow_call:
+    outputs:
+      matrix:
+        description: Validated Minecraft target matrix
+        value: ${{ jobs.discover.outputs.matrix }}
+      count:
+        description: Expected number of installable release JARs
+        value: ${{ jobs.discover.outputs.count }}
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.targets.outputs.matrix }}
+      count: ${{ steps.targets.outputs.count }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Test target and artifact policy
+        run: python3 -m unittest discover -s tools/tests -v
+      - name: Discover and validate target profiles
+        id: targets
+        run: |
+          matrix="$(python3 tools/minecraft_targets.py matrix)"
+          count="$(python3 tools/minecraft_targets.py count)"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "count=$count" >> "$GITHUB_OUTPUT"
