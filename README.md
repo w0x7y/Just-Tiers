@@ -6,8 +6,9 @@ Just-Tiers is a client-side Fabric mod that adds competitive PvP tiers to Minecr
 nametags using [MCTiers](https://mctiers.com), [SubTiers](https://subtiers.net) and
 [NovaTiers](https://novatiers.com). The mod is in beta.
 
-Version 1.1.5 adds builds for Minecraft 1.21.11, 26.1, 26.1.1, 26.1.2 and 26.3
-alongside 26.2. See the [release notes](docs/releases/v1.1.5.md).
+Version 1.1.6 keeps last-known tiers visible during refresh, paces requests, and
+shows the age and refresh status of lookup results. See the
+[release notes](docs/releases/v1.1.6.md).
 
 ## What it shows
 
@@ -67,7 +68,7 @@ All commands are client-side. `/justtiers lookup` completes names from the serve
 | `/justtiers brackets` | Toggle badge brackets |
 | `/justtiers ownbadge` | Toggle hiding your own badge |
 | `/justtiers palette <palette>` | Choose `default`, `colorblind`, `high_contrast` or `custom` |
-| `/justtiers refresh` | Clear lookup caches and request a fresh NovaTiers list |
+| `/justtiers refresh` | Recheck cached lookups and request a fresh NovaTiers list |
 | `/justtiers debug` | Print diagnostics and copy them to the clipboard |
 
 ## Looking a player up
@@ -78,7 +79,8 @@ it does not establish whether the player was ever tested. A waiting or unavailab
 has its own message and is never presented as a row of unranked placements.
 
 The lookup includes retired tiers and all sites regardless of your nametag settings.
-Rows update independently. Edit the name or retry on the screen; you do not need to close
+Rows update independently. Cached placements stay visible during refresh; cell tooltips show
+the answer age and distinguish checking for updates from an unavailable refresh. Edit the name or retry on the screen; you do not need to close
 it and type the command again. Smaller windows scroll the results while the search and
 Done controls remain available. Cells and leaderboard links can receive keyboard focus.
 Hover or focus a cell for its gamemode name. Links use Minecraft's browser confirmation.
@@ -187,16 +189,33 @@ still work, and NovaTiers' startup, scheduled and requested downloads remain ind
 that switch. Hiding the progress bar changes only the indicator, not the downloads.
 
 MCTiers and SubTiers answers, including valid unranked answers, expire after an hour by default.
-Repeated requests for one player share the pending result. Manual refresh, failed requests
-and explicit retries can cause requests before that interval, so it is not a rate-limit guarantee.
+Repeated requests for one player share the pending result. Expired successful answers stay
+visible while a replacement loads, for up to six additional hours beyond the configured cache
+interval. A valid replacement with no placements removes the old badge. Manual refresh keeps
+previous answers while rechecking them. Manual refresh, failed requests and explicit retries
+can cause requests before the usual interval, so it is not a rate-limit guarantee.
 NovaTiers is indexed in memory and refreshed every 30 minutes by default; its payload size varies.
 
 HTTP 404 from MCTiers or SubTiers is a valid unranked answer. Unexpected statuses, transport
 errors and malformed successful responses are failures, not unranked results. Failed requests
 back off per player, with jitter; eight consecutive site failures pause new requests and then
-allow a recovery probe. Manual refresh resets current retry state but keeps diagnostic history.
-A failed NovaTiers refresh preserves the last usable index. Older requests cannot replace a
-newer index or reinstate retry state cleared by a refresh.
+allow a recovery probe. Each site permits four active player requests and 128 waiting
+requests. Explicit lookups
+take priority over queued nametag work and can displace waiting background requests. Queue
+pressure defers work without counting as a remote site failure. HTTP 429 and HTTP 503 with
+Retry-After pause requests to that site for the requested delay, capped at 24 hours; malformed
+hints use 60 seconds. NovaTiers bulk downloads obey the same cooldown rules. Manual refresh
+resets player retry and circuit state but preserves server cooldowns and diagnostic history.
+A failed NovaTiers refresh preserves the last usable index. Reading it does not reset its
+original age: the player cache refuses a bulk snapshot older than the cache interval plus
+six hours. Identifiable players with malformed or conflicting bulk records are unavailable,
+not unranked; the parser reports aggregate rejection counts while retaining valid players.
+Older requests cannot replace a newer index or reinstate retry state cleared by a refresh.
+
+Each site retains at most 4096 player entries and 4096 retry records. New entries can evict
+the least recently accessed completed entries. Once per 1200 client ticks, maintenance removes
+idle expired answers and old retry records even if those players never appear again. In-flight
+work is retained until completion; idle entries have a 24-hour retention limit.
 
 The first NovaTiers download in a session shows a moving bar and bytes received. Later downloads
 estimate progress from the last completed payload size. That size can change, so the percentage
@@ -206,7 +225,7 @@ is an estimate and stops below 100% until completion. A failure shows a brief un
 
 Run `/justtiers debug` and paste the copied report into a GitHub issue, together with reproduction
 steps, game/mod versions and relevant logs or screenshots. It includes version numbers, cache
-counts, retry state, latency and the last error for each site. `PAUSED` means a site's circuit
+counts, active and queued requests, retry state, server cooldowns, latency and the last error for each site. `PAUSED` means a site's circuit
 breaker is waiting before allowing another probe. The report stays in English for bug reports.
 A green build cannot establish that a Minecraft screen or mixin works in a running game.
 
@@ -241,6 +260,11 @@ Tests cover parsing, caching, retries, persistence, tier selection, badge compos
 progress state, lookup reports and screen geometry. Resource contract tests also verify the
 registry's glyph-to-texture mapping and referenced English translation keys. They run through
 `test`, `check` and `build`. Workflow syntax is checked by actionlint in CI.
+
+Optional [verification tools](docs/verification-tools.md) provide `./gradlew badgeBenchmark`
+and `./gradlew runSmokeClient -PclientSmoke=true -Pminecraft_version=26.2`. The smoke harness
+uses a disposable integrated world and controlled players to exercise the real mixin and screens;
+it is excluded from installable and sources JARs. It does not replace authenticated multiplayer checks.
 
 Run the [runtime smoke checklist](docs/runtime-smoke-test.md) for changes affecting the game
 client. It covers keyboard navigation, small windows, Save/Cancel, fonts and failure recovery.

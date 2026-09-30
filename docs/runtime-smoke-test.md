@@ -3,6 +3,31 @@
 Use this before releasing client-facing changes. Unit tests and compilation do not launch
 Minecraft or prove mixin application, font inheritance, widget focus or narration.
 
+A repeatable optional Minecraft 26.2 harness is available in
+[verification-tools.md](verification-tools.md). It exercises transformed remote-player
+display names in a controlled integrated world and renders the three main screens.
+Its fake tier answers and development profile do not substitute for authenticated
+multiplayer or the full manual checklist below.
+
+## September 30 repeatable harness
+
+The optional harness passed on Minecraft 26.2, Java 25.0.4.1, Loader 0.19.3,
+Fabric API 0.157.0+26.2 and YACL 3.9.4+26.2-fabric on a local X11 display.
+It completed 28 assertions against the actual transformed `Player.getDisplayName`
+path, component styles and fonts, settings changes and screen initialization.
+The remote entity lived in a newly created integrated client world with controlled
+cached tiers. The local player's UUID was temporarily changed to a controlled v4
+UUID to exercise both hide-own states, then restored.
+
+The config, gamemode grid and invalid-name lookup screens initialized at 320x240,
+427x240 and 480x270 GUI pixels, each rendering for 40 client ticks at 480x270.
+The lookup's translated error narration was checked. The run ended with
+`JUSTTIERS_SMOKE_SUCCESS`, and the Gradle task exited successfully.
+This run did not perform authenticated multiplayer, full keyboard navigation,
+ModMenu, authenticated skins, spoken narration, live recovery or visual glyph
+inspection. The development profile's authentication requests returned 401, and
+the host still lacked the speech library. The manual checklist remains pending.
+
 The September 17 audit fix verification used Minecraft 26.2, Java 25, Fabric Loader 0.19.3,
 Fabric API 0.157.0+26.2 and YACL 3.9.4+26.2-fabric, without ModMenu. A temporary client mod
 ran 26 assertions against the actual screens and widgets, with direct keyboard-event dispatch

@@ -38,7 +38,7 @@ class DebugReportTest {
     }
 
     private static SiteDiagnostics site(SiteHealth.Snapshot health, SiteGate.Status gate) {
-        return new SiteDiagnostics(Source.MCTIERS, health, gate, 42, 1, 0);
+        return new SiteDiagnostics(Source.MCTIERS, health, gate, 42, 1, 0, 1, 0, Duration.ZERO);
     }
 
     /** The one site line the report produced, for a report built with exactly one site. */
@@ -60,7 +60,7 @@ class DebugReportTest {
     @Test
     void aHealthySiteReportsCountsAgesLatencyAndCache() {
         assertEquals("MCTiers: ok | 12 ok, 0 failed | last ok 4s ago "
-                        + "| latency 180ms last, 210ms mean | 42 cached, 1 in flight, 0 retrying",
+                        + "| latency 180ms last, 210ms mean | 42 cached, 1 in flight, 0 queued, 0 retrying",
                 siteLine(site(healthy(), OPEN)));
     }
 
@@ -118,7 +118,7 @@ class DebugReportTest {
         List<String> lines = DebugReport.lines(snapshotOf(site(failing, OPEN)));
 
         assertEquals("MCTiers: ok | 3 ok, 9 failed | last ok 6m ago, last fail 12s ago "
-                        + "| latency 4.0s last, 1.2s mean | 42 cached, 1 in flight, 0 retrying",
+                        + "| latency 4.0s last, 1.2s mean | 42 cached, 1 in flight, 0 queued, 0 retrying",
                 lines.get(4));
         assertEquals("  last error: TierLookupException: HTTP 503", lines.get(5));
     }
@@ -143,7 +143,7 @@ class DebugReportTest {
     @Test
     void everySiteIsReportedInDeclarationOrder() {
         List<SiteDiagnostics> sites = Source.ALL.stream()
-                .map(source -> new SiteDiagnostics(source, idle(), OPEN, 0, 0, 0))
+                .map(source -> new SiteDiagnostics(source, idle(), OPEN, 0, 0, 0, 0, 0, Duration.ZERO))
                 .toList();
         List<String> lines = DebugReport.lines(snapshotOf(sites.toArray(SiteDiagnostics[]::new)));
 

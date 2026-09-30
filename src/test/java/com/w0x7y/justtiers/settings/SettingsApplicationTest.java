@@ -178,13 +178,13 @@ class SettingsApplicationTest {
         assertEquals(1, cache.cachedPlayers(Source.NOVATIERS));
     }
 
-    @Test void manualRefreshClearsAllImmediatelyAndOnlyInvalidatesNewNovaEntriesOnSuccess() {
+    @Test void manualRefreshRetainsAnswersAndOnlyInvalidatesNewNovaEntriesOnSuccess() {
         application(directory.resolve("justtiers.json"));
         cache.peek(Source.MCTIERS, player);
         cache.peek(Source.NOVATIERS, player);
         CompletableFuture<Void> failed = refresh.refreshNow();
-        assertEquals(0, cache.cachedPlayers(Source.MCTIERS));
-        assertEquals(0, cache.cachedPlayers(Source.NOVATIERS));
+        assertEquals(1, cache.cachedPlayers(Source.MCTIERS));
+        assertEquals(1, cache.cachedPlayers(Source.NOVATIERS));
         cache.peek(Source.NOVATIERS, player);
         downloads.getLast().completeExceptionally(new IllegalStateException("offline"));
         assertTrue(failed.isCompletedExceptionally());

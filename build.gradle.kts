@@ -71,6 +71,50 @@ tasks.test {
 // API renames are applied to a generated copy; the authored source stays on 26.2.
 apply(from = "gradle/compatibility.gradle.kts")
 
+// Optional verification tools are separate source sets, never inputs to release JARs.
+val benchmark = sourceSets.create("benchmark") {
+    compileClasspath += sourceSets.main.get().output + sourceSets.main.get().compileClasspath
+    runtimeClasspath += sourceSets.main.get().output + sourceSets.main.get().runtimeClasspath
+}
+val verificationJavaVersion = javaVersion
+tasks.register<JavaExec>("badgeBenchmark") {
+    group = "verification"
+    description = "Measure warmed-cache Badge.forPlayer time and thread allocation"
+    classpath = benchmark.runtimeClasspath
+    mainClass.set("com.w0x7y.justtiers.benchmark.BadgeBenchmark")
+    javaLauncher.set(javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(verificationJavaVersion)) })
+    providers.gradleProperty("benchmarkIterations").orNull?.let { args(it) }
+}
+
+// Register the auxiliary mod only on request, keeping runClient and packaging ordinary.
+if (providers.gradleProperty("clientSmoke").map(String::toBoolean).getOrElse(false)) {
+    require(minecraftVersion == "26.2") { "The controlled-world smoke harness currently targets Minecraft 26.2" }
+    val smoke = sourceSets.create("smoke") {
+        compileClasspath += sourceSets.main.get().output + sourceSets.main.get().compileClasspath
+        runtimeClasspath += sourceSets.main.get().output + sourceSets.main.get().runtimeClasspath
+    }
+    val smokeRunDirectory = layout.buildDirectory.dir("smoke-instance").get().asFile
+    extensions.getByType<LoomGradleExtensionAPI>().apply {
+        mods.create("justtiers-smoke") { sourceSet(smoke) }
+        runConfigs.create("smokeClient") {
+            client()
+            source(smoke)
+            runDir(smokeRunDirectory.absolutePath)
+            ideConfigGenerated(false)
+        }
+    }
+    tasks.named("runSmokeClient") {
+        val report = layout.buildDirectory.file("smoke-instance/justtiers-smoke-report.txt")
+        doFirst { report.get().asFile.delete() }
+        doLast {
+            val evidence = report.get().asFile
+            check(evidence.isFile && evidence.readLines().lastOrNull() == "JUSTTIERS_SMOKE_SUCCESS") {
+                "Client smoke failed or did not finish; inspect ${evidence.absolutePath} and smoke-instance/logs/latest.log"
+            }
+        }
+    }
+}
+
 val resourceProperties = mapOf(
     "version" to project.version.toString(),
     "minecraft" to minecraftVersion,

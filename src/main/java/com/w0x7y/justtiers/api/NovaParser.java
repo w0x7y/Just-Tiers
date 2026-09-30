@@ -9,9 +9,11 @@ import com.w0x7y.justtiers.tier.Gamemodes;
 import com.w0x7y.justtiers.tier.Tier;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -24,8 +26,27 @@ public final class NovaParser {
 
     private static final Gson GSON = new Gson();
 
+    /**
+     * Immutable placements and diagnostics from one bulk response. The compatibility
+     * map preserves understood placements, but callers must check rejectedPlayers
+     * before treating an identifiable player's answer as complete.
+     */
+    public record ParsedIndex(Map<UUID, Map<String, Tier>> users, Set<UUID> rejectedPlayers,
+                              int malformedUsers, int malformedPlacements, int unknownGamemodes) {
+        public ParsedIndex {
+            Map<UUID, Map<String, Tier>> copy = new HashMap<>();
+            users.forEach((uuid, tiers) -> copy.put(uuid, Map.copyOf(tiers)));
+            users = Map.copyOf(copy);
+            rejectedPlayers = Set.copyOf(rejectedPlayers);
+        }
+    }
+
+    /** Compatibility view; sources should use {@link #parseUsersDetailed(String)}. */
     public static Map<UUID, Map<String, Tier>> parseUsers(String json) {
-        Map<UUID, Map<String, Tier>> index = new HashMap<>();
+        return parseUsersDetailed(json).users();
+    }
+
+    public static ParsedIndex parseUsersDetailed(String json) {
         JsonArray array;
         try {
             JsonElement parsed = GSON.fromJson(json, JsonElement.class);
@@ -37,79 +58,98 @@ public final class NovaParser {
             throw new TierLookupException("Malformed NovaTiers response", e);
         }
 
+        Map<UUID, Map<String, Tier>> index = new HashMap<>();
+        Map<UUID, Map<String, Tier>> seenPlacements = new HashMap<>();
+        Set<UUID> rejected = new HashSet<>();
         int understoodUsers = 0;
+        int malformedUsers = 0;
+        int malformedPlacements = 0;
+        int unknownGamemodes = 0;
         for (JsonElement element : array) {
             if (!element.isJsonObject()) {
+                malformedUsers++;
                 continue;
             }
-            try {
-                if (parseUser(element.getAsJsonObject(), index)) {
-                    understoodUsers++;
+            JsonObject user = element.getAsJsonObject();
+            JsonElement identity = user.get("minecraftUuid");
+            Optional<UUID> uuid = isString(identity)
+                    ? parseUuid(identity.getAsString()) : Optional.empty();
+            if (uuid.isEmpty()) {
+                malformedUsers++;
+                continue;
+            }
+            JsonElement rawPlacements = user.get("tiers");
+            if (rawPlacements == null || !rawPlacements.isJsonObject()) {
+                malformedUsers++;
+                rejected.add(uuid.get());
+                continue;
+            }
+            JsonElement rawRetired = user.get("retiredTiers");
+            boolean malformed = rawRetired != null && !rawRetired.isJsonNull()
+                    && !rawRetired.isJsonObject();
+            JsonObject retiredMap = rawRetired != null && rawRetired.isJsonObject()
+                    ? rawRetired.getAsJsonObject() : new JsonObject();
+            JsonObject placements = rawPlacements.getAsJsonObject();
+            Map<String, Tier> tiers = new LinkedHashMap<>();
+            Map<String, Tier> allPlacements = new LinkedHashMap<>();
+            boolean understood = placements.isEmpty();
+            for (Map.Entry<String, JsonElement> entry : placements.entrySet()) {
+                Optional<Tier> parsed = isString(entry.getValue())
+                        ? Tier.parse(entry.getValue().getAsString()) : Optional.empty();
+                JsonElement retirement = retiredMap.get(entry.getKey());
+                if (parsed.isEmpty() || entry.getKey().isBlank()
+                        || (retirement != null && !retirement.isJsonNull()
+                        && (!retirement.isJsonPrimitive() || !retirement.getAsJsonPrimitive().isBoolean()))) {
+                    malformedPlacements++;
+                    malformed = true;
+                    continue;
                 }
-            } catch (RuntimeException e) {
-                JustTiers.LOGGER.warn("Skipping unparseable NovaTiers user", e);
+                understood = true;
+                Tier tier = parsed.get();
+                if (retirement != null && !retirement.isJsonNull()) {
+                    tier = new Tier(tier.level(), tier.high(), retirement.getAsBoolean());
+                }
+                Optional<String> slug = Gamemodes.normaliseNovaKey(entry.getKey());
+                // Unknown valid gamemodes are understood wire data, even without an icon.
+                if (slug.isEmpty()) {
+                    unknownGamemodes++;
+                } else {
+                    tiers.putIfAbsent(slug.get(), tier);
+                }
+                String key = slug.orElse(entry.getKey());
+                Tier previous = allPlacements.putIfAbsent(key, tier);
+                if (previous != null && !previous.equals(tier)) {
+                    malformedPlacements++;
+                    malformed = true;
+                }
+            }
+            if (understood) {
+                understoodUsers++;
+            }
+            Map<String, Tier> previous = seenPlacements.putIfAbsent(uuid.get(), allPlacements);
+            if (previous != null && !previous.equals(allPlacements)) {
+                malformed = true;
+            }
+            if (malformed) {
+                malformedUsers++;
+                rejected.add(uuid.get());
+            }
+            if (!tiers.isEmpty()) {
+                index.putIfAbsent(uuid.get(), tiers);
             }
         }
         if (!array.isEmpty() && understoodUsers == 0) {
             throw new TierLookupException("NovaTiers response contained no valid player records");
         }
-        return index;
+        if (malformedUsers > 0 || malformedPlacements > 0) {
+            JustTiers.LOGGER.warn("NovaTiers parsing found {} malformed user records, {} malformed placements and {} rejected players",
+                    malformedUsers, malformedPlacements, rejected.size());
+        }
+        return new ParsedIndex(index, rejected, malformedUsers, malformedPlacements, unknownGamemodes);
     }
 
-    private static boolean parseUser(JsonObject user, Map<UUID, Map<String, Tier>> index) {
-        if (!user.has("minecraftUuid") || user.get("minecraftUuid").isJsonNull()) {
-            return false;
-        }
-        Optional<UUID> uuid = parseUuid(user.get("minecraftUuid").getAsString());
-        if (uuid.isEmpty() || !user.has("tiers") || !user.get("tiers").isJsonObject()) {
-            return false;
-        }
-
-        JsonObject retiredMap = user.has("retiredTiers") && user.get("retiredTiers").isJsonObject()
-                ? user.getAsJsonObject("retiredTiers")
-                : new JsonObject();
-
-        JsonObject placements = user.getAsJsonObject("tiers");
-        Map<String, Tier> tiers = new LinkedHashMap<>();
-        boolean understoodPlacement = placements.isEmpty();
-        for (Map.Entry<String, JsonElement> entry : placements.entrySet()) {
-            try {
-                if (!entry.getValue().isJsonPrimitive()) {
-                    continue;
-                }
-                Optional<Tier> parsed = Tier.parse(entry.getValue().getAsString());
-                if (parsed.isEmpty()) {
-                    continue;
-                }
-                // New gamemodes are still valid data even when this build has no icon
-                // for them. An entirely invalid tier map, however, is not "unranked".
-                understoodPlacement = true;
-                Optional<String> slug = Gamemodes.normaliseNovaKey(entry.getKey());
-                if (slug.isEmpty()) {
-                    continue;
-                }
-                // Explicit retirement wins in both directions; the prefix is a fallback.
-                boolean mapHasEntry = retiredMap.has(entry.getKey())
-                        && !retiredMap.get(entry.getKey()).isJsonNull();
-                Tier tier = parsed.get();
-                boolean retired = mapHasEntry
-                        ? retiredMap.get(entry.getKey()).getAsBoolean()
-                        : tier.retired();
-                if (retired != tier.retired()) {
-                    tier = new Tier(tier.level(), tier.high(), retired);
-                }
-                tiers.put(slug.get(), tier);
-            } catch (RuntimeException error) {
-                // One broken placement must not remove the player's other tiers.
-                JustTiers.LOGGER.warn("Skipping unparseable NovaTiers placement '{}'",
-                        entry.getKey(), error);
-            }
-        }
-
-        if (!tiers.isEmpty()) {
-            index.put(uuid.get(), tiers);
-        }
-        return understoodPlacement;
+    private static boolean isString(JsonElement value) {
+        return value != null && value.isJsonPrimitive() && value.getAsJsonPrimitive().isString();
     }
 
     /** Accepts both the dashed and the 32-character undashed UUID forms. */

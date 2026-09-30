@@ -19,4 +19,23 @@ public interface TierSource {
 
     CompletableFuture<Map<String, Tier>> fetch(UUID uuid);
 
+    /** Bulk sources retain their original data age when serving a cached snapshot. */
+    record Answer(Map<String, Tier> tiers, java.time.Duration age, boolean refreshFailed) {
+        public Answer {
+            tiers = Map.copyOf(tiers);
+            age = age.isNegative() ? java.time.Duration.ZERO : age;
+        }
+    }
+
+    default CompletableFuture<Answer> fetchAnswer(UUID uuid) {
+        return fetch(uuid).thenApply(tiers -> new Answer(tiers, java.time.Duration.ZERO, false));
+    }
+
+    /** A bulk source can refresh independently of its per-player cache. */
+    record RefreshState(boolean pending, boolean failed, java.time.Duration cooldown) {
+        public static final RefreshState IDLE = new RefreshState(false, false, java.time.Duration.ZERO);
+    }
+
+    default RefreshState refreshState() { return RefreshState.IDLE; }
+
 }

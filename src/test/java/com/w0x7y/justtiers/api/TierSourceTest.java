@@ -33,6 +33,7 @@ class TierSourceTest {
 
     private final Map<String, int[]> routes = new ConcurrentHashMap<>();
     private final Map<String, String> bodies = new ConcurrentHashMap<>();
+    private final Map<String, String> retryAfterHeaders = new ConcurrentHashMap<>();
 
     @BeforeEach
     void startServer() throws IOException {
@@ -56,6 +57,10 @@ class TierSourceTest {
             server.createContext(path, exchange -> {
                 requestCount.incrementAndGet();
                 byte[] bytes = bodies.get(path).getBytes(StandardCharsets.UTF_8);
+                String retryAfter = retryAfterHeaders.get(path);
+                if (retryAfter != null) {
+                    exchange.getResponseHeaders().set("Retry-After", retryAfter);
+                }
                 exchange.sendResponseHeaders(
                         routes.get(path)[0], bytes.length == 0 ? -1 : bytes.length);
                 if (bytes.length > 0) {
@@ -161,7 +166,7 @@ class TierSourceTest {
 
     @Test
     void novaRetriesAfterAFailedFirstDownloadRatherThanReplayingTheError() throws Exception {
-        respond("/users", 503, "");
+        respond("/users", 500, "");
         NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
         assertThrows(ExecutionException.class, () -> nova.fetch(PLAYER).get());
 
@@ -263,6 +268,299 @@ class TierSourceTest {
             release.countDown();
             initial.get(); first.get(); second.get();
             assertEquals(1, requestCount.get());
+        } finally {
+            release.countDown();
+        }
+    }
+
+    @Test
+    void novaMalformedIdentifiablePlayersFailWhileOtherPlayersRemainAvailable() throws Exception {
+        UUID damaged = UUID.fromString("dadd05d5-e1a2-41bc-be3e-de5f7d9fffee");
+        for (String brokenTiers : java.util.List.of("null", "[]", "{\"Axe\":\"unknown tier\"}")) {
+            respond("/users", 200, """
+                    [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504","tiers":{"Axe":"HT3"}},
+                     {"minecraftUuid":"dadd05d5-e1a2-41bc-be3e-de5f7d9fffee","tiers":%s}]
+                    """.formatted(brokenTiers));
+            NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
+            assertEquals("HT3", nova.fetch(PLAYER).get().get("axe").label());
+            ExecutionException error = assertThrows(ExecutionException.class,
+                    () -> nova.fetch(damaged).get(), brokenTiers);
+            assertInstanceOf(TierLookupException.class, error.getCause());
+            assertTrue(nova.fetch(UUID.randomUUID()).get().isEmpty());
+        }
+    }
+
+    @Test
+    void novaPartiallyDamagedPlayersFailInsteadOfClaimingOtherGamemodesAreAbsent() throws Exception {
+        respond("/users", 200, """
+                [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504",
+                  "tiers":{"Axe":"HT3","SMP":{"unexpected":"object"}}}]
+                """);
+        NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
+        ExecutionException error = assertThrows(ExecutionException.class, () -> nova.fetch(PLAYER).get());
+        assertInstanceOf(TierLookupException.class, error.getCause());
+    }
+
+    @Test
+    void novaServesPreviousIndexImmediatelyWhileRefreshIsPending() throws Exception {
+        respond("/users", 200, ONE_USER);
+        var clock = new java.util.concurrent.atomic.AtomicLong();
+        NovaTiersSource nova = new NovaTiersSource(client, baseUrl, new DownloadProgress(), clock::get);
+        assertEquals("HT3", nova.fetch(PLAYER).get().get("axe").label());
+        clock.addAndGet(java.time.Duration.ofHours(2).toNanos());
+        server.removeContext("/users");
+        var entered = new java.util.concurrent.CountDownLatch(1);
+        var release = new java.util.concurrent.CountDownLatch(1);
+        server.createContext("/users", exchange -> {
+            requestCount.incrementAndGet();
+            entered.countDown();
+            try {
+                if (!release.await(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                    throw new IOException("test did not release refresh");
+                }
+                byte[] bytes = ONE_USER.replace("HT3", "HT1").getBytes(StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(200, bytes.length);
+                exchange.getResponseBody().write(bytes);
+            } catch (InterruptedException error) {
+                Thread.currentThread().interrupt();
+            } finally {
+                exchange.close();
+            }
+        });
+        try {
+            var refresh = nova.refresh();
+            assertTrue(entered.await(5, java.util.concurrent.TimeUnit.SECONDS));
+            assertSame(refresh, nova.refresh());
+            var duringRefresh = nova.fetchAnswer(PLAYER);
+            assertTrue(duringRefresh.isDone(), "a published snapshot must be available during a download");
+            assertEquals("HT3", duringRefresh.get().tiers().get("axe").label());
+            assertEquals(java.time.Duration.ofHours(2), duringRefresh.get().age());
+            assertFalse(duringRefresh.get().refreshFailed());
+            release.countDown();
+            refresh.get();
+            assertEquals("HT1", nova.fetch(PLAYER).get().get("axe").label());
+            assertEquals(2, requestCount.get());
+        } finally {
+            release.countDown();
+        }
+    }
+
+    @Test
+    void novaConflictingDuplicatePlayersFailInsteadOfChoosingOneRecord() throws Exception {
+        respond("/users", 200, """
+                [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504","tiers":{"Axe":"HT3"}},
+                 {"minecraftUuid":"4b25be24-97f5-4adf-967d-8d69ef54d504","tiers":{"Axe":"HT1"}}]
+                """);
+        NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
+        assertThrows(ExecutionException.class, () -> nova.fetch(PLAYER).get());
+    }
+
+    @Test
+    void novaMalformedRetirementDataFailsTheIdentifiablePlayer() {
+        for (String retirement : java.util.List.of("[]", "{\"Axe\":\"false\"}", "{\"Axe\":{}}")) {
+            respond("/users", 200, """
+                    [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504",
+                      "tiers":{"Axe":"HT3"},"retiredTiers":%s}]
+                    """.formatted(retirement));
+            NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
+            assertThrows(ExecutionException.class, () -> nova.fetch(PLAYER).get(), retirement);
+        }
+    }
+
+    @Test
+    void novaUnknownValidGamemodesAndEmptyTierMapsRemainSuccessful() throws Exception {
+        respond("/users", 200, """
+                [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504","tiers":{"New Mode":"HT1"}},
+                 {"minecraftUuid":"dadd05d5-e1a2-41bc-be3e-de5f7d9fffee","tiers":{}}]
+                """);
+        NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
+        assertTrue(nova.fetch(PLAYER).get().isEmpty());
+        assertTrue(nova.fetch(UUID.fromString("dadd05d5-e1a2-41bc-be3e-de5f7d9fffee")).get().isEmpty());
+    }
+
+    @Test
+    void novaStartupRateLimitBlocksRepeatedFetchesAndExplicitRefreshes() {
+        retryAfterHeaders.put("/users", "120");
+        respond("/users", 429, "rate limited");
+        NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
+        assertThrows(ExecutionException.class, () -> nova.fetch(PLAYER).get());
+        respond("/users", 200, ONE_USER);
+        assertThrows(ExecutionException.class, () -> nova.fetch(PLAYER).get());
+        assertThrows(ExecutionException.class, () -> nova.refresh().get());
+        assertEquals(1, requestCount.get(), "all bulk download paths must honor the site's deadline");
+    }
+
+    @Test
+    void novaRefreshRateLimitKeepsSnapshotAndBlocksFurtherRefreshes() throws Exception {
+        respond("/users", 200, ONE_USER);
+        NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
+        assertEquals("HT3", nova.fetch(PLAYER).get().get("axe").label());
+        retryAfterHeaders.put("/users", "120");
+        respond("/users", 503, "temporarily unavailable");
+        assertThrows(ExecutionException.class, () -> nova.refresh().get());
+        respond("/users", 200, ONE_USER.replace("HT3", "HT1"));
+        assertEquals("HT3", nova.fetch(PLAYER).get().get("axe").label());
+        assertThrows(ExecutionException.class, () -> nova.refresh().get());
+        assertEquals(2, requestCount.get());
+    }
+
+    @Test
+    void novaAnswersKeepOriginalSnapshotAgeAndReportFailedRefreshes() throws Exception {
+        var clock = new java.util.concurrent.atomic.AtomicLong(java.time.Duration.ofSeconds(10).toNanos());
+        respond("/users", 200, ONE_USER);
+        NovaTiersSource nova = new NovaTiersSource(client, baseUrl, new DownloadProgress(), clock::get);
+        assertEquals(java.time.Duration.ZERO, nova.fetchAnswer(PLAYER).get().age());
+        clock.addAndGet(java.time.Duration.ofHours(2).toNanos());
+        TierSource.Answer old = nova.fetchAnswer(PLAYER).get();
+        assertEquals(java.time.Duration.ofHours(2), old.age());
+        assertFalse(old.refreshFailed());
+        respond("/users", 500, "unavailable");
+        assertThrows(ExecutionException.class, () -> nova.refresh().get());
+        clock.addAndGet(java.time.Duration.ofHours(1).toNanos());
+        TierSource.Answer failedRefresh = nova.fetchAnswer(PLAYER).get();
+        assertEquals("HT3", failedRefresh.tiers().get("axe").label());
+        assertEquals(java.time.Duration.ofHours(3), failedRefresh.age());
+        assertTrue(failedRefresh.refreshFailed());
+        respond("/users", 200, ONE_USER.replace("HT3", "HT1"));
+        nova.refresh().get();
+        TierSource.Answer replaced = nova.fetchAnswer(PLAYER).get();
+        assertEquals("HT1", replaced.tiers().get("axe").label());
+        assertEquals(java.time.Duration.ZERO, replaced.age());
+        assertFalse(replaced.refreshFailed());
+    }
+
+    @Test
+    void novaBulkCooldownExpiresAtTheMonotonicDeadline() throws Exception {
+        var clock = new java.util.concurrent.atomic.AtomicLong(-100_000_000_000L);
+        retryAfterHeaders.put("/users", "120");
+        respond("/users", 429, "rate limited");
+        NovaTiersSource nova = new NovaTiersSource(client, baseUrl, new DownloadProgress(), clock::get);
+        ExecutionException first = assertThrows(ExecutionException.class, () -> nova.fetch(PLAYER).get());
+        assertEquals(java.time.Duration.ofSeconds(120),
+                assertInstanceOf(RetryAfterException.class, first.getCause()).delay());
+        respond("/users", 200, ONE_USER);
+        clock.addAndGet(java.time.Duration.ofSeconds(119).toNanos());
+        ExecutionException blocked = assertThrows(ExecutionException.class, () -> nova.refresh().get());
+        assertEquals(java.time.Duration.ofSeconds(1),
+                assertInstanceOf(RetryAfterException.class, blocked.getCause()).delay());
+        assertEquals(1, requestCount.get());
+        clock.addAndGet(java.time.Duration.ofSeconds(1).toNanos());
+        assertEquals("HT3", nova.fetch(PLAYER).get().get("axe").label());
+        assertEquals(2, requestCount.get());
+    }
+
+    @Test
+    void novaBulkCooldownHonorsHttpDatesAndFallbackDelays() throws Exception {
+        var clock = new java.util.concurrent.atomic.AtomicLong();
+        String date = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME.format(
+                java.time.Instant.now().plusSeconds(120).atZone(java.time.ZoneOffset.UTC));
+        for (String hint : java.util.List.of(date, "invalid hint")) {
+            int before = requestCount.get();
+            retryAfterHeaders.put("/users", hint);
+            respond("/users", 503, "unavailable");
+            NovaTiersSource nova = new NovaTiersSource(client, baseUrl, new DownloadProgress(), clock::get);
+            ExecutionException first = assertThrows(ExecutionException.class, () -> nova.fetch(PLAYER).get());
+            assertInstanceOf(RetryAfterException.class, first.getCause());
+            respond("/users", 200, ONE_USER);
+            assertThrows(ExecutionException.class, () -> nova.refresh().get());
+            assertEquals(before + 1, requestCount.get());
+            clock.addAndGet(java.time.Duration.ofSeconds(121).toNanos());
+            nova.refresh().get();
+            assertEquals(before + 2, requestCount.get());
+        }
+    }
+
+    @Test
+    void novaAndTierCacheKeepDataVintageAndExpireBeyondStaleGrace() throws Exception {
+        var clock = new java.util.concurrent.atomic.AtomicLong();
+        respond("/users", 200, ONE_USER);
+        NovaTiersSource nova = new NovaTiersSource(client, baseUrl, new DownloadProgress(), clock::get);
+        var cache = new com.w0x7y.justtiers.cache.TierCache(java.util.List.of(nova),
+                com.w0x7y.justtiers.cache.CachePolicy.DEFAULT, clock::get, () -> 0.5);
+        assertEquals("HT3", cache.load(Source.NOVATIERS, PLAYER).get().get("axe").label());
+        clock.addAndGet(java.time.Duration.ofHours(2).toNanos());
+        respond("/users", 500, "unavailable");
+        assertThrows(ExecutionException.class, () -> nova.refresh().get());
+        cache.load(Source.NOVATIERS, PLAYER).get();
+        var retained = cache.cachedAnswer(Source.NOVATIERS, PLAYER).orElseThrow();
+        assertEquals(java.time.Duration.ofHours(2), retained.age());
+        assertTrue(retained.stale());
+        assertTrue(retained.refreshFailed());
+        for (int i = 0; i < 100; i++) {
+            assertEquals("HT3", cache.peek(Source.NOVATIERS, PLAYER).orElseThrow().get("axe").label());
+        }
+        assertEquals(2, cache.health(Source.NOVATIERS).successes(),
+                "repeated frames must not treat the original data age as the last local check time");
+        clock.addAndGet(java.time.Duration.ofHours(5).toNanos());
+        assertTrue(cache.peek(Source.NOVATIERS, PLAYER).isEmpty());
+        assertTrue(cache.cachedAnswer(Source.NOVATIERS, PLAYER).isEmpty());
+        assertThrows(ExecutionException.class, () -> cache.load(Source.NOVATIERS, PLAYER).get());
+        assertEquals(2, requestCount.get());
+        respond("/users", 200, ONE_USER.replace("HT3", "HT1"));
+        nova.refresh().get();
+        cache.invalidate(Source.NOVATIERS);
+        assertEquals("HT1", cache.load(Source.NOVATIERS, PLAYER).get().get("axe").label());
+        var fresh = cache.cachedAnswer(Source.NOVATIERS, PLAYER).orElseThrow();
+        assertEquals(java.time.Duration.ZERO, fresh.age());
+        assertFalse(fresh.stale());
+        assertFalse(fresh.refreshFailed());
+    }
+
+    @Test
+    void novaTimedBulkRefreshStateIsVisibleThroughStillFreshPlayerCache() throws Exception {
+        var clock = new java.util.concurrent.atomic.AtomicLong();
+        respond("/users", 200, ONE_USER);
+        NovaTiersSource nova = new NovaTiersSource(client, baseUrl, new DownloadProgress(), clock::get);
+        var cache = new com.w0x7y.justtiers.cache.TierCache(java.util.List.of(nova),
+                com.w0x7y.justtiers.cache.CachePolicy.DEFAULT, clock::get, () -> 0.5);
+        cache.load(Source.NOVATIERS, PLAYER).get();
+        clock.addAndGet(java.time.Duration.ofMinutes(30).toNanos());
+        retryAfterHeaders.put("/users", "120");
+        respond("/users", 503, "unavailable");
+        assertThrows(ExecutionException.class, () -> nova.refresh().get());
+        var failed = cache.cachedAnswer(Source.NOVATIERS, PLAYER).orElseThrow();
+        assertTrue(failed.refreshFailed(), "a timed bulk failure must be visible before the player TTL expires");
+        assertTrue(failed.stale());
+        assertFalse(failed.refreshing());
+        assertEquals(java.time.Duration.ofMinutes(30), failed.age());
+        assertEquals(java.time.Duration.ofSeconds(120), cache.cooldownRemaining(Source.NOVATIERS));
+        assertEquals(1, cache.health(Source.NOVATIERS).successes(), "metadata reads must not issue player fetches");
+        assertEquals(2, requestCount.get());
+        clock.addAndGet(java.time.Duration.ofSeconds(120).toNanos());
+        assertEquals(java.time.Duration.ZERO, cache.cooldownRemaining(Source.NOVATIERS));
+        server.removeContext("/users");
+        var entered = new java.util.concurrent.CountDownLatch(1);
+        var release = new java.util.concurrent.CountDownLatch(1);
+        server.createContext("/users", exchange -> {
+            requestCount.incrementAndGet();
+            entered.countDown();
+            try {
+                if (!release.await(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                    throw new IOException("test did not release bulk refresh");
+                }
+                byte[] bytes = ONE_USER.getBytes(StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(200, bytes.length);
+                exchange.getResponseBody().write(bytes);
+            } catch (InterruptedException error) {
+                Thread.currentThread().interrupt();
+            } finally {
+                exchange.close();
+            }
+        });
+        try {
+            var refresh = nova.refresh();
+            assertTrue(entered.await(5, java.util.concurrent.TimeUnit.SECONDS));
+            var pending = cache.cachedAnswer(Source.NOVATIERS, PLAYER).orElseThrow();
+            assertTrue(pending.refreshing());
+            assertTrue(pending.refreshFailed());
+            assertEquals("HT3", pending.tiers().get("axe").label());
+            release.countDown();
+            refresh.get();
+            var succeeded = cache.cachedAnswer(Source.NOVATIERS, PLAYER).orElseThrow();
+            assertFalse(succeeded.refreshing());
+            assertFalse(succeeded.refreshFailed());
+            assertEquals(1, cache.health(Source.NOVATIERS).successes());
+            assertEquals(3, requestCount.get());
         } finally {
             release.countDown();
         }
