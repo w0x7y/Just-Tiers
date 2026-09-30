@@ -4,14 +4,15 @@ import com.w0x7y.justtiers.api.MojangNameSource;
 import com.w0x7y.justtiers.api.PlayerRef;
 import com.w0x7y.justtiers.cache.TierCache;
 import com.w0x7y.justtiers.tier.Source;
-import com.w0x7y.justtiers.tier.Tier;
 
+import java.time.Duration;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
+import java.util.function.LongSupplier;
 
 /**
  * One name lookup and its independently arriving site answers. The supplied executor
@@ -29,19 +30,32 @@ public final class LookupSession {
     private final String requestedName;
     private final TierCache cache;
     private final Executor publisher;
-    private final Map<Source, LookupSection> sections = new EnumMap<>(Source.class);
+    private record CapturedAnswer(TierCache.CachedAnswer answer, long capturedAt) { }
+    private record SourceResult(Optional<LookupSection> section, boolean complete,
+                                Optional<CapturedAnswer> answer, boolean refreshFailed) {
+        static final SourceResult PENDING = new SourceResult(Optional.empty(), false, Optional.empty(), false);
+    }
+    private final Map<Source, SourceResult> results = new EnumMap<>(Source.class);
+    private final LongSupplier clock;
     private final CompletableFuture<Optional<PlayerRef>> resolvedPlayer = new CompletableFuture<>();
     private PlayerRef player;
     private Error error;
 
-    private LookupSession(String requestedName, TierCache cache, Executor publisher) {
+    private LookupSession(String requestedName, TierCache cache, Executor publisher, LongSupplier clock) {
         this.requestedName = requestedName;
         this.cache = cache;
         this.publisher = publisher;
+        this.clock = clock;
+        Source.ALL.forEach(source -> results.put(source, SourceResult.PENDING));
     }
 
     public static LookupSession start(String name, Players players, TierCache cache, Executor publisher) {
-        LookupSession session = new LookupSession(name, cache, publisher);
+        return start(name, players, cache, publisher, System::nanoTime);
+    }
+
+    static LookupSession start(String name, Players players, TierCache cache, Executor publisher,
+                               LongSupplier clock) {
+        LookupSession session = new LookupSession(name, cache, publisher, clock);
         publisher.execute(() -> session.resolve(players));
         return session;
     }
@@ -70,19 +84,31 @@ public final class LookupSession {
         player = found;
         resolvedPlayer.complete(Optional.of(found));
         for (Source site : Source.ALL) {
-            cache.load(site, found.uuid()).whenComplete((tiers, failure) -> {
-                Optional<Map<String, Tier>> answer;
-                if (failure == null) {
-                    answer = Optional.of(tiers);
-                } else {
-                    // Offline players may never be peeked by nametags. Explicit lookup
-                    // must clear their failed entry so the next attempt can retry it.
+            cache.cachedAnswer(site, found.uuid()).ifPresent(cached -> results.put(site,
+                    answered(site, cached, clock.getAsLong(), false)));
+            cache.loadAnswer(site, found.uuid()).whenComplete((answer, failure) -> {
+                long capturedAt = clock.getAsLong();
+                if (failure != null) {
+                    // An offline player may never be peeked by nametags, so allow a new session to retry.
                     cache.forgetFailed(site, found.uuid());
-                    answer = Optional.empty();
                 }
-                publisher.execute(() -> sections.put(site, LookupReport.section(site, answer)));
+                publisher.execute(() -> {
+                    if (failure == null) {
+                        results.put(site, answered(site, answer, capturedAt, true));
+                    } else {
+                        SourceResult previous = results.get(site);
+                        Optional<LookupSection> section = previous.answer().isPresent() ? previous.section()
+                                : Optional.of(LookupReport.section(site, Optional.empty()));
+                        results.put(site, new SourceResult(section, true, previous.answer(), true));
+                    }
+                });
             });
         }
+    }
+
+    private static SourceResult answered(Source site, TierCache.CachedAnswer answer, long capturedAt, boolean complete) {
+        return new SourceResult(Optional.of(LookupReport.section(site, Optional.of(answer.tiers()))), complete,
+                Optional.of(new CapturedAnswer(answer, capturedAt)), false);
     }
 
     public String name() {
@@ -98,17 +124,43 @@ public final class LookupSession {
         return resolvedPlayer.minimalCompletionStage();
     }
 
-    /** Empty means pending, distinct from an unavailable or unranked answer. */
-    public Optional<LookupSection> section(Source source) {
-        return Optional.ofNullable(sections.get(source));
+    /** Read placement and freshness together; a newer answer never rewrites this session's placements. */
+    public LookupResult result(Source source) {
+        SourceResult state = results.get(source);
+        return new LookupResult(state.section(), state.complete(), state.answer().map(captured -> {
+            TierCache.CachedAnswer answer = captured.answer();
+            long elapsed = Math.max(0, clock.getAsLong() - captured.capturedAt());
+            Duration age = answer.age().plusNanos(elapsed);
+            boolean stale = answer.stale() || answer.refreshing() || answer.freshFor().map(limit -> Duration.ofNanos(elapsed).compareTo(limit) >= 0).orElse(false);
+            // Transient progress belongs to a live revision, not a historical snapshot.
+            // Once that revision disappears, retain its placements as stale instead.
+            boolean refreshing = false;
+            boolean failed = answer.refreshFailed();
+            if (player != null) {
+                var current = cache.cachedAnswer(source, player.uuid());
+                // A shared retained answer can expose live bulk-refresh progress. Identical
+                // placements from a later download are a different revision and a different age.
+                if (current.isPresent() && current.get().revision() == answer.revision()) {
+                    TierCache.CachedAnswer observed = current.get();
+                    age = observed.age();
+                    stale = observed.stale();
+                    refreshing = observed.refreshing();
+                    failed = observed.refreshFailed();
+                }
+            }
+            LookupResult.RefreshStatus status = state.refreshFailed() || failed ? LookupResult.RefreshStatus.REFRESH_FAILED
+                    : !state.complete() || refreshing ? LookupResult.RefreshStatus.REFRESHING
+                    : stale ? LookupResult.RefreshStatus.STALE : LookupResult.RefreshStatus.FRESH;
+            return new LookupResult.Freshness(age, status);
+        }));
     }
 
     public boolean complete() {
-        return sections.size() == Source.ALL.size();
+        return results.values().stream().allMatch(SourceResult::complete);
     }
 
     public boolean rankedNowhere() {
-        return complete() && LookupReport.anySiteAnswered(sections.values())
-                && LookupReport.nothingRanked(sections.values());
+        var sections = results.values().stream().flatMap(state -> state.section().stream()).toList();
+        return complete() && LookupReport.anySiteAnswered(sections) && LookupReport.nothingRanked(sections);
     }
 }

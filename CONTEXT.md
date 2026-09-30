@@ -17,6 +17,11 @@ _Avoid_: Score, level
 Retrying starts another session, which may reuse successful answers.
 _Avoid_: Search job
 
+**Lookup result**: One source's displayed answer within a lookup session, including
+whether its request has settled and the freshness of its displayed placements. A later
+session does not replace this answer.
+_Avoid_: Live cache row
+
 **Unranked**: A source answered successfully without a listed placement. An unavailable
 source provides no evidence of whether the player is ranked.
 _Avoid_: Missing, failed lookup

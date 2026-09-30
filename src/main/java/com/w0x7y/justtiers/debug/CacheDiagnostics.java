@@ -37,7 +37,10 @@ public final class CacheDiagnostics {
                 cache.gateStatus(source),
                 cache.cachedPlayers(source),
                 cache.pendingLookups(source),
-                cache.playersAwaitingRetry(source));
+                cache.playersAwaitingRetry(source),
+                cache.activeRequests(source),
+                cache.queuedRequests(source),
+                cache.cooldownRemaining(source));
     }
 
     private CacheDiagnostics() {

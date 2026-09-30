@@ -3,6 +3,7 @@ package com.w0x7y.justtiers.gui;
 import com.mojang.authlib.GameProfile;
 import com.w0x7y.justtiers.JustTiers;
 import com.w0x7y.justtiers.api.PlayerRef;
+import com.w0x7y.justtiers.cache.SuccessfulLookupCache;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.PlayerInfo;
@@ -12,7 +13,6 @@ import net.minecraft.world.entity.player.PlayerSkin;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import com.w0x7y.justtiers.gui.state.SuccessfulLookupCache;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -33,7 +33,7 @@ public final class PlayerSkins {
      * they are now rather than as they were the first time they were looked up.
      */
     private static final SuccessfulLookupCache<UUID, PlayerSkin> FETCHED =
-            new SuccessfulLookupCache<>(PlayerSkins::fetch);
+            new SuccessfulLookupCache<>();
 
     /**
      * One thread, because {@code fetchProfile} blocks and this is never more than a
@@ -55,7 +55,7 @@ public final class PlayerSkins {
         if (online.isPresent()) {
             return CompletableFuture.completedFuture(online.get());
         }
-        return FETCHED.get(player.uuid()).exceptionally(error -> {
+        return FETCHED.get(player.uuid(), () -> fetch(player.uuid())).exceptionally(error -> {
             JustTiers.LOGGER.debug("Could not fetch the skin for {}: {}", player.uuid(), error.toString());
             return DefaultPlayerSkin.get(player.uuid());
         });

@@ -351,8 +351,8 @@ class TierCacheTest {
         it.fake.complete();
         it.advance(Duration.ofMinutes(60));
 
-        assertEquals(Optional.empty(), it.cache.peek(Source.MCTIERS, PLAYER),
-                "a stale answer is not an answer");
+        assertEquals("HT1", it.cache.peek(Source.MCTIERS, PLAYER).orElseThrow().get("axe").label(),
+                "the previous answer remains visible while refreshing");
         assertEquals(2, it.fake.calls.get(), "it must be asked again");
     }
 
@@ -367,7 +367,7 @@ class TierCacheTest {
         assertEquals(Optional.of(Map.of()), it.cache.peek(Source.MCTIERS, PLAYER));
 
         it.advance(Duration.ofMinutes(60));
-        assertEquals(Optional.empty(), it.cache.peek(Source.MCTIERS, PLAYER));
+        assertEquals(Optional.of(Map.of()), it.cache.peek(Source.MCTIERS, PLAYER));
         assertEquals(2, it.fake.calls.get());
     }
 
@@ -565,8 +565,343 @@ class TierCacheTest {
         it.advance(Duration.ofMinutes(30));
         it.cache.setTtl(Duration.ofMinutes(10));
 
-        assertEquals(Optional.empty(), it.cache.peek(Source.MCTIERS, PLAYER));
+        assertTrue(it.cache.peek(Source.MCTIERS, PLAYER).isPresent());
         assertEquals(2, it.fake.calls.get());
+    }
+
+    @Test
+    void failedRefreshRetainsTheLastSuccessfulBadgeUntilTheGracePeriodEnds() {
+        Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.fake.complete();
+        it.advance(Duration.ofMinutes(60));
+        assertTrue(it.cache.peek(Source.MCTIERS, PLAYER).isPresent());
+        it.fake.pending.completeExceptionally(new RuntimeException("offline"));
+        assertEquals("HT1", it.cache.peek(Source.MCTIERS, PLAYER).orElseThrow().get("axe").label());
+        it.advance(Duration.ofHours(6));
+        assertTrue(it.cache.peek(Source.MCTIERS, PLAYER).isEmpty(), "old data has a finite lifetime");
+    }
+
+    @Test
+    void replacementAnswerCanRemoveAnOldBadgeByReportingUnranked() {
+        Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.fake.complete();
+        it.advance(Duration.ofMinutes(60));
+        assertTrue(it.cache.peek(Source.MCTIERS, PLAYER).isPresent());
+        it.fake.pending.complete(Map.of());
+        assertEquals(Optional.of(Map.of()), it.cache.peek(Source.MCTIERS, PLAYER));
+    }
+
+    @Test
+    void lobbyRequestsAreBoundedAndExplicitLookupPromotesQueuedWork() {
+        MultiSource source = new MultiSource();
+        TierCache cache = new TierCache(List.of(source));
+        UUID[] players = java.util.stream.IntStream.range(0, 8).mapToObj(i -> UUID.randomUUID()).toArray(UUID[]::new);
+        for (UUID player : players) cache.peek(Source.MCTIERS, player);
+        assertEquals(4, source.started.size(), "only four requests may be active per site");
+        var explicit = cache.load(Source.MCTIERS, players[7]);
+        source.pending.get(players[0]).complete(Map.of());
+        assertEquals(players[7], source.started.get(4), "an explicit lookup overtakes background work");
+        source.pending.get(players[7]).complete(Map.of("axe", new Tier(2, true, false)));
+        assertEquals("HT2", explicit.join().get("axe").label());
+        assertEquals(1, source.started.stream().filter(players[7]::equals).count(), "promotion shares one request");
+    }
+
+    @Test
+    void repeatedExplicitLookupsShareAndPromoteOneQueuedClaim() {
+        MultiSource source = new MultiSource();
+        TierCache cache = new TierCache(List.of(source));
+        UUID[] players = java.util.stream.IntStream.range(0, 8)
+                .mapToObj(i -> UUID.randomUUID()).toArray(UUID[]::new);
+        for (UUID player : players) cache.peek(Source.MCTIERS, player);
+
+        var first = cache.load(Source.MCTIERS, players[7]);
+        var repeated = cache.load(Source.MCTIERS, players[7]);
+        cache.peek(Source.MCTIERS, players[7]);
+
+        assertFalse(first.isDone());
+        assertFalse(repeated.isDone());
+        assertEquals(4, cache.queuedRequests(Source.MCTIERS), "promotion never inserts another request");
+        source.pending.get(players[0]).complete(Map.of());
+        assertEquals(players[7], source.started.get(4));
+        source.pending.get(players[7]).complete(Map.of("axe", new Tier(2, true, false)));
+        assertEquals("HT2", repeated.join().get("axe").label());
+        assertEquals(1, source.started.stream().filter(players[7]::equals).count());
+    }
+
+    @Test
+    void sourceInvocationAllowsAnotherThreadToShareTheClaim() {
+        var cacheReference = new java.util.concurrent.atomic.AtomicReference<TierCache>();
+        var shared = new java.util.concurrent.atomic.AtomicReference<CompletableFuture<Map<String, Tier>>>();
+        var response = new CompletableFuture<Map<String, Tier>>();
+        TierSource source = new TierSource() {
+            public Source source() { return Source.MCTIERS; }
+            public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) {
+                try {
+                    shared.set(CompletableFuture.supplyAsync(() -> cacheReference.get().load(source(), uuid),
+                            action -> Thread.ofVirtual().start(action)).get(5, java.util.concurrent.TimeUnit.SECONDS));
+                } catch (Exception error) {
+                    throw new AssertionError("source invocation must release the admission lock", error);
+                }
+                return response;
+            }
+        };
+        TierCache cache = new TierCache(List.of(source));
+        cacheReference.set(cache);
+        var requested = cache.load(Source.MCTIERS, PLAYER);
+        assertNotNull(shared.get());
+        assertFalse(shared.get().isDone());
+        response.complete(Map.of());
+        assertEquals(Map.of(), requested.join());
+        assertEquals(Map.of(), shared.get().join());
+    }
+
+    @Test
+    void completedLookupCallbacksObserveTheReleasedActiveSlot() {
+        MultiSource source = new MultiSource();
+        TierCache cache = new TierCache(List.of(source));
+        var first = cache.load(Source.MCTIERS, PLAYER);
+        for (int i = 0; i < 3; i++) cache.load(Source.MCTIERS, UUID.randomUUID());
+        UUID replacement = UUID.randomUUID();
+        AtomicInteger observedActive = new AtomicInteger(-1);
+        var startedDuringCallback = new java.util.concurrent.atomic.AtomicBoolean();
+        first.whenComplete((answer, error) -> {
+            observedActive.set(cache.activeRequests(Source.MCTIERS));
+            cache.load(Source.MCTIERS, replacement);
+            startedDuringCallback.set(source.started.contains(replacement));
+        });
+
+        source.pending.get(PLAYER).complete(Map.of());
+
+        assertEquals(3, observedActive.get(), "the completed request releases capacity before publication");
+        assertTrue(startedDuringCallback.get(), "a continuation can immediately use the released slot");
+        assertEquals(4, cache.activeRequests(Source.MCTIERS));
+    }
+
+    @Test
+    void cancelledRequestCallbacksCanAdmitWorkInTheNewGeneration() {
+        MultiSource source = new MultiSource();
+        TierCache cache = new TierCache(List.of(source));
+        for (int i = 0; i < 4; i++) cache.peek(Source.MCTIERS, UUID.randomUUID());
+        var obsolete = cache.load(Source.MCTIERS, UUID.randomUUID());
+        var replacement = new java.util.concurrent.atomic.AtomicReference<CompletableFuture<Map<String, Tier>>>();
+        obsolete.whenComplete((answer, error) -> replacement.set(cache.load(Source.MCTIERS, PLAYER)));
+
+        cache.invalidate(Source.MCTIERS);
+
+        assertTrue(obsolete.isCompletedExceptionally());
+        assertNotNull(replacement.get());
+        assertFalse(replacement.get().isDone());
+        assertEquals(1, cache.queuedRequests(Source.MCTIERS));
+        source.pending.get(source.started.getFirst()).complete(Map.of());
+        assertEquals(PLAYER, source.started.getLast());
+        source.pending.get(PLAYER).complete(Map.of());
+        assertEquals(Map.of(), replacement.get().join());
+    }
+
+    @Test
+    void retainingAnswersDoesNotObserveTheSourceWhileHoldingTheAdmissionLock() {
+        var cacheReference = new java.util.concurrent.atomic.AtomicReference<TierCache>();
+        var observeAdmission = new java.util.concurrent.atomic.AtomicBoolean();
+        TierSource source = new TierSource() {
+            public Source source() { return Source.MCTIERS; }
+            public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) {
+                return CompletableFuture.completedFuture(Map.of("axe", new Tier(1, true, false)));
+            }
+            public RefreshState refreshState() {
+                if (observeAdmission.getAndSet(false)) {
+                    try {
+                        CompletableFuture.runAsync(() -> cacheReference.get().load(source(), UUID.randomUUID()),
+                                action -> Thread.ofVirtual().start(action)).get(5, java.util.concurrent.TimeUnit.SECONDS);
+                    } catch (Exception error) {
+                        throw new AssertionError("source observation must not hold the admission lock", error);
+                    }
+                }
+                return RefreshState.IDLE;
+            }
+        };
+        TierCache cache = new TierCache(List.of(source));
+        cacheReference.set(cache);
+        cache.load(Source.MCTIERS, PLAYER).join();
+        observeAdmission.set(true);
+
+        assertDoesNotThrow(cache::refreshAll);
+        assertTrue(cache.cachedAnswer(Source.MCTIERS, PLAYER).orElseThrow().stale());
+    }
+
+    @Test
+    void loadAnswerCapturesTheCompletedGenerationRatherThanReadingAReplacement() {
+        Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
+        var oldRequest = it.cache.loadAnswer(Source.MCTIERS, PLAYER);
+        it.fake.complete();
+        TierCache.CachedAnswer captured = oldRequest.join();
+        it.advance(Duration.ofMinutes(10));
+        it.cache.invalidate(Source.MCTIERS);
+        it.cache.load(Source.MCTIERS, PLAYER);
+        it.fake.complete();
+
+        assertEquals(Duration.ZERO, captured.age());
+        assertEquals(Optional.of(Duration.ofMinutes(60)), captured.freshFor());
+        assertFalse(captured.stale());
+        assertEquals(captured, oldRequest.join(), "the completed request remains its own immutable answer");
+        assertEquals(Duration.ZERO, it.cache.cachedAnswer(Source.MCTIERS, PLAYER).orElseThrow().age());
+    }
+
+    @Test
+    void cachedLoadAnswerAgesWithoutFetchingThePlayerAgain() {
+        Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
+        it.cache.loadAnswer(Source.MCTIERS, PLAYER);
+        it.fake.complete();
+        it.advance(Duration.ofMinutes(10));
+
+        TierCache.CachedAnswer answer = it.cache.loadAnswer(Source.MCTIERS, PLAYER).join();
+
+        assertEquals(Duration.ofMinutes(10), answer.age());
+        assertEquals(Optional.of(Duration.ofMinutes(50)), answer.freshFor());
+        assertEquals(1, it.fake.calls.get());
+    }
+
+    @Test
+    void identicalAnswersAtTheSameTimeStillHaveDifferentRevisions() {
+        Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
+        it.cache.load(Source.MCTIERS, PLAYER);
+        it.fake.complete();
+        long first = it.cache.cachedAnswer(Source.MCTIERS, PLAYER).orElseThrow().revision();
+
+        it.cache.refreshAll();
+        assertEquals(first, it.cache.cachedAnswer(Source.MCTIERS, PLAYER).orElseThrow().revision(),
+                "retained placements keep the original response's revision");
+        it.cache.load(Source.MCTIERS, PLAYER);
+        it.fake.complete();
+
+        assertNotEquals(first, it.cache.cachedAnswer(Source.MCTIERS, PLAYER).orElseThrow().revision(),
+                "another response has a new revision even if its placements and timestamp match");
+    }
+
+    @Test
+    void completedEntriesCannotAccumulateAcrossThousandsOfDepartedPlayers() {
+        TierSource immediate = new TierSource() {
+            public Source source() { return Source.MCTIERS; }
+            public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) {
+                return CompletableFuture.completedFuture(Map.of());
+            }
+        };
+        TierCache cache = new TierCache(List.of(immediate));
+        for (int i = 0; i < 4200; i++) cache.load(Source.MCTIERS, UUID.randomUUID()).join();
+        assertTrue(cache.cachedPlayers(Source.MCTIERS) <= 4096, "retention is bounded even without another peek");
+    }
+
+    private static final class MultiSource implements TierSource {
+        final java.util.List<UUID> started = new java.util.ArrayList<>();
+        final java.util.Map<UUID, CompletableFuture<Map<String, Tier>>> pending = new java.util.HashMap<>();
+        public Source source() { return Source.MCTIERS; }
+        public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) {
+            started.add(uuid);
+            var result = new CompletableFuture<Map<String, Tier>>();
+            pending.put(uuid, result);
+            return result;
+        }
+    }
+
+    @Test
+    void refreshPreservesAnswersWhileDiscardingObsoleteCompletions() {
+        Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
+        it.cache.load(Source.MCTIERS, PLAYER);
+        it.fake.complete();
+        it.advance(Duration.ofMinutes(60));
+        it.cache.peek(Source.MCTIERS, PLAYER);
+        var obsolete = it.fake.pending;
+        it.cache.refreshAll();
+        assertEquals("HT1", it.cache.peek(Source.MCTIERS, PLAYER).orElseThrow().get("axe").label());
+        obsolete.complete(Map.of("axe", new Tier(5, false, false)));
+        assertEquals("HT1", it.cache.peek(Source.MCTIERS, PLAYER).orElseThrow().get("axe").label());
+        it.fake.pending.complete(Map.of("axe", new Tier(2, true, false)));
+        assertEquals("HT2", it.cache.peek(Source.MCTIERS, PLAYER).orElseThrow().get("axe").label());
+    }
+
+    @Test
+    void maintenanceReclaimsExpiredPlayersWithoutAnotherLookup() {
+        Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
+        it.cache.load(Source.MCTIERS, PLAYER);
+        it.fake.complete();
+        it.advance(Duration.ofHours(8));
+        it.cache.maintain();
+        assertEquals(0, it.cache.cachedPlayers(Source.MCTIERS));
+    }
+
+    @Test
+    void checkingAnOldBulkSnapshotDoesNotResetItsAgeOrKeepItAliveIndefinitely() {
+        AtomicLong time = new AtomicLong();
+        AtomicInteger fetches = new AtomicInteger();
+        TierSource source = new TierSource() {
+            public Source source() { return Source.NOVATIERS; }
+            public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) {
+                return CompletableFuture.completedFuture(Map.of("vanilla", new Tier(1, true, false)));
+            }
+            public CompletableFuture<TierSource.Answer> fetchAnswer(UUID uuid) {
+                fetches.incrementAndGet();
+                return fetch(uuid).thenApply(tiers -> new TierSource.Answer(tiers, Duration.ofNanos(time.get()), time.get() > 0));
+            }
+        };
+        TierCache cache = new TierCache(List.of(source), policy(), time::get, () -> 0.5);
+        cache.load(Source.NOVATIERS, PLAYER).join();
+        time.set(Duration.ofMinutes(61).toNanos());
+        for (int i = 0; i < 20; i++) assertTrue(cache.peek(Source.NOVATIERS, PLAYER).isPresent());
+        assertEquals(Duration.ofMinutes(61), cache.cachedAnswer(Source.NOVATIERS, PLAYER).orElseThrow().age());
+        assertTrue(cache.cachedAnswer(Source.NOVATIERS, PLAYER).orElseThrow().refreshFailed());
+        assertEquals(2, fetches.get(), "checking an old snapshot is not repeated on every frame");
+        time.set(Duration.ofHours(7).plusSeconds(1).toNanos());
+        assertTrue(cache.peek(Source.NOVATIERS, PLAYER).isEmpty());
+        cache.forgetFailed(Source.NOVATIERS, PLAYER);
+        assertTrue(cache.load(Source.NOVATIERS, PLAYER).isCompletedExceptionally(), "explicit lookup cannot present expired bulk data as fresh");
+    }
+
+    @Test
+    void rateLimitCooldownAppliesToEveryPlayerAndSurvivesManualRefresh() {
+        MultiSource source = new MultiSource();
+        AtomicLong time = new AtomicLong();
+        TierCache cache = new TierCache(List.of(source), policy(), time::get, () -> 0.5);
+        UUID limited = UUID.randomUUID();
+        cache.load(Source.MCTIERS, limited);
+        source.pending.get(limited).completeExceptionally(new com.w0x7y.justtiers.api.RetryAfterException(
+                "rate limited", Duration.ofMinutes(2)));
+        cache.refreshAll();
+        assertTrue(cache.load(Source.MCTIERS, UUID.randomUUID()).isCompletedExceptionally());
+        assertEquals(1, source.started.size());
+        time.set(Duration.ofMinutes(2).toNanos());
+        cache.load(Source.MCTIERS, UUID.randomUUID());
+        assertEquals(2, source.started.size());
+    }
+
+    @Test
+    void queueOverflowStaysBoundedAndExplicitWorkCanDisplaceBackgroundWork() {
+        MultiSource source = new MultiSource();
+        TierCache cache = new TierCache(List.of(source));
+        for (int i = 0; i < 200; i++) cache.peek(Source.MCTIERS, UUID.randomUUID());
+        assertEquals(4, source.started.size());
+        assertEquals(128, cache.queuedRequests(Source.MCTIERS));
+        UUID requested = UUID.randomUUID();
+        var explicit = cache.load(Source.MCTIERS, requested);
+        assertFalse(explicit.isDone());
+        source.pending.get(source.started.getFirst()).complete(Map.of());
+        assertEquals(requested, source.started.getLast());
+        assertTrue(cache.queuedRequests(Source.MCTIERS) <= 128);
+        assertEquals(0, cache.health(Source.MCTIERS).failures(), "queue pressure is not a site failure");
+    }
+
+    @Test
+    void invalidationCancelsQueuedWorkWithoutResettingActiveRequestCapacity() {
+        MultiSource source = new MultiSource();
+        TierCache cache = new TierCache(List.of(source));
+        for (int i = 0; i < 8; i++) cache.peek(Source.MCTIERS, UUID.randomUUID());
+        UUID oldActive = source.started.getFirst();
+        cache.invalidate(Source.MCTIERS);
+        cache.load(Source.MCTIERS, PLAYER);
+        assertEquals(4, source.started.size(), "old active HTTP requests still occupy slots");
+        source.pending.get(oldActive).complete(Map.of());
+        assertEquals(PLAYER, source.started.getLast());
+        assertEquals(5, source.started.size(), "obsolete queued players are never fetched");
     }
 
     // --- what /justtiers debug reads ---
@@ -700,7 +1035,7 @@ class TierCacheTest {
         FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
         TierCache cache = new TierCache(List.of(fake));
         var discarded = new java.util.ArrayList<CompletableFuture<Map<String, Tier>>>();
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 4; i++) {
             cache.load(Source.MCTIERS, UUID.randomUUID());
             discarded.add(fake.pending);
         }
@@ -708,7 +1043,7 @@ class TierCacheTest {
         discarded.forEach(future -> future.completeExceptionally(new RuntimeException("old failure")));
         assertFalse(cache.gateStatus(Source.MCTIERS).closed());
         assertEquals(0, cache.playersAwaitingRetry(Source.MCTIERS));
-        assertEquals(8, cache.health(Source.MCTIERS).failures(), "history still records old requests");
+        assertEquals(4, cache.health(Source.MCTIERS).failures(), "history still records old requests");
     }
 
     @Test

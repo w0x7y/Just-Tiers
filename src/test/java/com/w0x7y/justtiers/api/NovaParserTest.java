@@ -152,4 +152,61 @@ class NovaParserTest {
         assertEquals("HT2", NovaParser.parseUsers(body).get(X_SUS).get("axe").label());
     }
 
+    @Test
+    void detailedIndexRecordsRejectedPlayersAndAggregatedDiagnostics() {
+        String body = """
+                [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504",
+                  "tiers":{"Axe":"HT2","New Mode":"HT1"}},
+                 {"minecraftUuid":"dadd05d5-e1a2-41bc-be3e-de5f7d9fffee",
+                  "tiers":{"SMP":{"unexpected":"object"},"Axe":"LT3"}},
+                 {"minecraftUuid":"invalid","tiers":{}}, false]
+                """;
+        NovaParser.ParsedIndex parsed = NovaParser.parseUsersDetailed(body);
+        assertEquals(java.util.Set.of(SIGEON), parsed.rejectedPlayers());
+        assertEquals(3, parsed.malformedUsers());
+        assertEquals(1, parsed.malformedPlacements());
+        assertEquals(1, parsed.unknownGamemodes());
+        assertEquals("HT2", parsed.users().get(X_SUS).get("axe").label());
+        // The compatibility map still preserves understood placements for existing callers.
+        assertEquals("LT3", NovaParser.parseUsers(body).get(SIGEON).get("axe").label());
+    }
+
+    @Test
+    void detailedIndexIsDeeplyImmutable() {
+        NovaParser.ParsedIndex parsed = NovaParser.parseUsersDetailed(USERS_JSON);
+        assertThrows(UnsupportedOperationException.class, () -> parsed.users().clear());
+        assertThrows(UnsupportedOperationException.class, () -> parsed.users().get(X_SUS).clear());
+        assertThrows(UnsupportedOperationException.class, () -> parsed.rejectedPlayers().add(SIGEON));
+    }
+
+    @Test
+    void validUnknownModesAndEmptyTierMapsDoNotRejectPlayers() {
+        String body = """
+                [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504","tiers":{"Future Mode":"HT1"}},
+                 {"minecraftUuid":"dadd05d5-e1a2-41bc-be3e-de5f7d9fffee","tiers":{}}]
+                """;
+        NovaParser.ParsedIndex parsed = NovaParser.parseUsersDetailed(body);
+        assertTrue(parsed.users().isEmpty());
+        assertTrue(parsed.rejectedPlayers().isEmpty());
+        assertEquals(0, parsed.malformedUsers());
+        assertEquals(0, parsed.malformedPlacements());
+        assertEquals(1, parsed.unknownGamemodes());
+    }
+
+    @Test
+    void duplicateIdenticalRecordsAreAcceptedAndConflictingAliasesAreRejected() {
+        String repeated = """
+                [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504","tiers":{"Axe":"HT2"}},
+                 {"minecraftUuid":"4b25be24-97f5-4adf-967d-8d69ef54d504","tiers":{"Axe":"HT2"}}]
+                """;
+        NovaParser.ParsedIndex parsed = NovaParser.parseUsersDetailed(repeated);
+        assertTrue(parsed.rejectedPlayers().isEmpty());
+        assertEquals(1, parsed.users().size());
+        String aliases = """
+                [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504",
+                  "tiers":{"Spear Mace":"HT2","Mace":"LT3"}}]
+                """;
+        assertEquals(java.util.Set.of(X_SUS), NovaParser.parseUsersDetailed(aliases).rejectedPlayers());
+    }
+
 }
