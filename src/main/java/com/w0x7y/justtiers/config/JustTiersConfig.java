@@ -67,12 +67,16 @@ public class JustTiersConfig {
      */
     private transient volatile Map<Source, Integer> resolvedColors;
 
+    /** Immutable render settings, reused until a badge-affecting setter changes them. */
+    private transient volatile NametagSettings resolvedNametagSettings;
+
     public boolean isEnabled() {
         return enabled;
     }
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
+        resolvedNametagSettings = null;
     }
 
     /** Applies to every display mode: when false, retired tiers are never rendered. */
@@ -82,6 +86,7 @@ public class JustTiersConfig {
 
     public void setShowRetired(boolean showRetired) {
         this.showRetired = showRetired;
+        resolvedNametagSettings = null;
     }
 
     public DisplayMode getDisplayMode() {
@@ -90,6 +95,7 @@ public class JustTiersConfig {
 
     public void setDisplayMode(DisplayMode displayMode) {
         this.displayMode = displayMode;
+        resolvedNametagSettings = null;
     }
 
     public int getNovaRefreshMinutes() {
@@ -120,6 +126,7 @@ public class JustTiersConfig {
 
     public void setBadgePosition(BadgePosition badgePosition) {
         this.badgePosition = badgePosition;
+        resolvedNametagSettings = null;
     }
 
     /**
@@ -132,6 +139,7 @@ public class JustTiersConfig {
 
     public void setShowIcons(boolean showIcons) {
         this.showIcons = showIcons;
+        resolvedNametagSettings = null;
     }
 
     /** Whether the badge is wrapped in {@code [ ]}. */
@@ -141,6 +149,7 @@ public class JustTiersConfig {
 
     public void setShowBrackets(boolean showBrackets) {
         this.showBrackets = showBrackets;
+        resolvedNametagSettings = null;
     }
 
     /** The three cosmetic settings as the one value the nametag layout takes. */
@@ -159,6 +168,7 @@ public class JustTiersConfig {
     public void setPalette(Palette palette) {
         this.palette = palette == null ? Palette.DEFAULT : palette;
         this.resolvedColors = null;
+        resolvedNametagSettings = null;
     }
 
     /**
@@ -180,6 +190,7 @@ public class JustTiersConfig {
         }
         customColors.put(source.name(), HexColor.format(rgb));
         this.resolvedColors = null;
+        resolvedNametagSettings = null;
     }
 
     /** What color this site is drawn in, under the palette in force. */
@@ -221,8 +232,12 @@ public class JustTiersConfig {
      * exactly the code the world nametag does.
      */
     public NametagSettings nametagSettings() {
-        return new NametagSettings(enabled, getDisplayMode(), selectedGamemodesBySource(),
+        NametagSettings cached = resolvedNametagSettings;
+        if (cached != null) return cached;
+        cached = new NametagSettings(enabled, getDisplayMode(), selectedGamemodesBySource(),
                 showRetired, nametagStyle());
+        resolvedNametagSettings = cached;
+        return cached;
     }
 
     /** The out-of-the-box gamemode for a site, and the config screen's reset target. */
@@ -248,6 +263,7 @@ public class JustTiersConfig {
         }
         selectedGamemodes.put(source.name(), slug);
         resolvedSelection = null;
+        resolvedNametagSettings = null;
     }
 
     /**

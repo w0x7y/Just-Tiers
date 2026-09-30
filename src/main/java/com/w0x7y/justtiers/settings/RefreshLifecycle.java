@@ -41,9 +41,9 @@ public final class RefreshLifecycle {
         JustTiers.LOGGER.info("NovaTiers refresh scheduled every {} minutes", minutes);
     }
 
-    /** Manual refresh clears retry state immediately and reports the bulk download result. */
+    /** Manual refresh clears retry state while keeping last-known placements visible. */
     public CompletableFuture<Void> refreshNow() {
-        cache.invalidateAll();
+        cache.refreshAll();
         return refreshIndex();
     }
 

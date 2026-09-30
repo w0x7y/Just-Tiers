@@ -17,5 +17,8 @@ public record SiteDiagnostics(Source source,
                               SiteGate.Status gate,
                               int cachedPlayers,
                               int pendingLookups,
-                              int playersAwaitingRetry) {
+                              int playersAwaitingRetry,
+                              int activeRequests,
+                              int queuedRequests,
+                              java.time.Duration cooldownRemaining) {
 }

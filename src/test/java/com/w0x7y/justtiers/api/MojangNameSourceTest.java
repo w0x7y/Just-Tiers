@@ -117,6 +117,27 @@ class MojangNameSourceTest {
     }
 
     @Test
+    void anUnownedNameIsRememberedAcrossCaseVariants() throws Exception {
+        respond(404, "");
+        MojangNameSource source = source();
+
+        assertTrue(source.resolve(NAME).get().isEmpty());
+        assertTrue(source.resolve("notch").get().isEmpty());
+        assertEquals(1, requestCount.get());
+        assertEquals(NAME, requestedName);
+    }
+
+    @Test
+    void aLegacyEmptyAnswerIsRememberedForTheSession() throws Exception {
+        respond(204, "");
+        MojangNameSource source = source();
+
+        assertTrue(source.resolve(NAME).get().isEmpty());
+        assertTrue(source.resolve("notch").get().isEmpty());
+        assertEquals(1, requestCount.get());
+    }
+
+    @Test
     void aServerErrorFailsRatherThanLookingLikeAnUnownedName() {
         respond(500, "");
         ExecutionException thrown = assertThrows(ExecutionException.class,

@@ -9,9 +9,11 @@ import com.w0x7y.justtiers.tier.Tier;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.LongSupplier;
 
 /**
  * NovaTiers exposes only a bulk {@code /users} array (~6.5k players, ~1.7 MB), so the
@@ -23,9 +25,15 @@ public final class NovaTiersSource implements TierSource {
     private final HttpClient client;
     private final String baseUrl;
     private final DownloadProgress progress;
+    private final LongSupplier nanoTime;
+    private long cooldownUntilNanos;
+    private boolean cooldownSet;
 
-    private volatile CompletableFuture<Map<UUID, Map<String, Tier>>> index;
-    private volatile int indexedPlayerCount;
+    private record PublishedIndex(NovaParser.ParsedIndex snapshot, long receivedAtNanos) { }
+
+    private volatile PublishedIndex publishedIndex;
+    private volatile PublishedIndex failedRefreshIndex;
+    private CompletableFuture<PublishedIndex> indexDownload;
     private CompletableFuture<Void> refreshInFlight;
 
     public NovaTiersSource(HttpClient client, String baseUrl) {
@@ -33,9 +41,14 @@ public final class NovaTiersSource implements TierSource {
     }
 
     public NovaTiersSource(HttpClient client, String baseUrl, DownloadProgress progress) {
+        this(client, baseUrl, progress, System::nanoTime);
+    }
+
+    public NovaTiersSource(HttpClient client, String baseUrl, DownloadProgress progress, LongSupplier nanoTime) {
         this.client = client;
         this.baseUrl = JustTiers.trimTrailingSlash(baseUrl);
         this.progress = progress;
+        this.nanoTime = nanoTime;
     }
 
     @Override
@@ -45,29 +58,44 @@ public final class NovaTiersSource implements TierSource {
 
     @Override
     public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) {
-        return ensureLoaded().thenApply(idx -> idx.getOrDefault(uuid, Map.of()));
+        return fetchAnswer(uuid).thenApply(Answer::tiers);
+    }
+
+    @Override
+    public CompletableFuture<Answer> fetchAnswer(UUID uuid) {
+        return ensureLoaded().thenApply(published -> {
+            NovaParser.ParsedIndex snapshot = published.snapshot();
+            if (snapshot.rejectedPlayers().contains(uuid)) {
+                throw new TierLookupException("NovaTiers contained malformed or conflicting data for " + uuid);
+            }
+            Duration age = Duration.ofNanos(Math.max(0, nanoTime.getAsLong() - published.receivedAtNanos()));
+            return new Answer(snapshot.users().getOrDefault(uuid, Map.of()), age,
+                    failedRefreshIndex == published);
+        });
+    }
+
+    @Override
+    public synchronized RefreshState refreshState() {
+        PublishedIndex published = publishedIndex;
+        long remaining = cooldownSet ? Math.max(0, cooldownUntilNanos - nanoTime.getAsLong()) : 0;
+        return new RefreshState(refreshInFlight != null && !refreshInFlight.isDone(),
+                published != null && failedRefreshIndex == published, Duration.ofNanos(remaining));
     }
 
     /** Number of players currently indexed. Useful for logging and the refresh command. */
     public int indexedPlayerCount() {
-        return indexedPlayerCount;
+        PublishedIndex published = publishedIndex;
+        return published == null ? 0 : published.snapshot().users().size();
     }
 
-    private synchronized CompletableFuture<Map<UUID, Map<String, Tier>>> ensureLoaded() {
-        if (usableIndex() == null) {
-            index = loadIndex(null);
+    private synchronized CompletableFuture<PublishedIndex> ensureLoaded() {
+        if (publishedIndex != null) {
+            return CompletableFuture.completedFuture(publishedIndex);
         }
-        return index;
-    }
-
-    /**
-     * The cached index, or {@code null} when there is none worth keeping. A download still
-     * in flight counts as usable so that callers join it instead of starting a second one;
-     * one that already failed does not, so the next lookup retries rather than replaying
-     * the old error forever.
-     */
-    private CompletableFuture<Map<UUID, Map<String, Tier>>> usableIndex() {
-        return index == null || index.isCompletedExceptionally() ? null : index;
+        if (indexDownload == null || indexDownload.isCompletedExceptionally()) {
+            startDownload();
+        }
+        return indexDownload;
     }
 
     /**
@@ -81,28 +109,29 @@ public final class NovaTiersSource implements TierSource {
         if (refreshInFlight != null && !refreshInFlight.isDone()) {
             return refreshInFlight;
         }
-        index = loadIndex(usableIndex());
+        startDownload();
         return refreshInFlight;
     }
 
-    private CompletableFuture<Map<UUID, Map<String, Tier>>> loadIndex(
-            CompletableFuture<Map<UUID, Map<String, Tier>>> previous) {
-        CompletableFuture<Map<UUID, Map<String, Tier>>> fresh = download();
-        // Both initial loading and explicit refreshes claim this same future.
-        refreshInFlight = fresh.thenApply(ignored -> null);
-        if (previous == null) {
-            // Nothing worth keeping yet, so let the failure surface to the caller.
-            return fresh;
+    private void startDownload() {
+        long remaining = cooldownSet ? cooldownUntilNanos - nanoTime.getAsLong() : 0;
+        if (remaining > 0) {
+            indexDownload = CompletableFuture.failedFuture(new RetryAfterException(
+                    "NovaTiers bulk download is paused by Retry-After", Duration.ofNanos(remaining)));
+            refreshInFlight = indexDownload.thenApply(ignored -> null);
+            return;
         }
-        return fresh.exceptionallyCompose(error -> {
-            JustTiers.LOGGER.warn("NovaTiers refresh failed, keeping {} indexed players: {}",
-                    indexedPlayerCount, error.toString());
-            return previous;
+        indexDownload = download().thenApply(parsed -> {
+            // Publish only a validated immutable result; pending refreshes do not hide it.
+            PublishedIndex published = new PublishedIndex(parsed, nanoTime.getAsLong());
+            publishedIndex = published;
+            return published;
         });
+        // Initial fetches and explicit refreshes share this same download and its failure.
+        refreshInFlight = indexDownload.thenApply(ignored -> null);
     }
 
-
-    private CompletableFuture<Map<UUID, Map<String, Tier>>> download() {
+    private CompletableFuture<NovaParser.ParsedIndex> download() {
         HttpRequest request =
                 JustTiers.jsonRequest(baseUrl + "/users", Duration.ofSeconds(30));
 
@@ -110,25 +139,40 @@ public final class NovaTiersSource implements TierSource {
         return client.sendAsync(request,
                         new ProgressBodyHandler(bytes -> progress.advanced(token, bytes)))
                 .thenApply(response -> {
+                    if (response.statusCode() == 429 || response.statusCode() == 503) {
+                        Duration delay = RetryAfter.parse(response.headers().firstValue("Retry-After").orElse(null),
+                                Instant.now());
+                        recordCooldown(delay);
+                        throw new RetryAfterException("NovaTiers returned HTTP " + response.statusCode(), delay);
+                    }
                     if (response.statusCode() != 200) {
                         throw new TierLookupException(
                                 "NovaTiers returned HTTP " + response.statusCode());
                     }
                     String body = response.body();
-                    Map<UUID, Map<String, Tier>> parsed = NovaParser.parseUsers(body);
-                    JustTiers.LOGGER.info("Indexed {} NovaTiers players", parsed.size());
-                    indexedPlayerCount = parsed.size();
+                    NovaParser.ParsedIndex parsed = NovaParser.parseUsersDetailed(body);
+                    JustTiers.LOGGER.info("Indexed {} NovaTiers players, {} rejected players and {} unknown gamemode placements",
+                            parsed.users().size(), parsed.rejectedPlayers().size(), parsed.unknownGamemodes());
                     return parsed;
                 })
-                // whenComplete passes the result and the failure straight through, so the
-                // caller's error handling - including loadIndex keeping the previous index -
-                // is untouched.
                 .whenComplete((parsed, error) -> {
                     if (error != null) {
                         progress.failed(token);
+                        failedRefreshIndex = publishedIndex;
+                        if (publishedIndex != null) {
+                            JustTiers.LOGGER.warn("NovaTiers refresh failed, keeping {} indexed players: {}",
+                                    indexedPlayerCount(), error.toString());
+                        }
                     } else {
                         progress.finished(token);
                     }
                 });
+    }
+
+    private synchronized void recordCooldown(Duration delay) {
+        long now = nanoTime.getAsLong();
+        long previous = cooldownSet ? Math.max(0, cooldownUntilNanos - now) : 0;
+        cooldownUntilNanos = now + Math.max(previous, delay.toNanos());
+        cooldownSet = true;
     }
 }

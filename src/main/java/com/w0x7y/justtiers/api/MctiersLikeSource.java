@@ -43,6 +43,11 @@ public final class MctiersLikeSource implements TierSource {
                         return Map.<String, Tier>of();
                     }
                     if (status != 200) {
+                        if (status == 429 || (status == 503 && response.headers().firstValue("Retry-After").isPresent())) {
+                            throw new RetryAfterException(source + " returned HTTP " + status,
+                                    RetryAfter.parse(response.headers().firstValue("Retry-After").orElse(null),
+                                            java.time.Instant.now()));
+                        }
                         // Not "unranked" — the site failed to answer. Fail so the cache retries.
                         throw new TierLookupException(
                                 source + " returned HTTP " + status + " for " + uuid);

@@ -3,7 +3,7 @@ package com.w0x7y.justtiers.gui;
 import com.w0x7y.justtiers.JustTiersClient;
 import com.w0x7y.justtiers.api.OnlinePlayers;
 import com.w0x7y.justtiers.api.PlayerRef;
-import com.w0x7y.justtiers.lookup.LookupSection;
+import com.w0x7y.justtiers.lookup.LookupResult;
 import com.w0x7y.justtiers.lookup.LookupSession;
 import com.w0x7y.justtiers.tier.Source;
 import net.minecraft.client.Minecraft;
@@ -38,7 +38,7 @@ final class MinecraftLookupSession {
 
     String name() { return lookup.name(); }
     PlayerSkin skin() { return skin; }
-    Optional<LookupSection> section(Source source) { return lookup.section(source); }
+    LookupResult result(Source source) { return lookup.result(source); }
     boolean rankedNowhere() { return lookup.rankedNowhere(); }
 
     Optional<Component> error() {

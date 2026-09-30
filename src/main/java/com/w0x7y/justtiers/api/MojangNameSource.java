@@ -4,16 +4,15 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.w0x7y.justtiers.JustTiers;
+import com.w0x7y.justtiers.cache.SuccessfulLookupCache;
 
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 /**
@@ -43,8 +42,8 @@ public final class MojangNameSource {
 
     private final HttpClient client;
     private final String baseUrl;
-    private final Map<String, CompletableFuture<Optional<PlayerRef>>> cache =
-            new ConcurrentHashMap<>();
+    private final SuccessfulLookupCache<String, Optional<PlayerRef>> cache =
+            new SuccessfulLookupCache<>();
 
     public MojangNameSource(HttpClient client, String baseUrl) {
         this.client = client;
@@ -72,28 +71,7 @@ public final class MojangNameSource {
         }
 
         String key = name.toLowerCase(Locale.ROOT);
-        CompletableFuture<Optional<PlayerRef>> cached = cache.get(key);
-        if (cached != null) {
-            if (!cached.isCompletedExceptionally()) {
-                return cached;
-            }
-            // A waiting caller can observe failure before its eviction callback runs.
-            cache.remove(key, cached);
-        }
-
-        // computeIfAbsent, not request-then-putIfAbsent: two lookups of the same name
-        // racing here would otherwise both reach Mojang and one answer be thrown away,
-        // which is the rate limit paid twice for the deduplication promised above.
-        CompletableFuture<Optional<PlayerRef>> pending =
-                cache.computeIfAbsent(key, ignored -> request(name));
-        // Attached outside computeIfAbsent: the removal touches the same map, and a
-        // request that somehow completed inside the mapping function would re-enter it.
-        pending.whenComplete((profile, error) -> {
-            if (error != null) {
-                cache.remove(key, pending);
-            }
-        });
-        return pending;
+        return cache.get(key, () -> request(name));
     }
 
     private CompletableFuture<Optional<PlayerRef>> request(String name) {

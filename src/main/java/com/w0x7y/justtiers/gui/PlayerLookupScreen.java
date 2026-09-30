@@ -8,6 +8,7 @@ import com.w0x7y.justtiers.gui.layout.LookupMetrics;
 import com.w0x7y.justtiers.gui.layout.SkinLayout;
 import com.w0x7y.justtiers.lookup.LookupCell;
 import com.w0x7y.justtiers.lookup.LookupSection;
+import com.w0x7y.justtiers.lookup.LookupResult;
 import com.w0x7y.justtiers.tier.Gamemode;
 import com.w0x7y.justtiers.tier.Gamemodes;
 import com.w0x7y.justtiers.tier.Source;
@@ -259,7 +260,8 @@ public final class PlayerLookupScreen extends Screen {
                     row.labelRight() - font.width(source.displayName()), textY, color);
             graphics.outline(row.x(), row.y(), row.width(), row.height(), color);
 
-            Optional<LookupSection> section = session.section(source);
+            LookupResult result = session.result(source);
+            Optional<LookupSection> section = result.section();
             if (section.isEmpty()) {
                 graphics.centeredText(font, Component.translatable("justtiers.lookup.pending"),
                         row.centerX(), textY, Colors.SECONDARY);
@@ -268,21 +270,21 @@ public final class PlayerLookupScreen extends Screen {
                         Component.translatable("justtiers.lookup.unavailable"),
                         row.centerX(), textY, UNAVAILABLE_COLOR);
             } else {
-                drawCells(graphics, row, source, section.get(), mouseX, mouseY);
+                drawCells(graphics, row, source, result, mouseX, mouseY);
             }
         }
     }
 
     private void drawCells(GuiGraphicsExtractor graphics, LookupLayout.Row row, Source source,
-                           LookupSection section, int mouseX, int mouseY) {
+                           LookupResult result, int mouseX, int mouseY) {
         OptionalInt hovered = inViewport(mouseY) ? row.cellAt(mouseX, mouseY + scroll) : OptionalInt.empty();
-        List<LookupCell> cells = section.cells();
+        List<LookupCell> cells = result.section().orElseThrow().cells();
         for (int i = 0; i < cells.size() && i < row.grid().itemCount(); i++) {
             boolean isHovered = (hovered.isPresent() && hovered.getAsInt() == i)
                     || cellControls.get(source).get(i).isFocused();
             drawCell(graphics, cells.get(i), source, row.cellX(i), row.cellY(i), isHovered);
             if (isHovered) {
-                graphics.setTooltipForNextFrame(font, tooltip(cells.get(i)),
+                graphics.setTooltipForNextFrame(font, tooltip(cells.get(i), result),
                         cellControls.get(source).get(i).isFocused() ? row.cellX(i) : mouseX,
                         cellControls.get(source).get(i).isFocused() ? row.cellY(i) - scroll + cellHeight : mouseY);
             }
@@ -309,12 +311,23 @@ public final class PlayerLookupScreen extends Screen {
                 tier.isPresent() ? Colors.opaque(SiteColors.of(source)) : Colors.DISABLED, false);
     }
 
-    private Component tooltip(LookupCell cell) {
+    private Component tooltip(LookupCell cell, LookupResult result) {
         String gamemode = cell.gamemode().displayName();
-        return cell.tier()
+        var description = cell.tier()
                 .map(tier -> Component.literal(gamemode + ": " + tier.label()))
                 .orElseGet(() -> Component.translatable("justtiers.lookup.cellUntested",
                         gamemode));
+        result.freshness().ifPresent(freshness -> {
+            description.append("\n").append(Component.translatable("justtiers.lookup.age", freshness.age().toMinutes()));
+            String key = switch (freshness.status()) {
+                case REFRESH_FAILED -> "justtiers.lookup.cachedUnavailable";
+                case REFRESHING -> "justtiers.lookup.cachedRefreshing";
+                case STALE -> "justtiers.lookup.cachedStale";
+                case FRESH -> null;
+            };
+            if (key != null) description.append("\n").append(Component.translatable(key));
+        });
+        return description;
     }
 
     private void drawFooter(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
@@ -389,14 +402,15 @@ public final class PlayerLookupScreen extends Screen {
 
     private void updateContentControls() {
         for (Source source : Source.ALL) {
-            Optional<LookupSection> section = session.section(source);
+            LookupResult result = session.result(source);
+            Optional<LookupSection> section = result.section();
             List<ContentControl> controls = cellControls.get(source);
             for (int i = 0; i < controls.size(); i++) {
                 ContentControl control = controls.get(i);
                 control.active = section.isPresent() && i < section.get().cells().size();
                 if (control.active) {
                     control.setMessage(Component.literal(source.displayName() + ": ")
-                            .append(tooltip(section.get().cells().get(i))));
+                            .append(tooltip(section.get().cells().get(i), result)));
                 }
             }
         }
@@ -451,7 +465,7 @@ public final class PlayerLookupScreen extends Screen {
             return message.append(". ").append(error.get());
         }
         for (Source source : Source.ALL) {
-            var section = session.section(source);
+            var section = session.result(source).section();
             if (section.isEmpty() || section.get().status() == LookupSection.Status.UNAVAILABLE) {
                 message.append(". " + source.displayName() + ": ")
                         .append(Component.translatable(section.isEmpty() ? "justtiers.lookup.pending"
