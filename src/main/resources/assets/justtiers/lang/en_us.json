@@ -26,7 +26,7 @@
   "justtiers.option.downloadProgress.desc": "Shows a progress bar in the bottom-right corner while the NovaTiers list is downloading. Appears for every download, including the timed refresh.",
   "justtiers.option.refresh": "Refresh tier data now",
   "justtiers.option.refresh.text": "Refresh",
-  "justtiers.option.refresh.desc": "Clears cached lookups and retry delays, then downloads the NovaTiers list. Other sites are fetched when needed.",
+  "justtiers.option.refresh.desc": "Rechecks cached lookups and retry delays while keeping previous placements, then downloads the NovaTiers list. Other sites are fetched when needed.",
   "justtiers.group.appearance": "Appearance",
   "justtiers.group.gamemodes": "Gamemodes",
   "justtiers.mode.mctiers_only": "MCTiers only",
@@ -78,7 +78,7 @@
   "justtiers.command.gamemode.unknown": "'%s' is not a %s gamemode.",
   "justtiers.command.gamemode.set": "%s gamemode set to %s",
   "justtiers.option.tierCache": "Re-check tiers every",
-  "justtiers.option.tierCache.desc": "How long a fetched tier is trusted before it is looked up again. Shorter picks up a player who has just been tested, or has just changed tier, sooner; longer means fewer requests. Applies to MCTiers and SubTiers lookups.",
+  "justtiers.option.tierCache.desc": "How long a fetched tier is trusted before checking for updates. Previous answers stay visible during refresh for up to six additional hours. Applies to MCTiers and SubTiers lookups.",
   "justtiers.option.tierCache.value": "%s minutes",
   "justtiers.data.indexed": "NovaTiers players indexed: %s",
   "justtiers.about.version": "Just-Tiers %s",
@@ -108,7 +108,11 @@
   "justtiers.config.retrySave": "Retry save",
   "justtiers.config.saveFailed": "Could not save settings. Your previous settings are unchanged. Check that the config folder is writable, then retry Save or Cancel.",
   "justtiers.command.saveFailed": "Could not save settings. Changes apply to this session only. Check that the config folder is writable and try again.",
-  "justtiers.data.refreshReady": "Refresh clears cached lookups and downloads the NovaTiers list.",
+  "justtiers.data.refreshReady": "Refresh keeps previous placements while requesting updated tier data.",
   "justtiers.data.refreshComplete": "NovaTiers refreshed. Other sites update when a player is looked up.",
-  "justtiers.data.refreshFailed": "NovaTiers refresh failed. Previous data was kept if available. Try Refresh again."
+  "justtiers.data.refreshFailed": "NovaTiers refresh failed. Previous data was kept if available. Try Refresh again.",
+  "justtiers.lookup.age": "Answer received %s minute(s) ago.",
+  "justtiers.lookup.cachedUnavailable": "Showing cached placements. The latest refresh was unavailable.",
+  "justtiers.lookup.cachedRefreshing": "Showing cached placements while checking for updates.",
+  "justtiers.lookup.cachedStale": "Showing cached placements. These results may be out of date."
 }

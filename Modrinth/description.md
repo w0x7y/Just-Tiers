@@ -9,11 +9,12 @@ Minecraft 26.3 also requires Fabric Loader 0.19.5 or newer. ModMenu is optional.
 
 ![Nametag showcase](https://cdn.modrinth.com/data/8zkz6d1C/images/195de1f0351ecc64b1d7505f03aa71a3ef173b35.jpeg)
 
-## New in 1.1.5
+## New in 1.1.6
 
-Separate JARs now support Minecraft 1.21.11, 26.1, 26.1.1, 26.1.2, 26.2 and 26.3.
-Settings saves and player lookups also have clearer failure and retry behavior.
-[Full release notes](https://github.com/w0x7y/Just-Tiers/blob/main/docs/releases/v1.1.5.md).
+Last-known tiers stay visible during refresh, requests are paced per source, and
+lookup tooltips show answer age and refresh status. NovaTiers validation and retry
+handling are more reliable. All six Minecraft versions remain supported.
+[Full release notes](https://github.com/w0x7y/Just-Tiers/blob/main/docs/releases/v1.1.6.md).
 
 ## What you can do
 
@@ -25,7 +26,8 @@ Settings saves and player lookups also have clearer failure and retry behavior.
 - Look up a player by name with `/justtiers lookup <player>` and inspect every known gamemode.
 
 The lookup screen shows the skin and fills in each site as it answers. A dash means no placement
-was reported, not that the player was never tested. Unavailable sites have a separate message.
+was reported, not that the player was never tested. Unavailable sites have a separate message. Cached placements remain visible while refreshing;
+cell tooltips show their age and whether the latest refresh was unavailable.
 You can change the name, retry, scroll results in smaller windows and navigate with the keyboard.
 Tab list and chat names are unchanged.
 
@@ -53,7 +55,7 @@ A settings command that cannot save warns that its change applies only to the cu
 | `/justtiers icons` or `/justtiers brackets` | Toggle those badge decorations |
 | `/justtiers ownbadge` | Toggle hiding your own badge |
 | `/justtiers palette <palette>` | `default`, `colorblind`, `high_contrast`, `custom` |
-| `/justtiers refresh` | Clear lookup caches and refresh NovaTiers |
+| `/justtiers refresh` | Recheck cached placements and refresh NovaTiers |
 | `/justtiers debug` | Print and copy a diagnostic report |
 
 The Data category sets cache and NovaTiers refresh intervals between 5 and 1440 minutes.
@@ -76,8 +78,17 @@ a cached answer's usual expiry; the cache interval is not a strict request-rate 
 
 Failed or malformed responses are not shown as unranked players. Retries back off, and repeated
 site failures temporarily pause new requests. Failed NovaTiers refreshes retain usable cached
-data. Its first download shows bytes and a moving bar; later percentages are estimates based
+data without resetting its original age. Old answers stay visible for up to six additional
+hours beyond the configured cache interval, then become unavailable. Valid unranked replacements
+remove old badges. NovaTiers records with an identifiable player but malformed or conflicting
+placements are unavailable rather than unranked. Its first download shows bytes and a moving bar; later percentages are estimates based
 on the last successful download's size, which can change.
+
+Each site allows four active player requests and 128 queued requests, with explicit lookups
+ahead of nametag work. Queue pressure defers background requests. HTTP Retry-After cooldowns
+apply to rate-limited requests and bulk downloads, capped at 24 hours; missing or invalid hints
+on HTTP 429 use 60 seconds. Refresh preserves those cooldowns and last successful placements.
+Per-site caches and retry records are capped at 4096 players each, with periodic idle cleanup.
 
 Settings are saved in `config/justtiers.json`. Minecraft can cache skins on disk, errors go to
 the client log, and `/justtiers debug` writes its report to the clipboard. The mod does not send

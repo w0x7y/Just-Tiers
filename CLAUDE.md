@@ -55,7 +55,11 @@ components, commands and events.
   from a valid unranked answer.
 - `lookup/LookupSession` owns online identity preference, remote resolution, concurrent
   site requests, partial answers and failed-entry eviction for explicit retry.
-  `gui/MinecraftLookupSession` supplies client scheduling, translations and skins.
+  Read `LookupSession.result` for one coherent `LookupResult`, including the section,
+  request settlement and freshness. Captured source revisions prevent later identical
+  placements from replacing an earlier answer's age; transient refresh progress follows
+  only the same live revision. `gui/MinecraftLookupSession` supplies client scheduling,
+  translations and skins.
   Publish session state through its owning executor and read it on that same thread.
 
 `PlayerMixin` decorates `Player.getDisplayName` for world nametags. Tab-list and chat
@@ -66,6 +70,16 @@ rendering use different paths and are outside the current feature.
 TierSource fetches one site's result; TierCache coordinates requests; TierResolver selects
 placements; Badge builds display segments. `peek` never blocks. A miss can start an
 asynchronous fetch and returns unknown until a completed result is available.
+
+`cache/SiteRequests` owns each source's request admission, retained answers and generation.
+Its private RequestQueue stages claim/queue changes on that same owner lock, then invokes
+source fetches and publishes completions after unlocking. Release active capacity before
+publishing a completed request. `TierCache.loadAnswer` carries the completed response's
+own age and revision, including when that response belongs to an obsolete generation.
+
+`cache/SuccessfulLookupCache` shares pending and successful name/skin lookups. Keep
+caller key normalization and fallback outside it; observed failures retry even before
+completion callbacks have evicted them.
 
 Preserve these distinctions when changing API or cache code:
 

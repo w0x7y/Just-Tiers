@@ -52,6 +52,17 @@ public class JustTiersClient implements ClientModInitializer {
         JustTiersKeybinds.register();
         DownloadHud.register();
 
+        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(
+                new net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.EndTick() {
+                    private int ticks;
+                    @Override public void onEndTick(net.minecraft.client.Minecraft client) {
+                        if (++ticks >= 1200) {
+                            ticks = 0;
+                            cache.maintain();
+                        }
+                    }
+                });
+
         JustTiers.LOGGER.info("Just-Tiers {} ready (mode {})",
                 JustTiers.VERSION, config.getDisplayMode());
     }

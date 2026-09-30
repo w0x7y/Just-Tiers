@@ -94,8 +94,10 @@ public final class DebugReport {
 
     private static String cache(SiteDiagnostics site) {
         return site.cachedPlayers() + " cached, "
-                + site.pendingLookups() + " in flight, "
-                + site.playersAwaitingRetry() + " retrying";
+                + site.activeRequests() + " in flight, "
+                + site.queuedRequests() + " queued, "
+                + site.playersAwaitingRetry() + " retrying"
+                + (site.cooldownRemaining().isZero() ? "" : ", cooldown " + elapsed(site.cooldownRemaining().toNanos()));
     }
 
     /**
