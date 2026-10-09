@@ -1,25 +1,30 @@
 # Just-Tiers
 
-A client-side Fabric mod that puts PvP tiers from MCTiers, SubTiers and NovaTiers in player
-nametags. **Currently in beta.** Builds are available for Minecraft 1.21.11, 26.1, 26.1.1, 26.1.2, 26.2 and 26.3.
+A client-side Fabric mod that puts PvP tiers from PvPTiers, PvPHQ, SubTiers and NovaTiers in player
+nametags. **Currently in beta.** Builds are available for Minecraft 1.21.10, 1.21.11, 26.1, 26.1.1, 26.1.2, 26.2 and 26.3.
 Use the JAR for your exact game version, Fabric Loader 0.19 or newer, and Fabric API and
-YetAnotherConfigLib built for that game version. Minecraft 1.21.11 requires Java 21 and
+YetAnotherConfigLib built for that game version. Minecraft 1.21.10 and 1.21.11 require Java 21 and
 YACL 3.8.2 or newer; 26.x requires Java 25 and YACL 3.9.4 or newer, or 3.9.7 for 26.3.
 Minecraft 26.3 also requires Fabric Loader 0.19.5 or newer. ModMenu is optional.
 
 ![Nametag showcase](https://cdn.modrinth.com/data/8zkz6d1C/images/195de1f0351ecc64b1d7505f03aa71a3ef173b35.jpeg)
 
-## New in 1.1.6
+*Example nametags from an earlier release. Version 1.1.7 adds PvPHQ and individual site toggles.*
 
-Last-known tiers stay visible during refresh, requests are paced per source, and
-lookup tooltips show answer age and refresh status. NovaTiers validation and retry
-handling are more reliable. All six Minecraft versions remain supported.
-[Full release notes](https://github.com/w0x7y/Just-Tiers/blob/main/docs/releases/v1.1.6.md).
+## New in 1.1.7
+
+MCTiers is replaced by PvPTiers, using the same yellow color, and PvPHQ is added in
+gray `#D2D2D2`. Each of the four sites now has its own toggle instead of the old
+single-site/all-sites selector. PvPHQ middle tiers are supported, and existing
+settings migrate automatically. Minecraft 1.21.10 joins the supported versions.
+[Full release notes](https://github.com/w0x7y/Just-Tiers/blob/main/docs/releases/v1.1.7.md).
 
 ## What you can do
 
 - Show one site's selected gamemode, falling back to the player's best placement on that site.
-- Show the best placement from each site together in All mode.
+- Toggle each site independently, showing the best placement from every enabled site together.
+- Use yellow for PvPTiers and gray `#D2D2D2` for PvPHQ in the default palette.
+- Display PvPHQ middle tiers such as MT3 between high and low divisions.
 - Move badges before or after names, hide icons or brackets, and hide your own badge.
 - Choose default, Color vision alternative, high-contrast or custom leaderboard colors.
 - Include retired placements with their R prefix, or show active placements only.
@@ -48,8 +53,8 @@ A settings command that cannot save warns that its change applies only to the cu
 | `/justtiers gui` | Open configuration |
 | `/justtiers lookup <player>` | Open a player lookup |
 | `/justtiers toggle` | Toggle nametag tiers |
-| `/justtiers mode <mode>` | `all`, `mctiers_only`, `subtiers_only`, `novatiers_only` |
-| `/justtiers gamemode <slug>` | Set the current site's gamemode; tab-completion lists choices |
+| `/justtiers site <site> [true\|false]` | Toggle or set `pvptiers`, `pvphq`, `subtiers` or `novatiers` |
+| `/justtiers gamemode <slug>` | Set the only enabled site's gamemode; tab-completion lists choices |
 | `/justtiers retired` | Toggle retired tiers in nametags |
 | `/justtiers badge <before\|after>` | Move the badge |
 | `/justtiers icons` or `/justtiers brackets` | Toggle those badge decorations |
@@ -65,13 +70,14 @@ but visibility depends on your vision and the background.
 
 ## Network use
 
-There is no mod analytics endpoint. MCTiers and SubTiers receive the account UUID being
+There is no mod analytics endpoint. PvPTiers, PvPHQ and SubTiers receive the account UUID being
 looked up. NovaTiers supplies a bulk list, with no per-player identifier in that request.
 Mojang receives a typed name if the tab list cannot resolve it to an account UUID. Displaying
 the skin can also contact Mojang profile/session services and Minecraft's skin texture hosts
 through Minecraft. These services receive connection metadata, including your IP address.
 
-Automatic nametag lookups stop when nametag tiers are disabled. Explicit lookup screens and
+Automatic nametag lookups stop when nametag tiers are disabled. Each site toggle also
+stops nametag lookups for that site. Explicit lookup screens and
 NovaTiers' startup, scheduled and requested downloads remain available. Hiding the download
 indicator does not stop downloads. Manual refresh and failure retries can make requests before
 a cached answer's usual expiry; the cache interval is not a strict request-rate guarantee.
@@ -90,7 +96,8 @@ apply to rate-limited requests and bulk downloads, capped at 24 hours; missing o
 on HTTP 429 use 60 seconds. Refresh preserves those cooldowns and last successful placements.
 Per-site caches and retry records are capped at 4096 players each, with periodic idle cleanup.
 
-Settings are saved in `config/justtiers.json`. Minecraft can cache skins on disk, errors go to
+Settings are saved in `config/justtiers.json`. Existing MCTiers settings migrate to
+PvPTiers and old display modes become individual site toggles. Minecraft can cache skins on disk, errors go to
 the client log, and `/justtiers debug` writes its report to the clipboard. The mod does not send
 chat, inventory or the server address to the leaderboard APIs.
 
@@ -100,18 +107,18 @@ Run `/justtiers debug` and include its copied report, reproduction steps and rel
 screenshots in a [GitHub issue](https://github.com/w0x7y/Just-Tiers/issues). `PAUSED` means the
 mod is waiting before probing a site that repeatedly failed. Diagnostics remain in English.
 
-The [README](https://github.com/w0x7y/Just-Tiers#readme) lists all 32 supported gamemodes,
+The [README](https://github.com/w0x7y/Just-Tiers#readme) lists all 43 supported gamemodes,
 configuration fields and contributor instructions.
 
 ## Credits and licensing
 
 Just-Tiers is maintained by Idan Gilboa under the [MIT license](https://github.com/w0x7y/Just-Tiers/blob/main/LICENSE).
-MCTiers and SubTiers icon textures come from [TierTagger](https://github.com/mctiers-dev/TierTagger)
-by uku and netiyiy and retain MPL-2.0 licensing. NovaTiers icons are original project artwork
+PvPTiers, PvPHQ and SubTiers icon textures come from [TierTagger](https://github.com/mctiers-dev/TierTagger)
+by uku and netiyiy and retain MPL-2.0 licensing. NovaTiers icons and the reused PvPHQ Spear icon are original project artwork
 under MIT. See [NOTICE](https://github.com/w0x7y/Just-Tiers/blob/main/NOTICE).
 
 Code and documentation include AI-assisted work reviewed by the maintainer. The project's
 AI-content disclosure does not replace the third-party artwork attribution above.
 
-Thanks to MCTiers, SubTiers and NovaTiers for their leaderboards and public APIs. Just-Tiers is
+Thanks to PvPTiers, PvPHQ, SubTiers and NovaTiers for their leaderboards and public APIs. Just-Tiers is
 unofficial and is not affiliated with these services, Mojang or Microsoft.

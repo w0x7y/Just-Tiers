@@ -1,9 +1,10 @@
 package com.w0x7y.justtiers.debug;
 
-import com.w0x7y.justtiers.resolve.DisplayMode;
+import com.w0x7y.justtiers.tier.Source;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Everything {@code /justtiers debug} reports, gathered in one pass.
@@ -20,13 +21,14 @@ public record DebugSnapshot(String modVersion,
                             String minecraftVersion,
                             String loaderVersion,
                             boolean enabled,
-                            DisplayMode displayMode,
+                            Set<Source> enabledSources,
                             Duration cacheTtl,
                             int novaIndexedPlayers,
                             int novaRefreshMinutes,
                             List<SiteDiagnostics> sites) {
 
     public DebugSnapshot {
+        enabledSources = Set.copyOf(enabledSources);
         sites = List.copyOf(sites);
     }
 }

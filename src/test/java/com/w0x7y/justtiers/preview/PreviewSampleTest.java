@@ -3,35 +3,28 @@ package com.w0x7y.justtiers.preview;
 import com.w0x7y.justtiers.render.model.Badge;
 import com.w0x7y.justtiers.render.model.BadgePosition;
 import com.w0x7y.justtiers.render.model.NametagStyle;
-import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Gamemode;
 import com.w0x7y.justtiers.tier.Gamemodes;
 import com.w0x7y.justtiers.tier.Source;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class PreviewSampleTest {
 
     private static final Map<Source, String> DEFAULTS = Map.of(
-            Source.MCTIERS, "vanilla",
+            Source.PVPTIERS, "crystal",
             Source.SUBTIERS, "elytra",
             Source.NOVATIERS, "vanilla");
 
-    private static DisplayMode modeOf(Source source) {
-        return switch (source) {
-            case MCTIERS -> DisplayMode.MCTIERS_ONLY;
-            case SUBTIERS -> DisplayMode.SUBTIERS_ONLY;
-            case NOVATIERS -> DisplayMode.NOVATIERS_ONLY;
-        };
-    }
-
     /** What the sample tiers draw as, through the same Badge the config screen uses. */
-    private String text(DisplayMode mode, Map<Source, String> selected, boolean retired) {
-        return Badge.of(PreviewSample.resolve(mode, selected, retired), NametagStyle.DEFAULT)
+    private String text(Set<Source> sites, Map<Source, String> selected, boolean retired) {
+        return Badge.of(PreviewSample.resolve(sites, selected, retired), NametagStyle.DEFAULT)
                 .plainText();
     }
 
@@ -47,7 +40,7 @@ class PreviewSampleTest {
     void everyGamemodeOnEverySitePreviewsAsTierOne() {
         for (Source source : Source.values()) {
             for (Gamemode gamemode : Gamemodes.of(source)) {
-                String shown = text(modeOf(source), Map.of(source, gamemode.slug()), false);
+                String shown = text(Set.of(source), Map.of(source, gamemode.slug()), false);
                 assertEquals("[" + entry(gamemode, false) + "] ", shown,
                         source + "/" + gamemode.slug() + " should preview as HT1");
             }
@@ -56,32 +49,34 @@ class PreviewSampleTest {
 
     @Test
     void allModeShowsTheFixedTrio() {
-        String expected = "[" + entry(gamemode(Source.MCTIERS, "vanilla"), false)
+        String expected = "[" + entry(gamemode(Source.PVPTIERS, "crystal"), false)
+                + " " + entry(gamemode(Source.PVPHQ, "vanilla"), false)
                 + " " + entry(gamemode(Source.SUBTIERS, "minecart"), false)
                 + " " + entry(gamemode(Source.NOVATIERS, "spearmace"), false)
                 + "] ";
-        assertEquals(expected, text(DisplayMode.ALL, DEFAULTS, false));
+        assertEquals(expected, text(Set.copyOf(Source.ALL), DEFAULTS, false));
     }
 
     @Test
     void allModeIgnoresTheGamemodeSelections() {
         Map<Source, String> other = Map.of(
-                Source.MCTIERS, "axe",
+                Source.PVPTIERS, "axe",
                 Source.SUBTIERS, "bow",
                 Source.NOVATIERS, "spleef");
-        assertEquals(text(DisplayMode.ALL, DEFAULTS, false),
-                text(DisplayMode.ALL, other, false));
+        assertEquals(text(Set.copyOf(Source.ALL), DEFAULTS, false),
+                text(Set.copyOf(Source.ALL), other, false));
     }
 
     @Test
     void theRetiredPhaseMarksEveryEntry() {
-        String expected = "[" + entry(gamemode(Source.MCTIERS, "vanilla"), true)
+        String expected = "[" + entry(gamemode(Source.PVPTIERS, "crystal"), true)
+                + " " + entry(gamemode(Source.PVPHQ, "vanilla"), true)
                 + " " + entry(gamemode(Source.SUBTIERS, "minecart"), true)
                 + " " + entry(gamemode(Source.NOVATIERS, "spearmace"), true)
                 + "] ";
-        assertEquals(expected, text(DisplayMode.ALL, DEFAULTS, true));
-        assertEquals("[" + entry(gamemode(Source.MCTIERS, "axe"), true) + "] ",
-                text(DisplayMode.MCTIERS_ONLY, Map.of(Source.MCTIERS, "axe"), true));
+        assertEquals(expected, text(Set.copyOf(Source.ALL), DEFAULTS, true));
+        assertEquals("[" + entry(gamemode(Source.PVPTIERS, "axe"), true) + "] ",
+                text(Set.of(Source.PVPTIERS), Map.of(Source.PVPTIERS, "axe"), true));
     }
 
     @Test
@@ -107,62 +102,62 @@ class PreviewSampleTest {
     @Test
     void thePreviewPicksItsPhaseFromTheClock() {
         long retiredTime = PreviewSample.RETIRED_CYCLE_MILLIS;
-        assertEquals(text(DisplayMode.ALL, DEFAULTS, true),
-                Badge.preview(DisplayMode.ALL, DEFAULTS, true, retiredTime,
+        assertEquals(text(Set.copyOf(Source.ALL), DEFAULTS, true),
+                Badge.preview(Set.copyOf(Source.ALL), DEFAULTS, true, retiredTime,
                         NametagStyle.DEFAULT).plainText());
-        assertEquals(text(DisplayMode.ALL, DEFAULTS, false),
-                Badge.preview(DisplayMode.ALL, DEFAULTS, true, 0,
+        assertEquals(text(Set.copyOf(Source.ALL), DEFAULTS, false),
+                Badge.preview(Set.copyOf(Source.ALL), DEFAULTS, true, 0,
                         NametagStyle.DEFAULT).plainText());
     }
 
     @Test
     void aMissingOrStaleSelectionStillPreviewsSomething() {
         Map<Source, String> stale = new HashMap<>();
-        stale.put(Source.MCTIERS, "no-such-gamemode");
+        stale.put(Source.PVPTIERS, "no-such-gamemode");
         stale.put(Source.SUBTIERS, null);
 
-        String unknown = text(DisplayMode.MCTIERS_ONLY, stale, false);
-        String missing = text(DisplayMode.SUBTIERS_ONLY, stale, false);
-        assertEquals("[" + entry(Gamemodes.of(Source.MCTIERS).getFirst(), false) + "] ", unknown);
+        String unknown = text(Set.of(Source.PVPTIERS), stale, false);
+        String missing = text(Set.of(Source.SUBTIERS), stale, false);
+        assertEquals("[" + entry(Gamemodes.of(Source.PVPTIERS).getFirst(), false) + "] ", unknown);
         assertEquals("[" + entry(Gamemodes.of(Source.SUBTIERS).getFirst(), false) + "] ", missing);
     }
 
     @Test
     void thePreviewIsNeverEmpty() {
-        for (DisplayMode mode : DisplayMode.values()) {
-            assertFalse(PreviewSample.resolve(mode, DEFAULTS, false).isEmpty(), mode.toString());
-            assertFalse(PreviewSample.resolve(mode, Map.of(), true).isEmpty(), mode.toString());
+        for (Set<Source> sites : java.util.List.of(Set.of(Source.PVPTIERS), Set.of(Source.PVPHQ), Set.of(Source.SUBTIERS), Set.of(Source.NOVATIERS), Set.copyOf(Source.ALL))) {
+            assertFalse(PreviewSample.resolve(sites, DEFAULTS, false).isEmpty(), sites.toString());
+            assertFalse(PreviewSample.resolve(sites, Map.of(), true).isEmpty(), sites.toString());
         }
     }
 
     @Test
     void thePreviewIsDrawnInWhateverStyleTheScreenIsPendingOn() {
         // The point of the preview is that it answers to the appearance rows too, not
-        // just the mode and gamemode ones.
+        // just the sites and gamemode ones.
         NametagStyle stripped = new NametagStyle(BadgePosition.AFTER, false, false);
-        String shown = Badge.of(PreviewSample.resolve(DisplayMode.MCTIERS_ONLY,
-                Map.of(Source.MCTIERS, "axe"), false), stripped).plainText();
+        String shown = Badge.of(PreviewSample.resolve(Set.of(Source.PVPTIERS),
+                Map.of(Source.PVPTIERS, "axe"), false), stripped).plainText();
 
         assertEquals(" HT1", shown);
-        assertEquals("[" + entry(gamemode(Source.MCTIERS, "axe"), false) + "] ",
-                text(DisplayMode.MCTIERS_ONLY, Map.of(Source.MCTIERS, "axe"), false));
+        assertEquals("[" + entry(gamemode(Source.PVPTIERS, "axe"), false) + "] ",
+                text(Set.of(Source.PVPTIERS), Map.of(Source.PVPTIERS, "axe"), false));
     }
 
     @Test
     void theStyleSurvivesTheClockToo() {
         NametagStyle stripped = new NametagStyle(BadgePosition.AFTER, false, false);
         assertEquals(
-                Badge.of(PreviewSample.resolve(DisplayMode.ALL, DEFAULTS, true), stripped)
+                Badge.of(PreviewSample.resolve(Set.copyOf(Source.ALL), DEFAULTS, true), stripped)
                         .plainText(),
-                Badge.preview(DisplayMode.ALL, DEFAULTS, true,
+                Badge.preview(Set.copyOf(Source.ALL), DEFAULTS, true,
                         PreviewSample.RETIRED_CYCLE_MILLIS, stripped).plainText());
     }
 
     @Test
     void everyFixedGamemodeIsARealGamemode() {
-        PreviewSample.ALL_MODE_GAMEMODES.forEach((source, slug) ->
+        PreviewSample.MULTI_SITE_GAMEMODES.forEach((source, slug) ->
                 assertTrue(Gamemodes.find(source, slug).isPresent(),
                         source + "/" + slug + " is not a real gamemode"));
-        assertEquals(Source.values().length, PreviewSample.ALL_MODE_GAMEMODES.size());
+        assertEquals(Source.values().length, PreviewSample.MULTI_SITE_GAMEMODES.size());
     }
 }

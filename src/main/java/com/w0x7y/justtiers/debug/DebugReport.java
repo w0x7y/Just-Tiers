@@ -40,18 +40,26 @@ public final class DebugReport {
                 "Minecraft " + snapshot.minecraftVersion(),
                 "Fabric Loader " + snapshot.loaderVersion()));
         lines.add(join("nametags " + (snapshot.enabled() ? "on" : "off"),
-                "mode " + snapshot.displayMode().id(),
+                "sites " + enabledSites(snapshot),
                 "cache TTL " + ttl(snapshot.cacheTtl())));
         lines.add(join("NovaTiers index " + snapshot.novaIndexedPlayers() + " players",
                 "refresh every " + snapshot.novaRefreshMinutes() + "m"));
         for (SiteDiagnostics site : snapshot.sites()) {
             lines.add(site(site));
-            // Only when there is one: an empty "last error: none" on all three sites is
-            // three lines saying nothing, in the report most likely to be pasted.
+            // Only when there is one: an empty "last error: none" on every site is
+            // four lines saying nothing, in the report most likely to be pasted.
             site.health().lastError()
                     .ifPresent(error -> lines.add(CONTINUATION + "last error: " + error));
         }
         return List.copyOf(lines);
+    }
+
+    private static String enabledSites(DebugSnapshot snapshot) {
+        StringJoiner names = new StringJoiner(", ");
+        for (var source : com.w0x7y.justtiers.tier.Source.ALL) {
+            if (snapshot.enabledSources().contains(source)) names.add(source.displayName());
+        }
+        return names.length() == 0 ? "none" : names.toString();
     }
 
     /** The same report as one string, for the clipboard. */

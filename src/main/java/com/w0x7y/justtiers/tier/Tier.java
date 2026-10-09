@@ -4,27 +4,43 @@ import java.util.Locale;
 import java.util.Optional;
 
 /**
- * A single tier placement. {@code level} is 1-5, {@code high} distinguishes HT from LT.
+ * A single tier placement. {@code level} is 1-5, with high, middle or low division.
  * Ordering is by {@link #rank()} ascending, so HT1 sorts first and LT5 last.
  */
-public record Tier(int level, boolean high, boolean retired) implements Comparable<Tier> {
+public record Tier(int level, Division division, boolean retired) implements Comparable<Tier> {
+
+    public enum Division { HIGH, MIDDLE, LOW }
+
+    public Tier(int level, boolean high, boolean retired) {
+        this(level, high ? Division.HIGH : Division.LOW, retired);
+    }
 
     public Tier {
         if (level < 1 || level > 5) {
             throw new IllegalArgumentException("tier level out of range: " + level);
         }
+        java.util.Objects.requireNonNull(division, "division");
     }
 
-    /** Lower is better. HT1 = 0, LT1 = 1, HT2 = 2, ... HT5 = 8, LT5 = 9. */
+    public boolean high() {
+        return division == Division.HIGH;
+    }
+
+    /** Lower is better: HT1, MT1, LT1, HT2, ... LT5. */
     public int rank() {
-        return (level - 1) * 2 + (high ? 0 : 1);
+        return (level - 1) * 3 + division.ordinal();
     }
 
     public String label() {
-        return (retired ? "R" : "") + (high ? "HT" : "LT") + level;
+        String prefix = switch (division) {
+            case HIGH -> "HT";
+            case MIDDLE -> "MT";
+            case LOW -> "LT";
+        };
+        return (retired ? "R" : "") + prefix + level;
     }
 
-    /** Parses NovaTiers-style strings: HT1..LT5, optionally R-prefixed. */
+    /** Parses HT, MT and LT labels, optionally R-prefixed. */
     public static Optional<Tier> parse(String raw) {
         if (raw == null) {
             return Optional.empty();
@@ -39,18 +55,23 @@ public record Tier(int level, boolean high, boolean retired) implements Comparab
             return Optional.empty();
         }
         char hl = s.charAt(0);
-        if (hl != 'H' && hl != 'L') {
+        if (hl != 'H' && hl != 'M' && hl != 'L') {
             return Optional.empty();
         }
         int level = s.charAt(2) - '0';
         if (level < 1 || level > 5) {
             return Optional.empty();
         }
-        return Optional.of(new Tier(level, hl == 'H', retired));
+        Division division = switch (hl) {
+            case 'H' -> Division.HIGH;
+            case 'M' -> Division.MIDDLE;
+            default -> Division.LOW;
+        };
+        return Optional.of(new Tier(level, division, retired));
     }
 
-    /** Builds a tier from the MCTiers/SubTiers wire format, where pos 0 means high. */
-    public static Tier fromMctiers(int tier, int pos, boolean retired) {
+    /** Builds a tier from the PvPTiers/SubTiers wire format, where pos 0 means high. */
+    public static Tier fromRanking(int tier, int pos, boolean retired) {
         return new Tier(tier, pos == 0, retired);
     }
 

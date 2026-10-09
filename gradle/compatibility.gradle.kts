@@ -16,7 +16,8 @@ val prepareMinecraftSources = tasks.register<Sync>("prepareMinecraftSources") {
         val event = target.getValue("screen_event")
         filter { line: String -> line.replace("ScreenEvents.afterForeground(", "ScreenEvents.$event(") }
     }
-    if (target.getValue("source_strategy") == "legacy_render") {
+    val strategy = target.getValue("source_strategy")
+    if (strategy in setOf("legacy_render", "legacy_render_1_21_10")) {
         val renames = mapOf(
             "GuiGraphicsExtractor" to "GuiGraphics",
             "extractRenderState" to "render",
@@ -31,6 +32,11 @@ val prepareMinecraftSources = tasks.register<Sync>("prepareMinecraftSources") {
             "KeyMappingHelper.registerKeyMapping" to "KeyBindingHelper.registerKeyBinding"
         )
         filter { line: String -> renames.entries.fold(line) { text, (from, to) -> text.replace(from, to) } }
+    }
+    if (strategy == "legacy_render_1_21_10") {
+        filter { line: String -> line.replace("Identifier", "ResourceLocation")
+                .replace("graphics.renderOutline(", "graphics.submitOutline(")
+                .replace("protected void renderContents(", "protected void renderWidget(") }
     }
 }
 extensions.getByType<SourceSetContainer>().named("main") {

@@ -10,12 +10,23 @@ import static org.junit.jupiter.api.Assertions.*;
 class TierTest {
 
     @Test
+    void middleTiersKeepTheirLabelAndSortBetweenHighAndLow() {
+        Optional<Tier> middle = Tier.parse("MT3");
+        assertTrue(middle.isPresent(), "PvPHQ middle tiers must be recognized");
+        assertEquals("MT3", middle.orElseThrow().label());
+        assertTrue(Tier.parse("HT3").orElseThrow().compareTo(middle.orElseThrow()) < 0);
+        assertTrue(middle.orElseThrow().compareTo(Tier.parse("LT3").orElseThrow()) < 0);
+        assertTrue(Tier.parse("LT2").orElseThrow().compareTo(middle.orElseThrow()) < 0);
+        assertEquals("RMT4", Tier.parse("rmt4").orElseThrow().label());
+    }
+
+    @Test
     void rankOrdersHt1BestAndLt5Worst() {
         assertEquals(0, new Tier(1, true, false).rank());
-        assertEquals(1, new Tier(1, false, false).rank());
-        assertEquals(2, new Tier(2, true, false).rank());
-        assertEquals(8, new Tier(5, true, false).rank());
-        assertEquals(9, new Tier(5, false, false).rank());
+        assertEquals(2, new Tier(1, false, false).rank());
+        assertEquals(3, new Tier(2, true, false).rank());
+        assertEquals(12, new Tier(5, true, false).rank());
+        assertEquals(14, new Tier(5, false, false).rank());
     }
 
     @Test

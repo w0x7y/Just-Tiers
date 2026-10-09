@@ -2,8 +2,8 @@ package com.w0x7y.justtiers.config;
 
 import com.w0x7y.justtiers.render.model.BadgePosition;
 import com.w0x7y.justtiers.render.model.NametagSettings;
-import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Source;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -26,13 +26,13 @@ class NametagSnapshotTest {
         List<Consumer<JustTiersConfig>> changes = List.of(
                 config -> config.setEnabled(false),
                 config -> config.setShowRetired(false),
-                config -> config.setDisplayMode(DisplayMode.SUBTIERS_ONLY),
-                config -> config.setSelectedGamemode(Source.MCTIERS, "sword"),
+                config -> Source.ALL.forEach(source -> config.setSiteEnabled(source, source == Source.SUBTIERS)),
+                config -> config.setSelectedGamemode(Source.PVPTIERS, "sword"),
                 config -> config.setBadgePosition(BadgePosition.AFTER),
                 config -> config.setShowIcons(false),
                 config -> config.setShowBrackets(false),
                 config -> config.setPalette(Palette.HIGH_CONTRAST),
-                config -> config.setCustomColor(Source.MCTIERS, 0x123456));
+                config -> config.setCustomColor(Source.PVPTIERS, 0x123456));
         for (Consumer<JustTiersConfig> change : changes) {
             JustTiersConfig config = new JustTiersConfig();
             config.setPalette(Palette.CUSTOM);

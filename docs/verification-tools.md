@@ -11,8 +11,8 @@ and `sourcesJar` do not include them. They add no runtime dependency to the mod.
 ```
 
 The benchmark creates a real `TierCache` with controlled successful sources, warms
-all three sites for 128 fixed v4 UUIDs, and calls `Badge.forPlayer` through a
-config-backed `TierView`. Each display mode gets a warmup and five measured rounds.
+all four sites for 128 fixed v4 UUIDs, and calls `Badge.forPlayer` through a
+config-backed `TierView`. Each single-site selection and the all-sites selection get a warmup and five measured rounds.
 Output includes nanoseconds per operation and per-thread allocated bytes measured
 with `com.sun.management.ThreadMXBean`. Unsupported allocation measurement is
 reported explicitly. The final assertion proves no additional fetch occurred during

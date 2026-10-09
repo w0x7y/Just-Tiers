@@ -1,36 +1,37 @@
 package com.w0x7y.justtiers.gui;
 
-import com.w0x7y.justtiers.render.SiteColors;
 import com.w0x7y.justtiers.JustTiers;
 import com.w0x7y.justtiers.JustTiersClient;
 import com.w0x7y.justtiers.config.JustTiersConfig;
 import com.w0x7y.justtiers.config.Palette;
 import com.w0x7y.justtiers.gui.state.ControlAvailability;
+import com.w0x7y.justtiers.render.SiteColors;
 import com.w0x7y.justtiers.render.model.BadgePosition;
 import com.w0x7y.justtiers.render.model.NametagSettings;
 import com.w0x7y.justtiers.render.model.NametagStyle;
-import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Source;
+
 import dev.isxander.yacl3.api.ButtonOption;
 import dev.isxander.yacl3.api.ConfigCategory;
 import dev.isxander.yacl3.api.LabelOption;
 import dev.isxander.yacl3.api.Option;
 import dev.isxander.yacl3.api.OptionDescription;
 import dev.isxander.yacl3.api.OptionGroup;
-import net.minecraft.client.Minecraft;
 import dev.isxander.yacl3.api.YetAnotherConfigLib;
 import dev.isxander.yacl3.api.controller.ColorControllerBuilder;
 import dev.isxander.yacl3.api.controller.EnumControllerBuilder;
 import dev.isxander.yacl3.api.controller.IntegerSliderControllerBuilder;
 import dev.isxander.yacl3.api.controller.TickBoxControllerBuilder;
+
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
 
 import java.awt.Color;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -53,14 +54,18 @@ public final class JustTiersScreens {
         Option<Boolean> enabled = tickBox("justtiers.option.enabled",
                 config::isEnabled, config::setEnabled);
 
-        Option<DisplayMode> displayMode = Option.<DisplayMode>createBuilder()
-                .name(Component.translatable("justtiers.option.displayMode"))
-                .description(description("justtiers.option.displayMode.desc"))
-                .binding(DisplayMode.ALL, config::getDisplayMode, config::setDisplayMode)
-                .controller(opt -> EnumControllerBuilder.create(opt)
-                        .enumClass(DisplayMode.class)
-                        .formatValue(JustTiersScreens::formatMode))
-                .build();
+        Map<Source, Option<Boolean>> siteToggles = new EnumMap<>(Source.class);
+        for (Source source : Source.ALL) {
+            siteToggles.put(source, Option.<Boolean>createBuilder()
+                    .name(Component.translatable("justtiers.option.site", source.displayName())
+                            .withStyle(style -> style.withColor(config.colorOf(source))))
+                    .description(OptionDescription.of(Component.translatable(
+                            "justtiers.option.site.desc", source.displayName())))
+                    .binding(true, () -> config.isSiteEnabled(source),
+                            value -> config.setSiteEnabled(source, value))
+                    .controller(TickBoxControllerBuilder::create)
+                    .build());
+        }
 
         Option<Boolean> showRetired = tickBox("justtiers.option.showRetired",
                 config::isShowRetired, config::setShowRetired);
@@ -101,7 +106,7 @@ public final class JustTiersScreens {
         // what Save would write and Cancel discards it along with everything else.
         Supplier<NametagSettings> previewState = () -> new NametagSettings(
                 enabled.pendingValue(),
-                displayMode.pendingValue(),
+                pendingSites(siteToggles),
                 pendingGamemodes(pickers),
                 showRetired.pendingValue(),
                 new NametagStyle(badgePosition.pendingValue(),
@@ -129,7 +134,7 @@ public final class JustTiersScreens {
                     .name(Component.translatable("justtiers.option.gamemode",
                             source.displayName()))
                     .description(value -> gamemodeDescription(source, ControlAvailability.of(
-                            enabled.pendingValue(), displayMode.pendingValue(), palette.pendingValue())
+                            enabled.pendingValue(), pendingSites(siteToggles), palette.pendingValue())
                             .reasonFor(source)))
                     .binding(JustTiersConfig.defaultGamemode(source),
                             () -> config.selectedGamemode(source),
@@ -141,8 +146,8 @@ public final class JustTiersScreens {
 
         Runnable syncAvailability = () -> {
             ControlAvailability state = ControlAvailability.of(
-                    enabled.pendingValue(), displayMode.pendingValue(), palette.pendingValue());
-            displayMode.setAvailable(state.displayMode());
+                    enabled.pendingValue(), pendingSites(siteToggles), palette.pendingValue());
+            siteToggles.values().forEach(option -> option.setAvailable(state.sites()));
             showRetired.setAvailable(state.showRetired());
             badgePosition.setAvailable(state.appearance());
             showIcons.setAvailable(state.appearance());
@@ -153,8 +158,9 @@ public final class JustTiersScreens {
             colorPickers.values().forEach(option -> option.setAvailable(state.customColors()));
         };
         enabled.addEventListener((option, event) -> syncAvailability.run());
-        displayMode.addEventListener((option, event) -> syncAvailability.run());
-        // A palette change greys or ungreys the three pickers the moment it is made,
+        siteToggles.values().forEach(toggle ->
+                toggle.addEventListener((option, event) -> syncAvailability.run()));
+        // A palette change greys or ungreys the color pickers the moment it is made,
         // rather than waiting for Save.
         palette.addEventListener((option, event) -> syncAvailability.run());
         syncAvailability.run();
@@ -163,7 +169,7 @@ public final class JustTiersScreens {
 
         YetAnotherConfigLib library = YetAnotherConfigLib.createBuilder()
                 .title(Component.translatable("justtiers.config.title"))
-                .category(displayCategory(preview, enabled, displayMode, showRetired,
+                .category(displayCategory(preview, enabled, siteToggles, showRetired,
                         badgePosition, showIcons, showBrackets, hideOwnBadge, palette,
                         colorPickers, pickers))
                 .category(dataCategory(config))
@@ -171,6 +177,14 @@ public final class JustTiersScreens {
                 .save(() -> JustTiersClient.settings().commitDraft(config))
                 .build();
         return new ConfigScreen(library, parent);
+    }
+
+    private static Set<Source> pendingSites(Map<Source, Option<Boolean>> toggles) {
+        var sites = java.util.EnumSet.noneOf(Source.class);
+        toggles.forEach((source, option) -> {
+            if (option.pendingValue()) sites.add(source);
+        });
+        return sites;
     }
 
     private static Map<Source, String> pendingGamemodes(Map<Source, Option<String>> pickers) {
@@ -181,7 +195,7 @@ public final class JustTiersScreens {
 
     /**
      * The colors the preview should draw right now: the pending palette's own, or the
-     * pending contents of the three pickers when that palette is Custom. Read from the
+     * pending contents of the color pickers when that palette is Custom. Read from the
      * pending values rather than the config, so the preview recolors as the palette is
      * cycled instead of waiting for Save.
      */
@@ -203,7 +217,7 @@ public final class JustTiersScreens {
 
     private static ConfigCategory displayCategory(Option<Component> preview,
                                                   Option<Boolean> enabled,
-                                                  Option<DisplayMode> displayMode,
+                                                  Map<Source, Option<Boolean>> siteToggles,
                                                   Option<Boolean> showRetired,
                                                   Option<BadgePosition> badgePosition,
                                                   Option<Boolean> showIcons,
@@ -229,12 +243,16 @@ public final class JustTiersScreens {
                 .name(Component.translatable("justtiers.group.gamemodes"));
         pickers.values().forEach(gamemodes::option);
 
+        OptionGroup.Builder sites = OptionGroup.createBuilder()
+                .name(Component.translatable("justtiers.group.sites"));
+        siteToggles.values().forEach(sites::option);
+
         return ConfigCategory.createBuilder()
                 .name(Component.translatable("justtiers.config.category.display"))
                 .option(preview)
                 .option(enabled)
-                .option(displayMode)
                 .option(showRetired)
+                .group(sites.build())
                 .group(appearance.build())
                 .group(gamemodes.build())
                 .build();
@@ -319,8 +337,8 @@ public final class JustTiersScreens {
             case AVAILABLE -> OptionDescription.of(Component.translatable(
                     "justtiers.option.gamemode.desc", source.displayName()));
             case MOD_DISABLED -> description("justtiers.option.gamemode.disabled");
-            case MODE_IS_ALL -> description("justtiers.option.gamemode.inactive");
-            case OTHER_SITE -> OptionDescription.of(Component.translatable(
+            case MULTIPLE_SITES -> description("justtiers.option.gamemode.inactive");
+            case SITE_DISABLED -> OptionDescription.of(Component.translatable(
                     "justtiers.option.gamemode.otherSite", source.displayName()));
         };
     }
@@ -354,15 +372,6 @@ public final class JustTiersScreens {
         return OptionDescription.createBuilder()
                 .text(Component.translatable(key))
                 .build();
-    }
-
-    /** The display-mode row is where the color legend is taught, so it is colored. */
-    private static Component formatMode(DisplayMode mode) {
-        MutableComponent text = Component.translatable("justtiers.mode." + mode.id());
-        return mode.singleSource()
-                .<Component>map(source -> text.withStyle(
-                        style -> style.withColor(SiteColors.of(source))))
-                .orElse(text);
     }
 
     private JustTiersScreens() {

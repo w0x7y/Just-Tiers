@@ -2,14 +2,15 @@ package com.w0x7y.justtiers.debug;
 
 import com.w0x7y.justtiers.cache.SiteGate;
 import com.w0x7y.justtiers.cache.SiteHealth;
-import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Source;
+
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -33,12 +34,12 @@ class DebugReportTest {
     }
 
     private static DebugSnapshot snapshotOf(SiteDiagnostics... sites) {
-        return new DebugSnapshot("1.0.2+mc26.2", "26.2", "0.19.3", true, DisplayMode.ALL,
+        return new DebugSnapshot("1.0.2+mc26.2", "26.2", "0.19.3", true, Set.copyOf(Source.ALL),
                 Duration.ofMinutes(60), 12345, 30, List.of(sites));
     }
 
     private static SiteDiagnostics site(SiteHealth.Snapshot health, SiteGate.Status gate) {
-        return new SiteDiagnostics(Source.MCTIERS, health, gate, 42, 1, 0, 1, 0, Duration.ZERO);
+        return new SiteDiagnostics(Source.PVPTIERS, health, gate, 42, 1, 0, 1, 0, Duration.ZERO);
     }
 
     /** The one site line the report produced, for a report built with exactly one site. */
@@ -53,13 +54,13 @@ class DebugReportTest {
 
         assertEquals("=== Just-Tiers debug ===", lines.get(0));
         assertEquals("Just-Tiers 1.0.2+mc26.2 | Minecraft 26.2 | Fabric Loader 0.19.3", lines.get(1));
-        assertEquals("nametags on | mode all | cache TTL 60m", lines.get(2));
+        assertEquals("nametags on | sites PvPTiers, PvPHQ, SubTiers, NovaTiers | cache TTL 60m", lines.get(2));
         assertEquals("NovaTiers index 12345 players | refresh every 30m", lines.get(3));
     }
 
     @Test
     void aHealthySiteReportsCountsAgesLatencyAndCache() {
-        assertEquals("MCTiers: ok | 12 ok, 0 failed | last ok 4s ago "
+        assertEquals("PvPTiers: ok | 12 ok, 0 failed | last ok 4s ago "
                         + "| latency 180ms last, 210ms mean | 42 cached, 1 in flight, 0 queued, 0 retrying",
                 siteLine(site(healthy(), OPEN)));
     }
@@ -80,21 +81,21 @@ class DebugReportTest {
         SiteGate.Status paused = new SiteGate.Status(true, false,
                 Duration.ofSeconds(28).toNanos(), 8);
 
-        assertTrue(siteLine(site(healthy(), paused)).startsWith("MCTiers: PAUSED, retrying in 28s"));
+        assertTrue(siteLine(site(healthy(), paused)).startsWith("PvPTiers: PAUSED, retrying in 28s"));
     }
 
     @Test
     void aPausedSiteWithAProbeOutSaysThatInstead() {
         SiteGate.Status probing = new SiteGate.Status(true, true, 0, 8);
 
-        assertTrue(siteLine(site(healthy(), probing)).startsWith("MCTiers: PAUSED, probe in flight"));
+        assertTrue(siteLine(site(healthy(), probing)).startsWith("PvPTiers: PAUSED, probe in flight"));
     }
 
     @Test
     void aPauseThatHasAlreadyExpiredIsNotReportedAsZeroSeconds() {
         SiteGate.Status due = new SiteGate.Status(true, false, 0, 8);
 
-        assertTrue(siteLine(site(healthy(), due)).startsWith("MCTiers: PAUSED, retrying now"));
+        assertTrue(siteLine(site(healthy(), due)).startsWith("PvPTiers: PAUSED, retrying now"));
     }
 
     @Test
@@ -103,7 +104,7 @@ class DebugReportTest {
 
         // The state that reads as healthy and is one lookup from not being.
         assertTrue(siteLine(site(healthy(), nearly))
-                .startsWith("MCTiers: ok (7 failures in a row)"));
+                .startsWith("PvPTiers: ok (7 failures in a row)"));
     }
 
     @Test
@@ -117,7 +118,7 @@ class DebugReportTest {
 
         List<String> lines = DebugReport.lines(snapshotOf(site(failing, OPEN)));
 
-        assertEquals("MCTiers: ok | 3 ok, 9 failed | last ok 6m ago, last fail 12s ago "
+        assertEquals("PvPTiers: ok | 3 ok, 9 failed | last ok 6m ago, last fail 12s ago "
                         + "| latency 4.0s last, 1.2s mean | 42 cached, 1 in flight, 0 queued, 0 retrying",
                 lines.get(4));
         assertEquals("  last error: TierLookupException: HTTP 503", lines.get(5));
@@ -157,9 +158,9 @@ class DebugReportTest {
     @Test
     void aDisabledModAndAnOffTtlAreBothStated() {
         DebugSnapshot off = new DebugSnapshot("1.0.2", "26.2", "0.19.3", false,
-                DisplayMode.MCTIERS_ONLY, Duration.ZERO, 0, 30, List.of());
+                Set.of(Source.PVPTIERS), Duration.ZERO, 0, 30, List.of());
 
-        assertEquals("nametags off | mode mctiers_only | cache TTL off (kept for the session)",
+        assertEquals("nametags off | sites PvPTiers | cache TTL off (kept for the session)",
                 DebugReport.lines(off).get(2));
     }
 

@@ -3,32 +3,30 @@
 [![Build](https://github.com/w0x7y/Just-Tiers/actions/workflows/build.yml/badge.svg)](https://github.com/w0x7y/Just-Tiers/actions/workflows/build.yml)
 
 Just-Tiers is a client-side Fabric mod that adds competitive PvP tiers to Minecraft
-nametags using [MCTiers](https://mctiers.com), [SubTiers](https://subtiers.net) and
-[NovaTiers](https://novatiers.com). The mod is in beta.
+nametags using [PvPTiers](https://pvptiers.com), [PvPHQ](https://pvphq.com),
+[SubTiers](https://subtiers.net) and [NovaTiers](https://novatiers.com). The mod is in beta.
 
-Version 1.1.6 keeps last-known tiers visible during refresh, paces requests, and
-shows the age and refresh status of lookup results. See the
-[release notes](docs/releases/v1.1.6.md).
+Version 1.1.7 replaces MCTiers with PvPTiers, adds PvPHQ, and lets you toggle each
+site individually. Builds cover every stable Minecraft version from 1.21.10
+through 26.3. See the [release notes](docs/releases/v1.1.7.md).
 
 ## What it shows
 
-Choose one leaderboard or show each site's best tier side by side. In a single-site
-mode, the mod prefers your selected gamemode and falls back to that player's best tier
+Toggle each leaderboard individually. All four sites are enabled by default. With
+several enabled, each site's best tier appears side by side. With just one enabled,
+the mod prefers your selected gamemode and falls back to that player's best tier
 on the same site. Icons identify the gamemode; colors identify the leaderboard.
 
 Tiers run from LT5 through HT5, LT4, HT4, LT3, HT3, LT2, HT2 and LT1 to HT1. Retired
-placements have an R prefix, such as RHT1. They compete by rank unless you hide retired
+placements have an R prefix, such as RHT1. PvPHQ also reports middle divisions,
+such as MT3, which rank between HT3 and LT3. Inactive PvPHQ placements remain current tiers. They compete by rank unless you hide retired
 tiers, in which case the mod falls back to active placements. Peak tiers are ignored.
 
 A nametag fills in as sites answer. Network requests run asynchronously; a missing answer
 leaves that site's part of the badge absent. The tab list and chat are unchanged.
 
-| Mode | Nametag behavior |
-|---|---|
-| `all`, the default | Best known tier from each site in MCTiers, SubTiers, NovaTiers order |
-| `mctiers_only` | Selected MCTiers gamemode, falling back to the best on that site |
-| `subtiers_only` | Same rule for SubTiers |
-| `novatiers_only` | Same rule for NovaTiers |
+Enabled sites appear in PvPTiers, PvPHQ, SubTiers, NovaTiers order. Disable all site
+toggles to show no nametag tiers. Explicit player lookups still include every site.
 
 ## Install
 
@@ -40,7 +38,7 @@ Minecraft 26.3 requires Fabric Loader 0.19.5 or newer.
 
 | Minecraft | Java | Minimum YACL |
 |---|---|---|
-| 1.21.11 | 21 | 3.8.2 for 1.21.11 |
+| 1.21.10, 1.21.11 | 21 | 3.8.2 for your exact game version |
 | 26.1, 26.1.1, 26.1.2 | 25 | 3.9.4 for 26.1 |
 | 26.2 | 25 | 3.9.4 for 26.2 |
 | 26.3 | 25 | 3.9.7 for 26.3 |
@@ -58,11 +56,11 @@ All commands are client-side. `/justtiers lookup` completes names from the serve
 |---|---|
 | `/justtiers` | Show current settings, per-site gamemodes and NovaTiers index size |
 | `/justtiers gui` | Open configuration |
-| `/justtiers lookup <player>` | Open a screen with all three sites' placements |
+| `/justtiers lookup <player>` | Open a screen with all four sites' placements |
 | `/justtiers toggle` | Toggle nametag tiers |
 | `/justtiers retired` | Toggle retired tiers in nametags |
-| `/justtiers mode <mode>` | Choose a mode from the table above |
-| `/justtiers gamemode <slug>` | Choose a gamemode for the current single-site mode |
+| `/justtiers site <site> [true\|false]` | Toggle a site or explicitly enable/disable it; sites are `pvptiers`, `pvphq`, `subtiers`, `novatiers` |
+| `/justtiers gamemode <slug>` | Choose a gamemode for the only enabled site |
 | `/justtiers badge <before\|after>` | Move the badge before or after the name |
 | `/justtiers icons` | Toggle gamemode icons in nametags |
 | `/justtiers brackets` | Toggle badge brackets |
@@ -97,9 +95,9 @@ Options > Controls. Display, Data and About categories keep related settings tog
 Unavailable controls stay visible and explain why they cannot currently be changed.
 
 The live preview uses invented HT1 tiers and makes no leaderboard request. It alternates
-with RHT1 every five seconds while retired tiers are enabled. In All mode it uses fixed
-example gamemodes. It previews pending changes, including badge position, icons, brackets,
-colors and hiding your own badge.
+with RHT1 every five seconds while retired tiers are enabled. With several sites enabled,
+it uses fixed example gamemodes for those sites. It previews pending changes, including
+badge position, icons, brackets, colors and hiding your own badge.
 
 A gamemode picker opens with a click or keyboard activation. Arrow keys move between tiles;
 Enter or Space selects the focused tile. Hovering or focusing a tile previews it. Back or
@@ -110,12 +108,12 @@ reports the problem and preserves the previously saved file and active settings.
 settings command warns that its change applies only to the current session; it does not claim
 to have saved. Refresh is an immediate data action, separate from saving settings.
 
-| Palette | MCTiers | SubTiers | NovaTiers |
-|---|---|---|---|
-| Default | `#FFFF55` yellow | `#55FFFF` cyan | `#AA55FF` purple |
-| Color vision alternative | `#E69F00` orange | `#56B4E9` sky blue | `#FFFFFF` white |
-| High contrast | `#FFFFFF` white | `#FFAA00` amber | `#00FFFF` cyan |
-| Custom | Your selected color | Your selected color | Your selected color |
+| Palette | PvPTiers | PvPHQ | SubTiers | NovaTiers |
+|---|---|---|---|---|
+| Default | `#FFFF55` yellow | `#D2D2D2` gray | `#55FFFF` cyan | `#AA55FF` purple |
+| Color vision alternative | `#E69F00` orange | `#CC79A7` pink | `#56B4E9` sky blue | `#FFFFFF` white |
+| High contrast | `#FFFFFF` white | `#FF55FF` magenta | `#FFAA00` amber | `#00FFFF` cyan |
+| Custom | Your selected color | Your selected color | Your selected color | Your selected color |
 
 Alternative palettes offer different hue and brightness contrasts; their suitability depends
 on the player and background. Custom color controls are available in the Custom palette.
@@ -130,9 +128,15 @@ Settings are stored in `config/justtiers.json` inside the Minecraft instance. De
 {
   "enabled": true,
   "showRetired": true,
-  "displayMode": "all",
+  "enabledSites": {
+    "PVPTIERS": true,
+    "PVPHQ": true,
+    "SUBTIERS": true,
+    "NOVATIERS": true
+  },
   "selectedGamemodes": {
-    "MCTIERS": "vanilla",
+    "PVPTIERS": "crystal",
+    "PVPHQ": "vanilla",
     "SUBTIERS": "elytra",
     "NOVATIERS": "vanilla"
   },
@@ -148,6 +152,11 @@ Settings are stored in `config/justtiers.json` inside the Minecraft instance. De
 }
 ```
 
+Older `displayMode` settings migrate to site toggles. MCTiers gamemodes and custom
+colors move to PvPTiers, with `vanilla` becoming `crystal` and `nethop` becoming
+`neth_pot`. The old single-site selections keep just that site enabled; `all` enables
+all four. Explicit `enabledSites` settings take precedence over the old mode.
+
 Enum values are saved in lowercase and read case-insensitively. Missing settings receive
 defaults. Unknown selections and out-of-range intervals are corrected when loading.
 Both intervals accept 5 to 1440 minutes. Custom colors use per-site `#RRGGBB` strings;
@@ -161,7 +170,8 @@ and stored in the config file. Unknown API gamemodes need a mod update before th
 
 | Leaderboard | Gamemodes |
 |---|---|
-| **MCTiers** (8) | Axe (`axe`), Mace (`mace`), Netherite OP (`nethop`), Pot (`pot`), SMP (`smp`), Sword (`sword`), UHC (`uhc`), Vanilla (`vanilla`) |
+| **PvPTiers** (8) | Axe (`axe`), Crystal (`crystal`), Mace (`mace`), Netherite Pot (`neth_pot`), Pot (`pot`), SMP (`smp`), Sword (`sword`), UHC (`uhc`) |
+| **PvPHQ** (11) | Axe (`axe`), Cart (`cart`), Diamond SMP (`diamond_smp`), Mace (`mace`), Netherite Pot (`netherite_pot`), Pot (`pot`), SMP (`smp`), Spear (`spear_mace`), Sword (`sword`), UHC (`uhc`), Vanilla (`vanilla`) |
 | **SubTiers** (12) | Bed (`bed`), Bow (`bow`), Creeper (`creeper`), DeBuff (`debuff`), Diamond SMP (`dia_smp`), Diamond Vanilla (`dia_crystal`), Elytra (`elytra`), Manhunt (`manhunt`), Minecart (`minecart`), OG Vanilla (`og_vanilla`), Speed (`speed`), Trident (`trident`) |
 | **NovaTiers** (12) | Axe (`axe`), Diamond Cart (`diamondcart`), Diamond OP (`diamondop`), Elytra (`elytra`), Elytra Spear (`elytraspear`), Modern SMP (`modernsmp`), Pufferfish (`pufferfish`), SMP (`smp`), Spear Mace (`spearmace`), Spleef (`spleef`), UHC (`uhc`), Vanilla (`vanilla`) |
 
@@ -173,7 +183,8 @@ including your IP address, in addition to the request data below.
 
 | Service | Request data and purpose |
 |---|---|
-| `mctiers.com/api/v2/…` | Account UUID for a visible player's nametag or an explicit lookup |
+| `pvptiers.com/api/profile/<uuid>` | Compact account UUID for an enabled visible player's nametag or an explicit lookup |
+| `pvphq.com/api/v1/players/<uuid>` | Dashed account UUID for the same purpose |
 | `subtiers.net/api/v2/…` | The same for SubTiers |
 | `novatiers.com/users` | Bulk leaderboard download, without a per-player identifier in the request |
 | `api.mojang.com/users/profiles/minecraft/<name>` | Typed name when the tab list cannot provide a usable account UUID |
@@ -184,11 +195,12 @@ profile and skin requests and can cache skin data on disk. The mod writes its se
 file and diagnostic logs; `/justtiers debug` also replaces your clipboard with its report.
 It does not send chat, inventory or the server address to the leaderboard APIs.
 
-Disabling nametag tiers stops automatic per-player nametag lookups. Explicit lookup screens
+Disabling nametag tiers stops automatic per-player nametag lookups. Each site toggle
+also stops nametag lookups for that site. Explicit lookup screens
 still work, and NovaTiers' startup, scheduled and requested downloads remain independent of
 that switch. Hiding the progress bar changes only the indicator, not the downloads.
 
-MCTiers and SubTiers answers, including valid unranked answers, expire after an hour by default.
+PvPTiers, PvPHQ and SubTiers answers, including valid unranked answers, expire after an hour by default.
 Repeated requests for one player share the pending result. Expired successful answers stay
 visible while a replacement loads, for up to six additional hours beyond the configured cache
 interval. A valid replacement with no placements removes the old badge. Manual refresh keeps
@@ -196,7 +208,7 @@ previous answers while rechecking them. Manual refresh, failed requests and expl
 can cause requests before the usual interval, so it is not a rate-limit guarantee.
 NovaTiers is indexed in memory and refreshed every 30 minutes by default; its payload size varies.
 
-HTTP 404 from MCTiers or SubTiers is a valid unranked answer. Unexpected statuses, transport
+HTTP 404 from PvPTiers, PvPHQ or SubTiers is a valid unranked answer. Unexpected statuses, transport
 errors and malformed successful responses are failures, not unranked results. Failed requests
 back off per player, with jitter; eight consecutive site failures pause new requests and then
 allow a recovery probe. Each site permits four active player requests and 128 waiting
@@ -242,16 +254,16 @@ cd Just-Tiers
 ./gradlew test
 ./gradlew runClient
 # Build or run another target:
-./gradlew build -Pminecraft_version=1.21.11
+./gradlew build -Pminecraft_version=1.21.10
 ./gradlew runClient -Pminecraft_version=26.1.2
 ```
 
 On Windows use `gradlew.bat`. `build` runs checks and packages the mod in
 `build/<minecraft-version>/libs/`. The default target remains 26.2. Supported targets are
-1.21.11, 26.1, 26.1.1, 26.1.2, 26.2 and 26.3. Gradle provisions the target's compiler,
-including Java 21 for 1.21.11. Each target has separate generated sources and build outputs.
+1.21.10, 1.21.11, 26.1, 26.1.1, 26.1.2, 26.2 and 26.3. Gradle provisions the target's compiler,
+including Java 21 for 1.21.10 and 1.21.11. Each target has separate generated sources and build outputs.
 
-The 1.21.11 build uses Mojang mappings and Loom's `remapJar`; 26.x builds are unobfuscated.
+The 1.21.10 and 1.21.11 builds use Mojang mappings and Loom's `remapJar`; 26.x builds are unobfuscated.
 Use the normal JAR in the target's `libs` folder. Development JARs and sources JARs are not
 installable mods. See [the compatibility guide](docs/minecraft-compatibility.md) for how
 API differences are handled and how to verify every target.
@@ -293,9 +305,14 @@ The dry run contacts Modrinth and cannot guarantee that a later upload will be a
 If Modrinth rejects an upload, the GitHub release remains available. Correct the cause before
 rerunning; the GitHub step updates an existing release. The listing body in
 [Modrinth/description.md](Modrinth/description.md) is separate. `modrinthSyncBody` overwrites the
-live listing and is deliberately absent from release automation. Run the manual
+live listing body and is deliberately absent from release automation. The project summary
+is stored in [Modrinth/project.json](Modrinth/project.json). Run the manual
 [Sync Modrinth description workflow](.github/workflows/modrinth-description.yml) when a
-listing update is intended. Tagged release notes come from `docs/releases/v<version>.md`
+listing update is intended; it synchronizes the summary, Markdown body and existing
+gallery captions from [Modrinth/gallery.json](Modrinth/gallery.json).
+Preview the exact project update locally with `python3 tools/modrinth_project.py`.
+Add `--gallery` to preview gallery caption updates.
+Tagged release notes come from `docs/releases/v<version>.md`
 when present, otherwise from commits since the previous tag.
 
 ## Contributing
@@ -315,11 +332,11 @@ when recoloring, using `Segment.withColor` or `Badge.recolor`.
 
 ## Credits and licensing
 
-Just-Tiers is maintained by Idan Gilboa and released under [MIT](LICENSE). MCTiers and SubTiers
+Just-Tiers is maintained by Idan Gilboa and released under [MIT](LICENSE). PvPTiers, PvPHQ and SubTiers
 icon textures come from [TierTagger](https://github.com/mctiers-dev/TierTagger) by uku and netiyiy
-and retain their MPL-2.0 license. NovaTiers icons are original project artwork under MIT.
+and retain their MPL-2.0 license. NovaTiers icons and the reused PvPHQ Spear icon are original project artwork under MIT.
 See [NOTICE](NOTICE) for asset attribution. Code and documentation include AI-assisted work
 reviewed by the maintainer; that does not change the third-party artwork credits.
 
-Thanks to MCTiers, SubTiers and NovaTiers for their leaderboards and public APIs.
+Thanks to PvPTiers, PvPHQ, SubTiers and NovaTiers for their leaderboards and public APIs.
 This project is unofficial and is not affiliated with those sites, Mojang or Microsoft.

@@ -1,14 +1,16 @@
 package com.w0x7y.justtiers.api;
 
 import com.w0x7y.justtiers.tier.Tier;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /** Current rankings survive partial bad data, while invalid payloads cannot masquerade as unranked players. */
-class MctiersParserTest {
+class RankingsParserTest {
 
     private static final String MARLOWWW_JSON = """
             {"uhc":{"tier":1,"pos":1,"peak_tier":1,"peak_pos":1,"attained":1784635509,"retired":true},
@@ -23,45 +25,45 @@ class MctiersParserTest {
 
     @Test
     void posZeroIsHighAndPosOneIsLow() {
-        Map<String, Tier> tiers = MctiersParser.parseRankings(MARLOWWW_JSON);
+        Map<String, Tier> tiers = RankingsParser.parseRankings(MARLOWWW_JSON);
         assertEquals("RHT1", tiers.get("vanilla").label());
         assertEquals("RLT1", tiers.get("uhc").label());
     }
 
     @Test
     void retiredFlagIsCarriedThrough() {
-        Map<String, Tier> tiers = MctiersParser.parseRankings(MARLOWWW_JSON);
+        Map<String, Tier> tiers = RankingsParser.parseRankings(MARLOWWW_JSON);
         assertTrue(tiers.get("nethop").retired());
-        assertFalse(MctiersParser.parseRankings(ACTIVE_JSON).get("sword").retired());
+        assertFalse(RankingsParser.parseRankings(ACTIVE_JSON).get("sword").retired());
     }
 
     @Test
     void allGamemodeKeysArePreserved() {
         assertEquals(java.util.Set.of("uhc", "nethop", "vanilla"),
-                MctiersParser.parseRankings(MARLOWWW_JSON).keySet());
+                RankingsParser.parseRankings(MARLOWWW_JSON).keySet());
     }
 
     @Test
     void peakFieldsAreIgnoredEvenWhenBetterThanCurrent() {
         // sword is currently HT2 with a peak of LT1; the peak must not leak into the result.
-        assertEquals("HT2", MctiersParser.parseRankings(ACTIVE_JSON).get("sword").label());
+        assertEquals("HT2", RankingsParser.parseRankings(ACTIVE_JSON).get("sword").label());
     }
 
     @Test
     void nullPeaksDoNotBreakParsing() {
-        assertEquals("LT5", MctiersParser.parseRankings(ACTIVE_JSON).get("pot").label());
+        assertEquals("LT5", RankingsParser.parseRankings(ACTIVE_JSON).get("pot").label());
     }
 
     @Test
     void anEmptyObjectIsAValidUnrankedAnswer() {
-        assertTrue(MctiersParser.parseRankings(" {} ").isEmpty());
+        assertTrue(RankingsParser.parseRankings(" {} ").isEmpty());
     }
 
     @Test
     void malformedBodiesAreNotValidUnrankedAnswers() {
         for (String body : new String[]{null, "", "   ", "not json", "[1,2,3]", "null",
                 "{\"error\":\"maintenance\"}", "{\"axe\":{\"grade\":3}}"}) {
-            assertThrows(TierLookupException.class, () -> MctiersParser.parseRankings(body));
+            assertThrows(TierLookupException.class, () -> RankingsParser.parseRankings(body));
         }
     }
 
@@ -72,7 +74,7 @@ class MctiersParserTest {
                  "bad":{"tier":9,"pos":0,"retired":false},
                  "alsoBad":{"tier":"x","pos":0,"retired":false}}
                 """;
-        Map<String, Tier> tiers = MctiersParser.parseRankings(json);
+        Map<String, Tier> tiers = RankingsParser.parseRankings(json);
         assertEquals(java.util.Set.of("good"), tiers.keySet());
         assertEquals("HT3", tiers.get("good").label());
     }

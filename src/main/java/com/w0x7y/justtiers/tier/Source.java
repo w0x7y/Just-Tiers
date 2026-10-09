@@ -3,7 +3,8 @@ package com.w0x7y.justtiers.tier;
 import java.util.List;
 
 public enum Source {
-    MCTIERS("MCTiers", "https://mctiers.com/api", "https://mctiers.com", 0xFFFF55),
+    PVPTIERS("PvPTiers", "https://pvptiers.com/api", "https://pvptiers.com", 0xFFFF55),
+    PVPHQ("PvPHQ", "https://pvphq.com/api/v1", "https://pvphq.com", 0xD2D2D2),
     SUBTIERS("SubTiers", "https://subtiers.net/api", "https://subtiers.net", 0x55FFFF),
     NOVATIERS("NovaTiers", "https://novatiers.com", "https://novatiers.com", 0xAA55FF);
 

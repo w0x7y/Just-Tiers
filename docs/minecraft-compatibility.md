@@ -7,6 +7,7 @@ version to CI, release and dry-run matrices and the release artifact count.
 
 | Target | Java | Packaging |
 |---|---|---|
+| 1.21.10 | 21 | Mojang mappings, remapped to Fabric intermediary |
 | 1.21.11 | 21 | Mojang mappings, remapped to Fabric intermediary |
 | 26.1 | 25 | Unobfuscated |
 | 26.1.1 | 25 | Unobfuscated |
@@ -14,7 +15,7 @@ version to CI, release and dry-run matrices and the release artifact count.
 | 26.2 | 25 | Unobfuscated |
 | 26.3 | 25 | Unobfuscated |
 
-Use the normal JAR from `build/<version>/libs/`. The 1.21.11 development JAR lives
+Use the normal JAR from `build/<version>/libs/`. The 1.21.10 and 1.21.11 development JARs live
 separately in `devlibs/` and cannot be installed in a normal Fabric instance.
 The sources JAR is for developers.
 
@@ -29,7 +30,7 @@ continuation lines and duplicate or unknown keys are rejected. Every profile dec
 | `loader_version` | Exact Fabric Loader used to build and run development clients |
 | `loader_min_version` | Minimum Loader allowed by the packaged mod |
 | `mapping_strategy` | `intermediary` remaps the installable JAR; `official` uses unobfuscated names |
-| `source_strategy` | `legacy_render` applies the older rendering/helper names; `native` keeps authored names |
+| `source_strategy` | `native` keeps authored names; `legacy_render` applies older rendering/helper names; `legacy_render_1_21_10` also applies the 1.21.10 resource, outline and button-method names |
 | `screen_event` | Fabric screen event for the download overlay |
 | `fabric_api_version` | Pinned Fabric API version |
 | `yacl_dependency`, `modmenu_dependency` | Pinned Maven coordinates, including version |
@@ -57,10 +58,14 @@ generated-source directory, applying the small API rename table in
 `gradle/compatibility.gradle.kts` before compilation. The copy task tracks both its
 source and the conversion script so changes invalidate Gradle's cached output.
 
-The 1.21.11 build converts GUI extraction names to that version's rendering names,
+The 1.21.10 and 1.21.11 builds convert GUI extraction names to those versions' rendering names,
 plus Fabric's older command and key-binding helpers. The title-screen download
-overlay uses `afterRender` on 1.21.11, `afterExtract` on 26.1.x and `afterForeground`
+overlay uses `afterRender` on 1.21.10/1.21.11, `afterExtract` on 26.1.x and `afterForeground`
 on 26.2/26.3. The badge, cache, API, lookup and settings logic remains shared.
+
+The 1.21.10 profile explicitly selects additional conversions to `ResourceLocation`,
+`submitOutline` and the button's `renderWidget` override. This preserves one authored
+implementation while compiling against its older APIs.
 
 `LiveLabelState` keeps configuration labels dynamic on both YACL 3.8 and 3.9.
 Keyboard bindings and link confirmation use overloads available on every target.
@@ -85,7 +90,7 @@ python3 -m unittest discover -s tools/tests -v
 ```
 
 The artifact check verifies the full mod version, packaged dependency constraints, Java class versions and
-the nametag mixin's class and method names. This catches an unremapped 1.21.11 JAR even
+the nametag mixin's class and method names. This catches an unremapped 1.21.x JAR even
 when the model tests pass. Its bytecode checks inspect the JAR independently of Gradle
 and the source conversion. Negative tests feed mismatched metadata, wrong class
 versions and incorrect namespaces to the verifier, including under Python's optimized

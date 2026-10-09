@@ -12,15 +12,28 @@ import java.util.stream.Stream;
 
 public final class Gamemodes {
 
-    private static final List<Gamemode> MCTIERS = List.of(
-            new Gamemode(Source.MCTIERS, "axe", "Axe", '\uE101'),
-            new Gamemode(Source.MCTIERS, "mace", "Mace", '\uE102'),
-            new Gamemode(Source.MCTIERS, "nethop", "Netherite OP", '\uE103'),
-            new Gamemode(Source.MCTIERS, "pot", "Pot", '\uE104'),
-            new Gamemode(Source.MCTIERS, "smp", "SMP", '\uE105'),
-            new Gamemode(Source.MCTIERS, "sword", "Sword", '\uE106'),
-            new Gamemode(Source.MCTIERS, "uhc", "UHC", '\uE107'),
-            new Gamemode(Source.MCTIERS, "vanilla", "Vanilla", '\uE108'));
+    private static final List<Gamemode> PVPTIERS = List.of(
+            new Gamemode(Source.PVPTIERS, "axe", "Axe", '\uE101'),
+            new Gamemode(Source.PVPTIERS, "crystal", "Crystal", '\uE102'),
+            new Gamemode(Source.PVPTIERS, "mace", "Mace", '\uE103'),
+            new Gamemode(Source.PVPTIERS, "neth_pot", "Netherite Pot", '\uE104'),
+            new Gamemode(Source.PVPTIERS, "pot", "Pot", '\uE105'),
+            new Gamemode(Source.PVPTIERS, "smp", "SMP", '\uE106'),
+            new Gamemode(Source.PVPTIERS, "sword", "Sword", '\uE107'),
+            new Gamemode(Source.PVPTIERS, "uhc", "UHC", '\uE108'));
+
+    private static final List<Gamemode> PVPHQ = List.of(
+            new Gamemode(Source.PVPHQ, "axe", "Axe", '\uE401'),
+            new Gamemode(Source.PVPHQ, "cart", "Cart", '\uE402'),
+            new Gamemode(Source.PVPHQ, "diamond_smp", "Diamond SMP", '\uE403'),
+            new Gamemode(Source.PVPHQ, "mace", "Mace", '\uE404'),
+            new Gamemode(Source.PVPHQ, "netherite_pot", "Netherite Pot", '\uE405'),
+            new Gamemode(Source.PVPHQ, "pot", "Pot", '\uE406'),
+            new Gamemode(Source.PVPHQ, "smp", "SMP", '\uE407'),
+            new Gamemode(Source.PVPHQ, "spear_mace", "Spear", '\uE408'),
+            new Gamemode(Source.PVPHQ, "sword", "Sword", '\uE409'),
+            new Gamemode(Source.PVPHQ, "uhc", "UHC", '\uE40A'),
+            new Gamemode(Source.PVPHQ, "vanilla", "Vanilla", '\uE40B'));
 
     private static final List<Gamemode> SUBTIERS = List.of(
             new Gamemode(Source.SUBTIERS, "bed", "Bed", '\uE201'),
@@ -51,7 +64,7 @@ public final class Gamemodes {
             new Gamemode(Source.NOVATIERS, "vanilla", "Vanilla", '\uE30C'));
 
     public static final List<Gamemode> ALL =
-            Stream.of(MCTIERS, SUBTIERS, NOVATIERS).flatMap(List::stream).toList();
+            Stream.of(PVPTIERS, PVPHQ, SUBTIERS, NOVATIERS).flatMap(List::stream).toList();
 
     /**
      * Maps a squashed NovaTiers key to our slug. Every slug maps to itself; listed here
@@ -70,7 +83,8 @@ public final class Gamemodes {
 
     public static List<Gamemode> of(Source source) {
         return switch (source) {
-            case MCTIERS -> MCTIERS;
+            case PVPTIERS -> PVPTIERS;
+            case PVPHQ -> PVPHQ;
             case SUBTIERS -> SUBTIERS;
             case NOVATIERS -> NOVATIERS;
         };

@@ -2,23 +2,38 @@ package com.w0x7y.justtiers.resolve;
 
 import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /** Display modes choose the correct placement with stable site order and retirement tie breaks. */
 class TierResolverTest {
 
+    @Test
+    void anEnabledSubsetUsesTheBestCurrentTierFromEachSiteInStableOrder() {
+        var result = TierResolver.resolve(Set.of(Source.NOVATIERS, Source.PVPHQ),
+                Map.of(Source.PVPTIERS, Map.of("axe", ht(1)),
+                       Source.PVPHQ, Map.of("sword", Tier.parse("MT3").orElseThrow(), "axe", lt(3)),
+                       Source.SUBTIERS, Map.of("bow", ht(1)),
+                       Source.NOVATIERS, Map.of("spleef", ht(2))),
+                Map.of(Source.PVPHQ, "axe"), true);
+        assertEquals(List.of(Source.PVPHQ, Source.NOVATIERS),
+                result.stream().map(tier -> tier.gamemode().source()).toList());
+        assertEquals(List.of("MT3", "HT2"), result.stream().map(tier -> tier.tier().label()).toList());
+    }
+
     private static Tier ht(int level) { return new Tier(level, true, false); }
     private static Tier lt(int level) { return new Tier(level, false, false); }
     private static Tier retiredHt(int level) { return new Tier(level, true, true); }
 
     private static final Map<Source, String> SELECTED = Map.of(
-            Source.MCTIERS, "vanilla",
+            Source.PVPTIERS, "crystal",
             Source.SUBTIERS, "bow",
             Source.NOVATIERS, "spleef");
 
@@ -27,20 +42,20 @@ class TierResolverTest {
     @Test
     void showsTheSelectedGamemodeWhenThePlayerIsRankedInIt() {
         List<ResolvedTier> result = TierResolver.resolve(
-                DisplayMode.MCTIERS_ONLY,
-                Map.of(Source.MCTIERS, Map.of("vanilla", ht(2), "axe", ht(1))),
+                Set.of(Source.PVPTIERS),
+                Map.of(Source.PVPTIERS, Map.of("crystal", ht(2), "axe", ht(1))),
                 SELECTED, true);
 
         assertEquals(1, result.size());
-        assertEquals("vanilla", result.get(0).gamemode().slug());
+        assertEquals("crystal", result.get(0).gamemode().slug());
         assertEquals("HT2", result.get(0).tier().label());
     }
 
     @Test
     void fallsBackToTheHighestTierOnTheSameSite() {
         List<ResolvedTier> result = TierResolver.resolve(
-                DisplayMode.MCTIERS_ONLY,
-                Map.of(Source.MCTIERS, Map.of("axe", ht(3), "sword", lt(1), "pot", ht(4))),
+                Set.of(Source.PVPTIERS),
+                Map.of(Source.PVPTIERS, Map.of("axe", ht(3), "sword", lt(1), "pot", ht(4))),
                 SELECTED, true);
 
         assertEquals(1, result.size());
@@ -51,16 +66,16 @@ class TierResolverTest {
     @Test
     void showsNothingWhenUnrankedOnTheSelectedSite() {
         assertTrue(TierResolver.resolve(
-                DisplayMode.MCTIERS_ONLY,
-                Map.of(Source.MCTIERS, Map.of()),
+                Set.of(Source.PVPTIERS),
+                Map.of(Source.PVPTIERS, Map.of()),
                 SELECTED, true).isEmpty());
     }
 
     @Test
     void singleSiteModeNeverConsultsOtherSites() {
         List<ResolvedTier> result = TierResolver.resolve(
-                DisplayMode.MCTIERS_ONLY,
-                Map.of(Source.MCTIERS, Map.of(),
+                Set.of(Source.PVPTIERS),
+                Map.of(Source.PVPTIERS, Map.of(),
                        Source.SUBTIERS, Map.of("bow", ht(1)),
                        Source.NOVATIERS, Map.of("spleef", ht(1))),
                 SELECTED, true);
@@ -71,14 +86,14 @@ class TierResolverTest {
     @Test
     void subtiersAndNovatiersModesBehaveTheSameWay() {
         List<ResolvedTier> sub = TierResolver.resolve(
-                DisplayMode.SUBTIERS_ONLY,
+                Set.of(Source.SUBTIERS),
                 Map.of(Source.SUBTIERS, Map.of("bow", lt(2))),
                 SELECTED, true);
         assertEquals("bow", sub.get(0).gamemode().slug());
         assertEquals(Source.SUBTIERS, sub.get(0).gamemode().source());
 
         List<ResolvedTier> nova = TierResolver.resolve(
-                DisplayMode.NOVATIERS_ONLY,
+                Set.of(Source.NOVATIERS),
                 Map.of(Source.NOVATIERS, Map.of("axe", ht(5))),
                 SELECTED, true);
         assertEquals("axe", nova.get(0).gamemode().slug(), "falls back to highest on Nova");
@@ -90,14 +105,14 @@ class TierResolverTest {
     @Test
     void allModeShowsTheBestTierFromEachSiteInFixedOrder() {
         List<ResolvedTier> result = TierResolver.resolve(
-                DisplayMode.ALL,
-                Map.of(Source.MCTIERS, Map.of("axe", ht(2), "pot", lt(4)),
+                Set.copyOf(Source.ALL),
+                Map.of(Source.PVPTIERS, Map.of("axe", ht(2), "pot", lt(4)),
                        Source.SUBTIERS, Map.of("bow", lt(3)),
                        Source.NOVATIERS, Map.of("spleef", ht(4), "uhc", ht(1))),
                 SELECTED, true);
 
         assertEquals(3, result.size());
-        assertEquals(List.of(Source.MCTIERS, Source.SUBTIERS, Source.NOVATIERS),
+        assertEquals(List.of(Source.PVPTIERS, Source.SUBTIERS, Source.NOVATIERS),
                 result.stream().map(r -> r.gamemode().source()).toList());
         assertEquals(List.of("HT2", "LT3", "HT1"),
                 result.stream().map(r -> r.tier().label()).toList());
@@ -108,14 +123,14 @@ class TierResolverTest {
     @Test
     void allModeOmitsSitesWithNoTier() {
         List<ResolvedTier> result = TierResolver.resolve(
-                DisplayMode.ALL,
-                Map.of(Source.MCTIERS, Map.of("axe", ht(2)),
+                Set.copyOf(Source.ALL),
+                Map.of(Source.PVPTIERS, Map.of("axe", ht(2)),
                        Source.SUBTIERS, Map.of(),
                        Source.NOVATIERS, Map.of("uhc", ht(1))),
                 SELECTED, true);
 
         assertEquals(2, result.size());
-        assertEquals(List.of(Source.MCTIERS, Source.NOVATIERS),
+        assertEquals(List.of(Source.PVPTIERS, Source.NOVATIERS),
                 result.stream().map(r -> r.gamemode().source()).toList());
     }
 
@@ -123,8 +138,8 @@ class TierResolverTest {
     void allModeIgnoresTheSelectedGamemode() {
         // vanilla is selected on MCTiers but axe is higher, so axe must win in ALL mode.
         List<ResolvedTier> result = TierResolver.resolve(
-                DisplayMode.ALL,
-                Map.of(Source.MCTIERS, Map.of("vanilla", lt(5), "axe", ht(1))),
+                Set.copyOf(Source.ALL),
+                Map.of(Source.PVPTIERS, Map.of("crystal", lt(5), "axe", ht(1))),
                 SELECTED, true);
 
         assertEquals(1, result.size());
@@ -134,8 +149,8 @@ class TierResolverTest {
     @Test
     void allModeReturnsEmptyWhenUnrankedEverywhere() {
         assertTrue(TierResolver.resolve(
-                DisplayMode.ALL,
-                Map.of(Source.MCTIERS, Map.of(), Source.SUBTIERS, Map.of(), Source.NOVATIERS, Map.of()),
+                Set.copyOf(Source.ALL),
+                Map.of(Source.PVPTIERS, Map.of(), Source.SUBTIERS, Map.of(), Source.NOVATIERS, Map.of()),
                 SELECTED, true).isEmpty());
     }
 
@@ -145,20 +160,20 @@ class TierResolverTest {
     void retiredTiersCompeteForHighest() {
         // Marlowww's case: every MCTiers mode retired. RHT1 must still beat an active HT3.
         List<ResolvedTier> result = TierResolver.resolve(
-                DisplayMode.MCTIERS_ONLY,
-                Map.of(Source.MCTIERS, Map.of("vanilla", retiredHt(1), "axe", ht(3))),
-                Map.of(Source.MCTIERS, "sword"), true);
+                Set.of(Source.PVPTIERS),
+                Map.of(Source.PVPTIERS, Map.of("crystal", retiredHt(1), "axe", ht(3))),
+                Map.of(Source.PVPTIERS, "sword"), true);
 
         assertEquals("RHT1", result.get(0).tier().label());
-        assertEquals("vanilla", result.get(0).gamemode().slug());
+        assertEquals("crystal", result.get(0).gamemode().slug());
     }
 
     @Test
     void activeBeatsRetiredAtTheSameRank() {
         List<ResolvedTier> result = TierResolver.resolve(
-                DisplayMode.MCTIERS_ONLY,
-                Map.of(Source.MCTIERS, Map.of("vanilla", retiredHt(2), "axe", ht(2))),
-                Map.of(Source.MCTIERS, "sword"), true);
+                Set.of(Source.PVPTIERS),
+                Map.of(Source.PVPTIERS, Map.of("crystal", retiredHt(2), "axe", ht(2))),
+                Map.of(Source.PVPTIERS, "sword"), true);
 
         assertEquals("HT2", result.get(0).tier().label());
         assertEquals("axe", result.get(0).gamemode().slug());
@@ -168,9 +183,9 @@ class TierResolverTest {
     void tiesBreakByDeclaredGamemodeOrder() {
         // axe precedes sword in the MCTiers registry, so axe wins an exact tie.
         List<ResolvedTier> result = TierResolver.resolve(
-                DisplayMode.MCTIERS_ONLY,
-                Map.of(Source.MCTIERS, Map.of("sword", ht(2), "axe", ht(2))),
-                Map.of(Source.MCTIERS, "pot"), true);
+                Set.of(Source.PVPTIERS),
+                Map.of(Source.PVPTIERS, Map.of("sword", ht(2), "axe", ht(2))),
+                Map.of(Source.PVPTIERS, "pot"), true);
 
         assertEquals("axe", result.get(0).gamemode().slug());
     }
@@ -178,9 +193,9 @@ class TierResolverTest {
     @Test
     void unknownGamemodeSlugsFromTheApiAreIgnored() {
         List<ResolvedTier> result = TierResolver.resolve(
-                DisplayMode.MCTIERS_ONLY,
-                Map.of(Source.MCTIERS, Map.of("brand_new_mode", ht(1), "axe", ht(4))),
-                Map.of(Source.MCTIERS, "vanilla"), true);
+                Set.of(Source.PVPTIERS),
+                Map.of(Source.PVPTIERS, Map.of("brand_new_mode", ht(1), "axe", ht(4))),
+                Map.of(Source.PVPTIERS, "crystal"), true);
 
         assertEquals(1, result.size());
         assertEquals("axe", result.get(0).gamemode().slug());
@@ -188,25 +203,18 @@ class TierResolverTest {
 
     @Test
     void missingSourceEntriesAreTreatedAsUnranked() {
-        assertTrue(TierResolver.resolve(DisplayMode.ALL, Map.of(), SELECTED, true).isEmpty());
-        assertTrue(TierResolver.resolve(DisplayMode.MCTIERS_ONLY, Map.of(), SELECTED, true).isEmpty());
+        assertTrue(TierResolver.resolve(Set.copyOf(Source.ALL), Map.of(), SELECTED, true).isEmpty());
+        assertTrue(TierResolver.resolve(Set.of(Source.PVPTIERS), Map.of(), SELECTED, true).isEmpty());
     }
 
-    @Test
-    void singleSourceReportsTheSiteForSingleSiteModes() {
-        assertEquals(java.util.Optional.of(Source.MCTIERS), DisplayMode.MCTIERS_ONLY.singleSource());
-        assertEquals(java.util.Optional.of(Source.SUBTIERS), DisplayMode.SUBTIERS_ONLY.singleSource());
-        assertEquals(java.util.Optional.of(Source.NOVATIERS), DisplayMode.NOVATIERS_ONLY.singleSource());
-        assertEquals(java.util.Optional.empty(), DisplayMode.ALL.singleSource());
-    }
 
     // --- hiding retired tiers (showRetired = false) ---
 
     @Test
     void hidingRetiredFallsBackToTheBestActiveTierInAllMode() {
         List<ResolvedTier> result = TierResolver.resolve(
-                DisplayMode.ALL,
-                Map.of(Source.MCTIERS, Map.of("vanilla", retiredHt(1), "axe", lt(3))),
+                Set.copyOf(Source.ALL),
+                Map.of(Source.PVPTIERS, Map.of("crystal", retiredHt(1), "axe", lt(3))),
                 SELECTED,
                 false);
 
@@ -218,8 +226,8 @@ class TierResolverTest {
     @Test
     void hidingRetiredDropsTheSiteEntirelyWhenEveryTierIsRetired() {
         List<ResolvedTier> result = TierResolver.resolve(
-                DisplayMode.ALL,
-                Map.of(Source.MCTIERS, Map.of("vanilla", retiredHt(1), "axe", retiredHt(4))),
+                Set.copyOf(Source.ALL),
+                Map.of(Source.PVPTIERS, Map.of("crystal", retiredHt(1), "axe", retiredHt(4))),
                 SELECTED,
                 false);
 
@@ -229,8 +237,8 @@ class TierResolverTest {
     @Test
     void hidingRetiredAlsoAppliesToSingleSiteModes() {
         List<ResolvedTier> result = TierResolver.resolve(
-                DisplayMode.MCTIERS_ONLY,
-                Map.of(Source.MCTIERS, Map.of("vanilla", retiredHt(1), "axe", ht(5))),
+                Set.of(Source.PVPTIERS),
+                Map.of(Source.PVPTIERS, Map.of("crystal", retiredHt(1), "axe", ht(5))),
                 SELECTED,
                 false);
 
@@ -242,8 +250,8 @@ class TierResolverTest {
     @Test
     void hidingRetiredLeavesOtherSitesUntouched() {
         List<ResolvedTier> result = TierResolver.resolve(
-                DisplayMode.ALL,
-                Map.of(Source.MCTIERS, Map.of("vanilla", retiredHt(1)),
+                Set.copyOf(Source.ALL),
+                Map.of(Source.PVPTIERS, Map.of("crystal", retiredHt(1)),
                        Source.NOVATIERS, Map.of("uhc", ht(2))),
                 SELECTED,
                 false);
@@ -256,36 +264,36 @@ class TierResolverTest {
     @Test
     void hidingRetiredChangesNothingWhenNothingIsRetired() {
         Map<Source, Map<String, Tier>> tiers =
-                Map.of(Source.MCTIERS, Map.of("vanilla", ht(3), "axe", lt(2)));
+                Map.of(Source.PVPTIERS, Map.of("crystal", ht(3), "axe", lt(2)));
 
-        assertEquals(TierResolver.resolve(DisplayMode.ALL, tiers, SELECTED, true),
-                TierResolver.resolve(DisplayMode.ALL, tiers, SELECTED, false));
+        assertEquals(TierResolver.resolve(Set.copyOf(Source.ALL), tiers, SELECTED, true),
+                TierResolver.resolve(Set.copyOf(Source.ALL), tiers, SELECTED, false));
     }
 
     @Test
     void highestOnSkipsUnknownGamemodesAndHandlesMissingPlacements() {
-        assertEquals("axe", TierResolver.highestOn(Source.MCTIERS,
+        assertEquals("axe", TierResolver.highestOn(Source.PVPTIERS,
                 Map.of("axe", ht(2), "not_a_real_gamemode", ht(1)))
                 .orElseThrow().gamemode().slug());
-        assertTrue(TierResolver.highestOn(Source.MCTIERS, Map.of()).isEmpty());
-        assertTrue(TierResolver.highestOn(Source.MCTIERS, null).isEmpty());
+        assertTrue(TierResolver.highestOn(Source.PVPTIERS, Map.of()).isEmpty());
+        assertTrue(TierResolver.highestOn(Source.PVPTIERS, null).isEmpty());
     }
 
     @Test
     void activeOnlyDropsRetiredPlacementsAndKeepsOrder() {
         Map<String, Tier> tiers = new LinkedHashMap<>();
-        tiers.put("vanilla", ht(1));
+        tiers.put("crystal", ht(1));
         tiers.put("sword", retiredHt(2));
         tiers.put("pot", lt(3));
 
         Map<String, Tier> active = TierResolver.activeOnly(tiers);
 
-        assertEquals(List.of("vanilla", "pot"), List.copyOf(active.keySet()));
+        assertEquals(List.of("crystal", "pot"), List.copyOf(active.keySet()));
     }
 
     @Test
     void activeOnlyReturnsTheSameMapWhenNothingIsRetired() {
-        Map<String, Tier> tiers = Map.of("vanilla", ht(1));
+        Map<String, Tier> tiers = Map.of("crystal", ht(1));
         assertSame(tiers, TierResolver.activeOnly(tiers));
     }
 

@@ -22,7 +22,8 @@ class SourceTest {
             assertFalse(source.homeUrl().contains("/api"),
                     source + " links at its API rather than its site");
         }
-        assertEquals("https://mctiers.com", Source.MCTIERS.homeUrl());
+        assertEquals("https://pvptiers.com", Source.PVPTIERS.homeUrl());
+        assertEquals("https://pvphq.com", Source.PVPHQ.homeUrl());
         assertEquals("https://subtiers.net", Source.SUBTIERS.homeUrl());
         assertEquals("https://novatiers.com", Source.NOVATIERS.homeUrl());
     }

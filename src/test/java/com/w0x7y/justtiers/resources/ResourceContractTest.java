@@ -6,12 +6,13 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.w0x7y.justtiers.config.Palette;
 import com.w0x7y.justtiers.render.model.BadgePosition;
-import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Gamemode;
 import com.w0x7y.justtiers.tier.Gamemodes;
+
 import org.junit.jupiter.api.Test;
 
 import javax.imageio.ImageIO;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -81,11 +82,10 @@ class ResourceContractTest {
         Set<String> required = new HashSet<>();
         // Minecraft builds this category key from the registered namespace and path.
         required.add("key.category.justtiers.main");
-        for (DisplayMode mode : DisplayMode.values()) required.add("justtiers.mode." + mode.id());
         for (BadgePosition position : BadgePosition.values()) required.add("justtiers.badge." + position.id());
         for (Palette palette : Palette.values()) required.add("justtiers.palette." + palette.id());
 
-        Set<String> dynamicPrefixes = Set.of("justtiers.mode.", "justtiers.badge.", "justtiers.palette.");
+        Set<String> dynamicPrefixes = Set.of("justtiers.badge.", "justtiers.palette.");
         try (var files = Files.walk(Path.of("src/main/java"))) {
             for (Path file : files.filter(path -> path.toString().endsWith(".java")).toList()) {
                 String source = Files.readString(file);

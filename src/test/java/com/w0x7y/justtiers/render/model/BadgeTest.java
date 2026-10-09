@@ -1,16 +1,17 @@
 package com.w0x7y.justtiers.render.model;
 
 import com.w0x7y.justtiers.preview.PreviewSample;
-import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Gamemode;
 import com.w0x7y.justtiers.tier.Gamemodes;
 import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -22,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class BadgeTest {
 
     private static final Map<Source, String> SELECTED = Map.of(
-            Source.MCTIERS, "vanilla",
+            Source.PVPTIERS, "crystal",
             Source.SUBTIERS, "bow",
             Source.NOVATIERS, "spleef");
 
@@ -38,19 +39,19 @@ class BadgeTest {
         return Gamemodes.find(source, slug).orElseThrow();
     }
 
-    private static Badge badge(DisplayMode mode, Map<Source, Map<String, Tier>> answers,
+    private static Badge badge(Set<Source> sites, Map<Source, Map<String, Tier>> answers,
                                boolean showRetired) {
-        return Badge.forPlayer(mode, answers, SELECTED, showRetired, NametagStyle.DEFAULT);
+        return Badge.forPlayer(sites, answers, SELECTED, showRetired, NametagStyle.DEFAULT);
     }
 
     // --- what the nametag shows ---
 
     @Test
     void aRankedPlayerGetsTheirSelectedGamemode() {
-        Badge badge = badge(DisplayMode.MCTIERS_ONLY,
-                Map.of(Source.MCTIERS, Map.of("vanilla", ht(2), "axe", ht(1))), true);
+        Badge badge = badge(Set.of(Source.PVPTIERS),
+                Map.of(Source.PVPTIERS, Map.of("crystal", ht(2), "axe", ht(1))), true);
 
-        assertEquals("[" + gamemode(Source.MCTIERS, "vanilla").icon() + "HT2] ",
+        assertEquals("[" + gamemode(Source.PVPTIERS, "crystal").icon() + "HT2] ",
                 badge.plainText());
         assertEquals(BadgePosition.BEFORE, badge.position());
     }
@@ -58,12 +59,12 @@ class BadgeTest {
     @Test
     void allModeShowsTheBestFromEverySiteThatAnswered() {
         Map<Source, Map<String, Tier>> answers = new EnumMap<>(Source.class);
-        answers.put(Source.MCTIERS, Map.of("vanilla", ht(3)));
+        answers.put(Source.PVPTIERS, Map.of("crystal", ht(3)));
         answers.put(Source.NOVATIERS, Map.of("spleef", ht(1)));
 
-        assertEquals("[" + gamemode(Source.MCTIERS, "vanilla").icon() + "HT3 "
+        assertEquals("[" + gamemode(Source.PVPTIERS, "crystal").icon() + "HT3 "
                         + gamemode(Source.NOVATIERS, "spleef").icon() + "HT1] ",
-                badge(DisplayMode.ALL, answers, true).plainText());
+                badge(Set.copyOf(Source.ALL), answers, true).plainText());
     }
 
     /**
@@ -72,7 +73,7 @@ class BadgeTest {
      */
     @Test
     void oneSiteAnsweringIsEnoughToDrawABadge() {
-        Badge badge = badge(DisplayMode.ALL, Map.of(Source.SUBTIERS, Map.of("bow", ht(4))), true);
+        Badge badge = badge(Set.copyOf(Source.ALL), Map.of(Source.SUBTIERS, Map.of("bow", ht(4))), true);
 
         assertFalse(badge.isEmpty());
         assertEquals("[" + gamemode(Source.SUBTIERS, "bow").icon() + "HT4] ", badge.plainText());
@@ -80,27 +81,27 @@ class BadgeTest {
 
     @Test
     void hidingRetiredTiersFallsBackToTheBestActiveOne() {
-        Map<String, Tier> tiers = Map.of("vanilla", retiredHt(1), "axe", ht(4));
+        Map<String, Tier> tiers = Map.of("crystal", retiredHt(1), "axe", ht(4));
 
-        assertEquals("[" + gamemode(Source.MCTIERS, "vanilla").icon() + "RHT1] ",
-                badge(DisplayMode.MCTIERS_ONLY, Map.of(Source.MCTIERS, tiers), true).plainText());
-        assertEquals("[" + gamemode(Source.MCTIERS, "axe").icon() + "HT4] ",
-                badge(DisplayMode.MCTIERS_ONLY, Map.of(Source.MCTIERS, tiers), false).plainText());
+        assertEquals("[" + gamemode(Source.PVPTIERS, "crystal").icon() + "RHT1] ",
+                badge(Set.of(Source.PVPTIERS), Map.of(Source.PVPTIERS, tiers), true).plainText());
+        assertEquals("[" + gamemode(Source.PVPTIERS, "axe").icon() + "HT4] ",
+                badge(Set.of(Source.PVPTIERS), Map.of(Source.PVPTIERS, tiers), false).plainText());
     }
 
     // --- when there is nothing to draw ---
 
     @Test
     void noAnswersMeansNoBadge() {
-        assertTrue(badge(DisplayMode.ALL, Map.of(), true).isEmpty());
-        assertTrue(Badge.forPlayer(DisplayMode.ALL, null, SELECTED, true,
+        assertTrue(badge(Set.copyOf(Source.ALL), Map.of(), true).isEmpty());
+        assertTrue(Badge.forPlayer(Set.copyOf(Source.ALL), null, SELECTED, true,
                 NametagStyle.DEFAULT).isEmpty());
     }
 
     @Test
     void aPlayerWhoIsOnlyEverRetiredDropsOutWhenRetiredIsHidden() {
-        Badge badge = badge(DisplayMode.MCTIERS_ONLY,
-                Map.of(Source.MCTIERS, Map.of("vanilla", retiredHt(2))), false);
+        Badge badge = badge(Set.of(Source.PVPTIERS),
+                Map.of(Source.PVPTIERS, Map.of("crystal", retiredHt(2))), false);
 
         assertTrue(badge.isEmpty());
         assertEquals("", badge.plainText());
@@ -138,15 +139,15 @@ class BadgeTest {
 
     /** The same one placement, laid out under whatever style is being tested. */
     private static Badge styled(NametagStyle style) {
-        return Badge.forPlayer(DisplayMode.MCTIERS_ONLY,
-                Map.of(Source.MCTIERS, Map.of("vanilla", ht(2))), SELECTED, true, style);
+        return Badge.forPlayer(Set.of(Source.PVPTIERS),
+                Map.of(Source.PVPTIERS, Map.of("crystal", ht(2))), SELECTED, true, style);
     }
 
     @Test
     void aMissingStyleFallsBackToTheDefaultRatherThanFailing() {
         assertEquals(styled(NametagStyle.DEFAULT).plainText(),
-                Badge.forPlayer(DisplayMode.MCTIERS_ONLY,
-                        Map.of(Source.MCTIERS, Map.of("vanilla", ht(2))),
+                Badge.forPlayer(Set.of(Source.PVPTIERS),
+                        Map.of(Source.PVPTIERS, Map.of("crystal", ht(2))),
                         SELECTED, true, null).plainText());
     }
 
@@ -155,7 +156,7 @@ class BadgeTest {
     @Test
     void theStylesSiteColorsReachTheBadge() {
         Map<Source, Integer> colors = new EnumMap<>(Source.class);
-        colors.put(Source.MCTIERS, 0x123456);
+        colors.put(Source.PVPTIERS, 0x123456);
         NametagStyle style = new NametagStyle(BadgePosition.BEFORE, false, false, colors);
 
         // Brackets are off, so the only thing left besides the tier label is the space
@@ -197,8 +198,8 @@ class BadgeTest {
 
     @Test
     void thePreviewIsAlwaysTierOne() {
-        assertEquals("[" + gamemode(Source.MCTIERS, "vanilla").icon() + "HT1] ",
-                Badge.preview(DisplayMode.MCTIERS_ONLY, SELECTED, false, 0L,
+        assertEquals("[" + gamemode(Source.PVPTIERS, "crystal").icon() + "HT1] ",
+                Badge.preview(Set.of(Source.PVPTIERS), SELECTED, false, 0L,
                         NametagStyle.DEFAULT).plainText());
     }
 
@@ -206,39 +207,36 @@ class BadgeTest {
     void thePreviewCyclesThroughRetiredOnlyWhenRetiredIsShown() {
         long retiredTime = PreviewSample.RETIRED_CYCLE_MILLIS;
 
-        assertTrue(Badge.preview(DisplayMode.MCTIERS_ONLY, SELECTED, true, retiredTime,
+        assertTrue(Badge.preview(Set.of(Source.PVPTIERS), SELECTED, true, retiredTime,
                 NametagStyle.DEFAULT).plainText().contains("RHT1"));
-        assertFalse(Badge.preview(DisplayMode.MCTIERS_ONLY, SELECTED, false, retiredTime,
+        assertFalse(Badge.preview(Set.of(Source.PVPTIERS), SELECTED, false, retiredTime,
                 NametagStyle.DEFAULT).plainText().contains("RHT1"));
     }
 
     @Test
     void thePreviewIsNeverEmptyInAnyMode() {
-        for (DisplayMode mode : DisplayMode.values()) {
-            assertFalse(Badge.preview(mode, Map.of(), true, 0L, NametagStyle.DEFAULT).isEmpty(),
-                    mode.toString());
+        for (Set<Source> sites : java.util.List.of(Set.of(Source.PVPTIERS), Set.of(Source.PVPHQ), Set.of(Source.SUBTIERS), Set.of(Source.NOVATIERS), Set.copyOf(Source.ALL))) {
+            assertFalse(Badge.preview(sites, Map.of(), true, 0L, NametagStyle.DEFAULT).isEmpty(),
+                    sites.toString());
         }
     }
 
-    // --- the sites a mode reads ---
+    // --- the sites a sites reads ---
 
     @Test
-    void aSingleSiteModeReadsOnlyItsOwnSite() {
-        for (DisplayMode mode : DisplayMode.values()) {
-            mode.singleSource().ifPresent(source ->
-                    assertEquals(List.of(source), mode.sources(), mode.toString()));
-        }
-        assertEquals(Source.ALL, DisplayMode.ALL.sources());
+    void noEnabledSitesProducesNoBadgeOrPreview() {
+        assertTrue(Badge.preview(Set.of(), SELECTED, true, 0L, NametagStyle.DEFAULT).isEmpty());
+        assertTrue(badge(Set.of(), Map.of(Source.PVPTIERS, Map.of("axe", ht(1))), true).isEmpty());
     }
 
-    /** A tier from a site the mode does not read must not reach the badge. */
+    /** A tier from a site the sites does not read must not reach the badge. */
     @Test
     void aSingleSiteModeIgnoresTheOtherSitesAnswers() {
         Map<Source, Map<String, Tier>> answers = new EnumMap<>(Source.class);
-        answers.put(Source.MCTIERS, Map.of("vanilla", ht(2)));
+        answers.put(Source.PVPTIERS, Map.of("crystal", ht(2)));
         answers.put(Source.NOVATIERS, Map.of("spleef", ht(1)));
 
-        assertEquals("[" + gamemode(Source.MCTIERS, "vanilla").icon() + "HT2] ",
-                badge(DisplayMode.MCTIERS_ONLY, answers, true).plainText());
+        assertEquals("[" + gamemode(Source.PVPTIERS, "crystal").icon() + "HT2] ",
+                badge(Set.of(Source.PVPTIERS), answers, true).plainText());
     }
 }

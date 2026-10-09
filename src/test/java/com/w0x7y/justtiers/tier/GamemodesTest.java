@@ -12,10 +12,11 @@ class GamemodesTest {
 
     @Test
     void eachSiteHasTheExpectedNumberOfGamemodes() {
-        assertEquals(8, Gamemodes.of(Source.MCTIERS).size());
+        assertEquals(8, Gamemodes.of(Source.PVPTIERS).size());
         assertEquals(12, Gamemodes.of(Source.SUBTIERS).size());
         assertEquals(12, Gamemodes.of(Source.NOVATIERS).size());
-        assertEquals(32, Gamemodes.ALL.size());
+        assertEquals(11, Gamemodes.of(Source.PVPHQ).size());
+        assertEquals(43, Gamemodes.ALL.size());
     }
 
     @Test
@@ -47,13 +48,13 @@ class GamemodesTest {
 
     @Test
     void findLocatesGamemodesBySlug() {
-        assertEquals(Optional.of("Vanilla"),
-                Gamemodes.find(Source.MCTIERS, "vanilla").map(Gamemode::displayName));
-        assertEquals(Optional.of("Netherite OP"),
-                Gamemodes.find(Source.MCTIERS, "nethop").map(Gamemode::displayName));
+        assertEquals(Optional.of("Crystal"),
+                Gamemodes.find(Source.PVPTIERS, "crystal").map(Gamemode::displayName));
+        assertEquals(Optional.of("Netherite Pot"),
+                Gamemodes.find(Source.PVPTIERS, "neth_pot").map(Gamemode::displayName));
         assertEquals(Optional.of("Diamond SMP"),
                 Gamemodes.find(Source.SUBTIERS, "dia_smp").map(Gamemode::displayName));
-        assertEquals(Optional.empty(), Gamemodes.find(Source.MCTIERS, "spleef"));
+        assertEquals(Optional.empty(), Gamemodes.find(Source.PVPTIERS, "spleef"));
     }
 
     @Test

@@ -5,6 +5,7 @@ import com.w0x7y.justtiers.tier.Gamemode;
 import com.w0x7y.justtiers.tier.Gamemodes;
 import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -33,15 +34,15 @@ class NametagModelTest {
     @Test
     void singleTierIsWrappedInBrackets() {
         List<Segment> segments = NametagModel.build(
-                List.of(resolved(Source.MCTIERS, "vanilla", new Tier(2, true, false))), NametagStyle.DEFAULT);
+                List.of(resolved(Source.PVPTIERS, "crystal", new Tier(2, true, false))), NametagStyle.DEFAULT);
 
-        assertEquals("[\uE108HT2] ", NametagModel.plainText(segments));
+        assertEquals("[\uE102HT2] ", NametagModel.plainText(segments));
     }
 
     @Test
     void tierTextTakesTheSiteColor() {
         List<Segment> segments = NametagModel.build(
-                List.of(resolved(Source.MCTIERS, "vanilla", new Tier(2, true, false))), NametagStyle.DEFAULT);
+                List.of(resolved(Source.PVPTIERS, "crystal", new Tier(2, true, false))), NametagStyle.DEFAULT);
 
         Segment tier = segments.stream().filter(s -> s.text().equals("HT2")).findFirst().orElseThrow();
         assertEquals(0xFFFF55, tier.color());
@@ -49,7 +50,7 @@ class NametagModelTest {
 
     @Test
     void eachSiteUsesItsOwnColor() {
-        assertEquals(0xFFFF55, colorOf(Source.MCTIERS, "vanilla"));
+        assertEquals(0xFFFF55, colorOf(Source.PVPTIERS, "crystal"));
         assertEquals(0x55FFFF, colorOf(Source.SUBTIERS, "bow"));
         assertEquals(0xAA55FF, colorOf(Source.NOVATIERS, "spleef"));
     }
@@ -63,27 +64,27 @@ class NametagModelTest {
     @Test
     void retiredTiersKeepTheirSiteColorAndAreMarkedOnlyByTheRPrefix() {
         List<Segment> segments = NametagModel.build(
-                List.of(resolved(Source.MCTIERS, "vanilla", new Tier(1, true, true))), NametagStyle.DEFAULT);
+                List.of(resolved(Source.PVPTIERS, "crystal", new Tier(1, true, true))), NametagStyle.DEFAULT);
 
         Segment tier = segments.stream().filter(s -> s.text().equals("RHT1")).findFirst().orElseThrow();
-        assertEquals(Source.MCTIERS.defaultColor(), tier.color());
-        assertEquals("[\uE108RHT1] ", NametagModel.plainText(segments));
+        assertEquals(Source.PVPTIERS.defaultColor(), tier.color());
+        assertEquals("[\uE102RHT1] ", NametagModel.plainText(segments));
     }
 
     @Test
     void iconSegmentsAreWhiteSoTheArtworkIsNotTinted() {
         List<Segment> segments = NametagModel.build(
-                List.of(resolved(Source.MCTIERS, "vanilla", new Tier(2, true, false))), NametagStyle.DEFAULT);
+                List.of(resolved(Source.PVPTIERS, "crystal", new Tier(2, true, false))), NametagStyle.DEFAULT);
 
         Segment icon = segments.stream()
-                .filter(s -> s.text().equals("\uE108")).findFirst().orElseThrow();
+                .filter(s -> s.text().equals("\uE102")).findFirst().orElseThrow();
         assertEquals(0xFFFFFF, icon.color());
     }
 
     @Test
     void bracketsUseTheBracketColor() {
         List<Segment> segments = NametagModel.build(
-                List.of(resolved(Source.MCTIERS, "vanilla", new Tier(2, true, false))), NametagStyle.DEFAULT);
+                List.of(resolved(Source.PVPTIERS, "crystal", new Tier(2, true, false))), NametagStyle.DEFAULT);
 
         assertEquals(NametagModel.BRACKET_COLOR, segments.get(0).color());
         assertEquals("[", segments.get(0).text());
@@ -94,7 +95,7 @@ class NametagModelTest {
     @Test
     void multipleEntriesAreSeparatedBySingleSpaces() {
         List<Segment> segments = NametagModel.build(List.of(
-                resolved(Source.MCTIERS, "axe", new Tier(2, true, false)),
+                resolved(Source.PVPTIERS, "axe", new Tier(2, true, false)),
                 resolved(Source.SUBTIERS, "bow", new Tier(3, false, false)),
                 resolved(Source.NOVATIERS, "uhc", new Tier(4, true, false))), NametagStyle.DEFAULT);
 
@@ -104,25 +105,25 @@ class NametagModelTest {
     @Test
     void retiredAndActiveEntriesAreEachColoredBySite() {
         List<Segment> segments = NametagModel.build(List.of(
-                resolved(Source.MCTIERS, "axe", new Tier(1, true, true)),
+                resolved(Source.PVPTIERS, "axe", new Tier(1, true, true)),
                 resolved(Source.NOVATIERS, "uhc", new Tier(4, true, false))), NametagStyle.DEFAULT);
 
         Segment retired = segments.stream().filter(s -> s.text().equals("RHT1")).findFirst().orElseThrow();
         Segment active = segments.stream().filter(s -> s.text().equals("HT4")).findFirst().orElseThrow();
 
-        assertEquals(Source.MCTIERS.defaultColor(), retired.color());
+        assertEquals(Source.PVPTIERS.defaultColor(), retired.color());
         assertEquals(Source.NOVATIERS.defaultColor(), active.color());
     }
 
     // --- style ---
 
     private static final List<ResolvedTier> PAIR = List.of(
-            resolved(Source.MCTIERS, "axe", new Tier(2, true, false)),
+            resolved(Source.PVPTIERS, "axe", new Tier(2, true, false)),
             resolved(Source.SUBTIERS, "bow", new Tier(3, false, false)));
 
     /** PAIR's entries, spelled the way the badge spells them, with icons or without. */
     private static String entries(boolean icons) {
-        String axe = icons ? String.valueOf(mode(Source.MCTIERS, "axe").icon()) : "";
+        String axe = icons ? String.valueOf(mode(Source.PVPTIERS, "axe").icon()) : "";
         String bow = icons ? String.valueOf(mode(Source.SUBTIERS, "bow").icon()) : "";
         return axe + "HT2 " + bow + "LT3";
     }
@@ -152,7 +153,7 @@ class NametagModelTest {
         // Nothing else distinguishes the two sites once the glyphs are gone, so the
         // per-site colors have to survive.
         List<Segment> segments = NametagModel.build(PAIR, style);
-        assertEquals(Source.MCTIERS.defaultColor(), colorOfText(segments, "HT2"));
+        assertEquals(Source.PVPTIERS.defaultColor(), colorOfText(segments, "HT2"));
         assertEquals(Source.SUBTIERS.defaultColor(), colorOfText(segments, "LT3"));
     }
 
@@ -216,7 +217,7 @@ class NametagModelTest {
 
     private static Map<Source, Integer> colorMap(int mctiers, int subtiers, int novatiers) {
         Map<Source, Integer> colors = new EnumMap<>(Source.class);
-        colors.put(Source.MCTIERS, mctiers);
+        colors.put(Source.PVPTIERS, mctiers);
         colors.put(Source.SUBTIERS, subtiers);
         colors.put(Source.NOVATIERS, novatiers);
         return colors;
@@ -239,7 +240,7 @@ class NametagModelTest {
         for (Source source : Source.ALL) {
             assertEquals(source.defaultColor(), style.colorOf(source));
         }
-        assertEquals(Source.MCTIERS.defaultColor(),
+        assertEquals(Source.PVPTIERS.defaultColor(),
                 colorOfText(NametagModel.build(PAIR, style), "HT2"));
     }
 
@@ -278,7 +279,7 @@ class NametagModelTest {
         List<Segment> segments = NametagModel.build(PAIR, NametagStyle.DEFAULT);
 
         for (Segment segment : segments) {
-            assertEquals(segment.text().equals(String.valueOf(mode(Source.MCTIERS, "axe").icon()))
+            assertEquals(segment.text().equals(String.valueOf(mode(Source.PVPTIERS, "axe").icon()))
                             || segment.text().equals(String.valueOf(mode(Source.SUBTIERS, "bow").icon())),
                     segment.icon(), segment.text());
         }

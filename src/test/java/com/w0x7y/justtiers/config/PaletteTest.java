@@ -1,6 +1,7 @@
 package com.w0x7y.justtiers.config;
 
 import com.w0x7y.justtiers.tier.Source;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.EnumMap;
@@ -18,7 +19,8 @@ class PaletteTest {
     /** Custom colors from wherever a caller keeps them; this one keeps them in a map. */
     private static ToIntFunction<Source> custom(int mctiers, int subtiers, int nova) {
         Map<Source, Integer> colors = new EnumMap<>(Source.class);
-        colors.put(Source.MCTIERS, mctiers);
+        colors.put(Source.PVPTIERS, mctiers);
+        colors.put(Source.PVPHQ, 0x444444);
         colors.put(Source.SUBTIERS, subtiers);
         colors.put(Source.NOVATIERS, nova);
         return source -> colors.getOrDefault(source, source.defaultColor());
@@ -38,12 +40,14 @@ class PaletteTest {
 
     @Test
     void presetsCarryTheirDocumentedColors() {
-        assertEquals(Map.of(Source.MCTIERS, 0xE69F00,
+        assertEquals(Map.of(Source.PVPTIERS, 0xE69F00,
+                        Source.PVPHQ, 0xCC79A7,
                         Source.SUBTIERS, 0x56B4E9,
                         Source.NOVATIERS, 0xFFFFFF),
                 Palette.COLORBLIND.colors(NEVER_ASKED));
 
-        assertEquals(Map.of(Source.MCTIERS, 0xFFFFFF,
+        assertEquals(Map.of(Source.PVPTIERS, 0xFFFFFF,
+                        Source.PVPHQ, 0xFF55FF,
                         Source.SUBTIERS, 0xFFAA00,
                         Source.NOVATIERS, 0x00FFFF),
                 Palette.HIGH_CONTRAST.colors(NEVER_ASKED));
@@ -69,13 +73,14 @@ class PaletteTest {
     void aPresetIgnoresTheCustomColors() {
         ToIntFunction<Source> colors = custom(0x111111, 0x222222, 0x333333);
 
-        assertEquals(0xFFFF55, Palette.DEFAULT.colorOf(Source.MCTIERS, colors));
-        assertEquals(0xE69F00, Palette.COLORBLIND.colorOf(Source.MCTIERS, colors));
+        assertEquals(0xFFFF55, Palette.DEFAULT.colorOf(Source.PVPTIERS, colors));
+        assertEquals(0xE69F00, Palette.COLORBLIND.colorOf(Source.PVPTIERS, colors));
     }
 
     @Test
     void customUsesTheSuppliedColors() {
-        assertEquals(Map.of(Source.MCTIERS, 0x111111,
+        assertEquals(Map.of(Source.PVPTIERS, 0x111111,
+                        Source.PVPHQ, 0x444444,
                         Source.SUBTIERS, 0x222222,
                         Source.NOVATIERS, 0x333333),
                 Palette.CUSTOM.colors(custom(0x111111, 0x222222, 0x333333)));

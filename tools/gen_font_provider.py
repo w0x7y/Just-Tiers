@@ -2,13 +2,15 @@
 """Generate assets/justtiers/font/icons.json binding gamemode icons to codepoints.
 
 Codepoints must match Gamemodes.java exactly:
-  MCTiers  U+E101..U+E108   SubTiers U+E201..U+E20C   NovaTiers U+E301..U+E30C
+  PvPTiers U+E101..U+E108   PvPHQ U+E401..U+E40B   SubTiers U+E201..U+E20C   NovaTiers U+E301..U+E30C
 each assigned in alphabetical slug order within its site.
 """
 import json, os
 
 SITES = {
-    "mctiers": (0xE101, ["axe", "mace", "nethop", "pot", "smp", "sword", "uhc", "vanilla"]),
+    "pvptiers": (0xE101, ["axe", "crystal", "mace", "neth_pot", "pot", "smp", "sword", "uhc"]),
+    "pvphq": (0xE401, ["axe", "cart", "diamond_smp", "mace", "netherite_pot", "pot",
+                       "smp", "spear_mace", "sword", "uhc", "vanilla"]),
     "subtiers": (0xE201, ["bed", "bow", "creeper", "debuff", "dia_crystal", "dia_smp",
                           "elytra", "manhunt", "minecart", "og_vanilla", "speed", "trident"]),
     "novatiers": (0xE301, ["axe", "diamondcart", "diamondop", "elytra", "elytraspear",

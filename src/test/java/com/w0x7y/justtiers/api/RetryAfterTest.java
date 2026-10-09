@@ -1,8 +1,10 @@
 package com.w0x7y.justtiers.api;
 
 import org.junit.jupiter.api.Test;
+
 import java.time.Duration;
 import java.time.Instant;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class RetryAfterTest {
@@ -28,7 +30,7 @@ class RetryAfterTest {
         });
         server.start();
         try {
-            var source = new MctiersLikeSource(com.w0x7y.justtiers.tier.Source.MCTIERS,
+            var source = new ProfileTierSource(com.w0x7y.justtiers.tier.Source.SUBTIERS,
                     java.net.http.HttpClient.newHttpClient(), "http://127.0.0.1:" + server.getAddress().getPort());
             var error = assertThrows(java.util.concurrent.ExecutionException.class,
                     () -> source.fetch(java.util.UUID.randomUUID()).get(5, java.util.concurrent.TimeUnit.SECONDS));

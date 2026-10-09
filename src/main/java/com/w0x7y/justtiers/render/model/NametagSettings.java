@@ -1,10 +1,10 @@
 package com.w0x7y.justtiers.render.model;
 
-import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Source;
 
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Everything about the settings that changes what a nametag looks like: whether to draw
@@ -17,12 +17,13 @@ import java.util.Map;
  * preview honest about the real thing.
  */
 public record NametagSettings(boolean enabled,
-                              DisplayMode displayMode,
+                              Set<Source> enabledSources,
                               Map<Source, String> selectedGamemodes,
                               boolean showRetired,
                               NametagStyle style) {
 
     public NametagSettings {
+        enabledSources = Set.copyOf(enabledSources);
         selectedGamemodes = Map.copyOf(selectedGamemodes);
         style = style == null ? NametagStyle.DEFAULT : style;
     }
@@ -35,7 +36,7 @@ public record NametagSettings(boolean enabled,
         Map<Source, String> swapped = new EnumMap<>(Source.class);
         swapped.putAll(selectedGamemodes);
         swapped.put(source, slug);
-        return new NametagSettings(enabled, displayMode, swapped, showRetired, style);
+        return new NametagSettings(enabled, enabledSources, swapped, showRetired, style);
     }
 
     /**
@@ -44,6 +45,6 @@ public record NametagSettings(boolean enabled,
      * animated tag out of a record that holds no clock of its own.
      */
     public Badge previewBadge(long timeMillis) {
-        return Badge.preview(displayMode, selectedGamemodes, showRetired, timeMillis, style);
+        return Badge.preview(enabledSources, selectedGamemodes, showRetired, timeMillis, style);
     }
 }

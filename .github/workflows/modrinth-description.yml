@@ -17,13 +17,18 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: gradle/actions/wrapper-validation@v6.3.0
-      - uses: actions/setup-java@v6.0.1
+      - uses: actions/setup-python@v6.2.0
         with:
-          java-version: '25'
-          distribution: temurin
-      - uses: gradle/actions/setup-gradle@v6.3.0
-      - name: Update the project description from the checked-out Markdown
+          python-version: '3.x'
+      - name: Validate the project copy and gallery captions
+        run: |
+          python3 tools/modrinth_project.py > /dev/null
+          python3 tools/modrinth_project.py --gallery > /dev/null
+      - name: Update the project summary and Markdown body
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
-        run: ./gradlew modrinthSyncBody --stacktrace
+        run: python3 tools/modrinth_project.py --apply
+      - name: Update captions for existing gallery images
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+        run: python3 tools/modrinth_project.py --gallery --apply

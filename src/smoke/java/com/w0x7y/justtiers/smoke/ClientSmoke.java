@@ -11,11 +11,11 @@ import com.w0x7y.justtiers.gui.JustTiersScreens;
 import com.w0x7y.justtiers.gui.PlayerLookupScreen;
 import com.w0x7y.justtiers.render.Icons;
 import com.w0x7y.justtiers.render.model.BadgePosition;
-import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.settings.RefreshLifecycle;
 import com.w0x7y.justtiers.settings.SettingsApplication;
 import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
+
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
@@ -77,7 +77,7 @@ public final class ClientSmoke implements ClientModInitializer {
                 stage = 2;
                 ticks = 0;
             } else if (stage == 2 && ticks >= 40) {
-                open(client, new GamemodeGridScreen(null, Source.MCTIERS, "vanilla",
+                open(client, new GamemodeGridScreen(null, Source.PVPTIERS, "crystal",
                         () -> JustTiersClient.config().nametagSettings(), ignored -> {}), "gamemode grid");
                 stage = 3;
                 ticks = 0;
@@ -99,7 +99,8 @@ public final class ClientSmoke implements ClientModInitializer {
             public Source source() { return source; }
             public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) {
                 Tier tier = switch (source) {
-                    case MCTIERS -> new Tier(2, true, false);
+                    case PVPTIERS -> new Tier(2, true, false);
+                    case PVPHQ -> Tier.parse("MT3").orElseThrow();
                     case SUBTIERS -> new Tier(3, false, false);
                     case NOVATIERS -> new Tier(1, true, true);
                 };
@@ -141,8 +142,12 @@ public final class ClientSmoke implements ClientModInitializer {
         check(decorated.getString().endsWith(original.getString()) && decorated.getString().contains("HT2"),
                 "Player.getDisplayName mixin prepends cached badge on RemotePlayer");
         check(decorated.getString().contains("RHT1"), "retired placement visible");
+        check(decorated.getString().contains("MT3"), "PvPHQ middle tier visible");
         List<Run> originalRuns = runs(original);
         List<Run> decoratedRuns = runs(decorated);
+        check(decoratedRuns.stream().anyMatch(run -> run.text().equals("MT3")
+                && run.style().getColor() != null && run.style().getColor().getValue() == 0xD2D2D2),
+                "PvPHQ uses the default gray color");
         check(decoratedRuns.subList(decoratedRuns.size() - originalRuns.size(), decoratedRuns.size())
                 .equals(originalRuns), "original text styles preserved");
         check(decoratedRuns.stream().anyMatch(run -> Icons.FONT.equals(run.style().getFont())), "icon font applied");
@@ -158,9 +163,16 @@ public final class ClientSmoke implements ClientModInitializer {
         check(!plain.getString().substring(original.getString().length()).contains("["), "brackets off removes badge brackets");
         edit(config -> config.setShowRetired(false));
         check(!remote.getDisplayName().getString().contains("RHT1"), "retired placement hidden");
-        edit(config -> { config.setDisplayMode(DisplayMode.MCTIERS_ONLY); config.setPalette(Palette.CUSTOM);
-            config.setCustomColor(Source.MCTIERS, 0x123456); });
-        check(!remote.getDisplayName().getString().contains("LT3"), "single-site mode excludes other cached sites");
+        edit(config -> { Source.ALL.forEach(source -> config.setSiteEnabled(source, source == Source.PVPTIERS)); config.setPalette(Palette.CUSTOM);
+            config.setCustomColor(Source.PVPTIERS, 0x123456); });
+        check(!remote.getDisplayName().getString().contains("LT3")
+                && !remote.getDisplayName().getString().contains("MT3"), "disabled sites excluded from cached badge");
+        edit(config -> config.setSiteEnabled(Source.PVPHQ, true));
+        check(remote.getDisplayName().getString().contains("HT2")
+                && remote.getDisplayName().getString().contains("MT3"), "two independently enabled sites visible");
+        edit(config -> Source.ALL.forEach(source -> config.setSiteEnabled(source, false)));
+        check(remote.getDisplayName().equals(original), "all sites disabled restores the original name");
+        edit(config -> config.setSiteEnabled(Source.PVPTIERS, true));
         check(runs(remote.getDisplayName()).stream().anyMatch(run -> run.text().equals("HT2")
                 && run.style().getColor() != null && run.style().getColor().getValue() == 0x123456), "custom tier color");
         edit(config -> config.setHideOwnBadge(true));
@@ -170,7 +182,7 @@ public final class ClientSmoke implements ClientModInitializer {
         UUID localUuid = client.player.getUUID();
         try {
             client.player.setUUID(UUID.fromString("12345678-1234-4234-8234-123456789abd"));
-            JustTiersClient.cache().load(Source.MCTIERS, client.player.getUUID()).join();
+            JustTiersClient.cache().load(Source.PVPTIERS, client.player.getUUID()).join();
             check(!client.player.getDisplayName().getString().contains("HT2"), "hide-own excludes ranked local player");
             edit(config -> config.setHideOwnBadge(false));
             check(client.player.getDisplayName().getString().contains("HT2"), "local badge restored");
