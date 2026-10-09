@@ -1,5 +1,9 @@
 package com.w0x7y.justtiers.command;
 
+import com.mojang.brigadier.arguments.BoolArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.suggestion.SuggestionProvider;
 import com.w0x7y.justtiers.JustTiers;
 import com.w0x7y.justtiers.JustTiersClient;
 import com.w0x7y.justtiers.api.OnlinePlayers;
@@ -11,13 +15,10 @@ import com.w0x7y.justtiers.debug.DebugSnapshot;
 import com.w0x7y.justtiers.gui.JustTiersKeybinds;
 import com.w0x7y.justtiers.gui.PlayerLookupScreen;
 import com.w0x7y.justtiers.render.model.BadgePosition;
-import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Gamemode;
 import com.w0x7y.justtiers.tier.Gamemodes;
 import com.w0x7y.justtiers.tier.Source;
-import com.mojang.brigadier.arguments.StringArgumentType;
-import com.mojang.brigadier.context.CommandContext;
-import com.mojang.brigadier.suggestion.SuggestionProvider;
+
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.fabricmc.loader.api.FabricLoader;
@@ -67,16 +68,13 @@ public final class JustTiersCommands {
                         .then(literal("refresh").executes(JustTiersCommands::refresh))
                         .then(literal("gui").executes(JustTiersCommands::openGui))
                         .then(literal("debug").executes(JustTiersCommands::debug))
-                        .then(literal("mode")
-                                .then(argument("mode", StringArgumentType.word())
-                                        .suggests(suggestIds(DisplayMode.values(), DisplayMode::id))
-                                        .executes(context -> setEnum(context, "mode",
-                                                DisplayMode.values(), DisplayMode::id,
-                                                JustTiersConfig::setDisplayMode,
-                                                mode -> Component.translatable(
-                                                        "justtiers.command.modeSet",
-                                                        Component.translatable(
-                                                                "justtiers.mode." + mode.id()))))))
+                        .then(literal("site")
+                                .then(argument("site", StringArgumentType.word())
+                                        .suggests(suggestIds(Source.values(), JustTiersCommands::sourceId))
+                                        .executes(context -> setSite(context, null))
+                                        .then(argument("enabled", BoolArgumentType.bool())
+                                                .executes(context -> setSite(context,
+                                                        BoolArgumentType.getBool(context, "enabled"))))))
                         .then(literal("badge")
                                 .then(argument("position", StringArgumentType.word())
                                         .suggests(suggestIds(BadgePosition.values(),
@@ -126,8 +124,28 @@ public final class JustTiersCommands {
                                         .executes(JustTiersCommands::setGamemode)))));
     }
 
+    private static String sourceId(Source source) {
+        return source.name().toLowerCase(Locale.ROOT);
+    }
+
+    private static int setSite(CommandContext<FabricClientCommandSource> context, Boolean enabled) {
+        String raw = StringArgumentType.getString(context, "site");
+        for (Source source : Source.ALL) {
+            if (!sourceId(source).equalsIgnoreCase(raw)) continue;
+            boolean value = enabled == null ? !JustTiersClient.config().isSiteEnabled(source) : enabled;
+            if (!editSettings(context, config -> config.setSiteEnabled(source, value))) return 0;
+            reply(context, ChatFormatting.GREEN, "justtiers.command.siteSet",
+                    source.displayName(), onOff(value));
+            return 1;
+        }
+        reply(context, ChatFormatting.RED, "justtiers.command.unknown", "site", raw,
+                Source.ALL.stream().map(JustTiersCommands::sourceId).collect(Collectors.joining(", ")));
+        return 0;
+    }
+
     private static Optional<Source> currentSource() {
-        return JustTiersClient.config().getDisplayMode().singleSource();
+        var sites = JustTiersClient.config().enabledSources();
+        return sites.size() == 1 ? Optional.of(sites.iterator().next()) : Optional.empty();
     }
 
     private static void reply(CommandContext<FabricClientCommandSource> context,
@@ -154,8 +172,6 @@ public final class JustTiersCommands {
         var config = JustTiersClient.config();
         reply(context, ChatFormatting.WHITE, "justtiers.command.status.enabled",
                 onOff(config.isEnabled()));
-        reply(context, ChatFormatting.WHITE, "justtiers.command.status.mode",
-                Component.translatable("justtiers.mode." + config.getDisplayMode().id()));
         reply(context, ChatFormatting.WHITE, "justtiers.command.status.retired",
                 Component.translatable(config.isShowRetired()
                         ? "justtiers.command.status.retired.shown"
@@ -166,6 +182,8 @@ public final class JustTiersCommands {
         reply(context, ChatFormatting.WHITE, "justtiers.command.status.palette",
                 Component.translatable(config.getPalette().displayKey()));
         for (Source source : Source.ALL) {
+            reply(context, ChatFormatting.WHITE, "justtiers.command.status.site",
+                    source.displayName(), onOff(config.isSiteEnabled(source)));
             String slug = config.selectedGamemode(source);
             String title = Gamemodes.find(source, slug).map(Gamemode::displayName).orElse(slug);
             reply(context, ChatFormatting.WHITE, "justtiers.command.status.gamemode",
@@ -257,8 +275,7 @@ public final class JustTiersCommands {
     private static int setGamemode(CommandContext<FabricClientCommandSource> context) {
         Optional<Source> source = currentSource();
         if (source.isEmpty()) {
-            // The same sentence the config screen shows on a greyed gamemode row.
-            reply(context, ChatFormatting.RED, "justtiers.option.gamemode.inactive");
+            reply(context, ChatFormatting.RED, "justtiers.command.gamemode.requiresSingleSite");
             return 0;
         }
 
@@ -317,7 +334,7 @@ public final class JustTiersCommands {
                 modVersion("minecraft"),
                 modVersion("fabricloader"),
                 config.isEnabled(),
-                config.getDisplayMode(),
+                config.enabledSources(),
                 Duration.ofMinutes(config.getTierCacheMinutes()),
                 JustTiersClient.novaSource().indexedPlayerCount(),
                 config.getNovaRefreshMinutes(),

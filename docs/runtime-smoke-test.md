@@ -87,6 +87,45 @@ The previously listed limits still apply: multiplayer rendering, ModMenu, authen
 skins, audible narration and the full keyboard/resize checklist were not exercised by
 this run.
 
+## October 9 tier-site update checks
+
+PvPTiers and PvPHQ replaced MCTiers, and individual site toggles replaced display modes.
+All six supported targets passed 507 JUnit tests each and packaged-artifact verification.
+The tooling suite passed 11 tests. Live lookups through the production HTTP client and
+parsers returned PvPTiers and PvPHQ placements, including PvPHQ's profile cart alias.
+
+The Minecraft 26.2 controlled-client smoke run passed 32 assertions. It checked gray
+PvPHQ MT tiers, mixed site selections, disabled sites, all sites disabled, and actual
+nametag mixin behavior. Config, gamemode-grid and lookup screens initialized at 320x240,
+427x240 and 480x270 GUI pixels and rendered at 480x270 without failures. The existing
+limits on authenticated multiplayer, ModMenu, skins, audible narration and full keyboard
+navigation still apply.
+
+## Version 1.1.7 release checks
+
+All seven stable targets from 1.21.10 through 26.3 passed a fresh build with 507
+JUnit tests each, without failures, errors or skips. Each installable 1.1.7 JAR
+passed metadata, Java bytecode and nametag mixin namespace checks. The tooling
+suite passed 18 tests, including target discovery and project-update validation.
+Actionlint 1.7.7 and `git diff --check` passed.
+
+Minecraft 1.21.10 and 26.2 each passed 32 controlled runtime assertions. The new
+1.21.10 target used Java 21, Fabric Loader 0.19.3, Fabric API 0.138.4+1.21.10 and
+YACL 3.8.2+1.21.10-fabric. A temporary auxiliary test mod adapted the existing
+controlled-world harness to its older world-creation and screen APIs. It exercised
+the production nametag mixin, all four sites, middle-tier colors and settings, then
+initialized and rendered configuration, grid and lookup screens. The auxiliary
+mod remained outside the repository and installable JARs.
+
+The 26.2 run used the repository's optional smoke harness. Reports are in
+`build/1.21.10/compat-smoke-instance/justtiers-smoke-report.txt` and
+`build/26.2/smoke-instance/justtiers-smoke-report.txt`. Both ended with
+`JUSTTIERS_SMOKE_SUCCESS`. Other targets were rebuilt and artifact-checked; their
+previous runtime evidence is recorded above. Authenticated multiplayer, ModMenu,
+spoken narration, authenticated skins and the full manual checklist remain untested
+in this release-preparation run. The maintainer approved publication and live page
+changes on October 9, 2026; see the [publication review](releases/v1.1.7-publishing.md).
+
 ## Setup
 
 Use a disposable instance of the Minecraft target with the Java, Fabric Loader, Fabric
@@ -99,9 +138,9 @@ on PATH or through JAVA_HOME.
 
 - Join a world/server with real account UUIDs. Confirm the log shows successful initialization
   and no mixin failures. Confirm a ranked player's badge appears as sites answer.
-- Check each display mode, fallback from an unranked selected gamemode, and hidden retired
+- Check individual sites and mixed site selections, fallback from an unranked selected gamemode, and hidden retired
   placements. Verify before/after position, brackets and icons.
-- Inspect all three sites' glyphs. Labels and names must remain readable, without missing-glyph
+- Inspect all four sites' glyphs. Labels and names must remain readable, without missing-glyph
   boxes. Custom palettes recolor tier text while preserving icon artwork.
 - Toggle nametag display and hide-own-badge. Verify other players retain the intended settings;
   tab list and chat remain unchanged. Offline-mode/NPC world nametags should not trigger
@@ -113,8 +152,10 @@ on PATH or through JAVA_HOME.
 - With keyboard only, Tab to a gamemode picker and activate with Enter and Space. Move across
   tiles with arrows and Tab. Preview must follow focus. Activate a tile, then return and
   activate Back with Enter: Back must not select a gamemode. Escape also cancels the picker.
-- Check disabled descriptions for All mode, another site's single mode, nametag display off,
+- Check disabled descriptions for multiple sites enabled, a disabled site, nametag display off,
   and custom colors under a preset. They must explain the current restriction.
+- Toggle each site individually, then try PvPTiers + PvPHQ and all sites disabled.
+  Check the preview and saved nametags. The old mode selector must be absent.
 - Change position, palette, own-badge and icons. Preview must reflect pending values. Cancel
   must preserve live settings and the file; Undo restores pending changes. Save must persist
   and survive reopening and restart.

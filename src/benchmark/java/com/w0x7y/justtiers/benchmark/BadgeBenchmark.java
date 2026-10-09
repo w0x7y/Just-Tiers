@@ -7,7 +7,6 @@ import com.w0x7y.justtiers.config.JustTiersConfig;
 import com.w0x7y.justtiers.render.model.Badge;
 import com.w0x7y.justtiers.render.model.NametagSettings;
 import com.w0x7y.justtiers.render.model.TierView;
-import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
 
@@ -16,6 +15,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -56,8 +56,8 @@ public final class BadgeBenchmark {
         long thread = Thread.currentThread().threadId();
         System.out.printf("Java %s; players=%d; iterations=%d; warmRequests=%d%n",
                 System.getProperty("java.version"), players.length, iterations, warmedRequests);
-        for (DisplayMode mode : DisplayMode.values()) {
-            config.setDisplayMode(mode);
+        for (Set<Source> sites : java.util.List.of(Set.of(Source.PVPTIERS), Set.of(Source.PVPHQ), Set.of(Source.SUBTIERS), Set.of(Source.NOVATIERS), Set.copyOf(Source.ALL))) {
+            Source.ALL.forEach(source -> config.setSiteEnabled(source, sites.contains(source)));
             run(view, players, iterations);
             for (int round = 1; round <= 5; round++) {
                 long beforeBytes = allocation == null ? 0 : allocation.getThreadAllocatedBytes(thread);
@@ -65,7 +65,7 @@ public final class BadgeBenchmark {
                 run(view, players, iterations);
                 long elapsed = System.nanoTime() - started;
                 long bytes = allocation == null ? 0 : allocation.getThreadAllocatedBytes(thread) - beforeBytes;
-                System.out.printf(Locale.ROOT, "%s round=%d ns/op=%.1f bytes/op=%s%n", mode.id(),
+                System.out.printf(Locale.ROOT, "%s round=%d ns/op=%.1f bytes/op=%s%n", sites.toString(),
                         round, (double) elapsed / iterations,
                         allocation == null ? "unsupported" : String.format(Locale.ROOT, "%.1f", (double) bytes / iterations));
             }

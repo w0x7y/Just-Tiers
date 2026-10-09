@@ -1,8 +1,8 @@
 package com.w0x7y.justtiers;
 
-import com.w0x7y.justtiers.api.MctiersLikeSource;
 import com.w0x7y.justtiers.api.MojangNameSource;
 import com.w0x7y.justtiers.api.NovaTiersSource;
+import com.w0x7y.justtiers.api.ProfileTierSource;
 import com.w0x7y.justtiers.cache.TierCache;
 import com.w0x7y.justtiers.command.JustTiersCommands;
 import com.w0x7y.justtiers.config.JustTiersConfig;
@@ -12,6 +12,7 @@ import com.w0x7y.justtiers.gui.JustTiersKeybinds;
 import com.w0x7y.justtiers.settings.RefreshLifecycle;
 import com.w0x7y.justtiers.settings.SettingsApplication;
 import com.w0x7y.justtiers.tier.Source;
+
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 
@@ -36,8 +37,9 @@ public class JustTiersClient implements ClientModInitializer {
         novaSource = new NovaTiersSource(
                 JustTiers.httpClient(), Source.NOVATIERS.baseUrl(), downloadProgress);
         cache = new TierCache(List.of(
-                new MctiersLikeSource(Source.MCTIERS, JustTiers.httpClient(), Source.MCTIERS.baseUrl()),
-                new MctiersLikeSource(Source.SUBTIERS, JustTiers.httpClient(), Source.SUBTIERS.baseUrl()),
+                new ProfileTierSource(Source.PVPTIERS, JustTiers.httpClient(), Source.PVPTIERS.baseUrl()),
+                new ProfileTierSource(Source.PVPHQ, JustTiers.httpClient(), Source.PVPHQ.baseUrl()),
+                new ProfileTierSource(Source.SUBTIERS, JustTiers.httpClient(), Source.SUBTIERS.baseUrl()),
                 novaSource));
         // Only ever asked about names /justtiers lookup could not find on the server.
         nameSource = new MojangNameSource(
@@ -63,8 +65,8 @@ public class JustTiersClient implements ClientModInitializer {
                     }
                 });
 
-        JustTiers.LOGGER.info("Just-Tiers {} ready (mode {})",
-                JustTiers.VERSION, config.getDisplayMode());
+        JustTiers.LOGGER.info("Just-Tiers {} ready (sites {})",
+                JustTiers.VERSION, config.enabledSources());
     }
 
     public static JustTiersConfig config() {

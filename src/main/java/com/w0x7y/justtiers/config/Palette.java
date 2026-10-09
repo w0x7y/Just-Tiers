@@ -7,18 +7,18 @@ import java.util.Map;
 import java.util.function.ToIntFunction;
 
 /**
- * The color scheme telling the three leaderboards apart. Color carries exactly one
+ * The color scheme telling the four leaderboards apart. Color carries exactly one
  * meaning in this UI — which site something came from — so a palette answers for all
- * three sites or it is not a palette.
+ * four sites or it is not a palette.
  *
  * <p>The alternative preset offers orange, blue and white. Color perception varies;
  * custom colors and explicit site labels in the lookup screen remain available.
  */
 public enum Palette {
 
-    DEFAULT("default", 0xFFFF55, 0x55FFFF, 0xAA55FF),
-    COLORBLIND("colorblind", 0xE69F00, 0x56B4E9, 0xFFFFFF),
-    HIGH_CONTRAST("high_contrast", 0xFFFFFF, 0xFFAA00, 0x00FFFF),
+    DEFAULT("default", 0xFFFF55, 0xD2D2D2, 0x55FFFF, 0xAA55FF),
+    COLORBLIND("colorblind", 0xE69F00, 0xCC79A7, 0x56B4E9, 0xFFFFFF),
+    HIGH_CONTRAST("high_contrast", 0xFFFFFF, 0xFF55FF, 0xFFAA00, 0x00FFFF),
     /** Whatever the user picked; colors come from the config rather than from here. */
     CUSTOM("custom");
 
@@ -30,10 +30,11 @@ public enum Palette {
         this.presetColors = Map.of();
     }
 
-    Palette(String id, int mctiers, int subtiers, int novatiers) {
+    Palette(String id, int pvptiers, int pvphq, int subtiers, int novatiers) {
         this.id = id;
         Map<Source, Integer> bySource = new EnumMap<>(Source.class);
-        bySource.put(Source.MCTIERS, mctiers);
+        bySource.put(Source.PVPTIERS, pvptiers);
+        bySource.put(Source.PVPHQ, pvphq);
         bySource.put(Source.SUBTIERS, subtiers);
         bySource.put(Source.NOVATIERS, novatiers);
         this.presetColors = Map.copyOf(bySource);
@@ -59,7 +60,7 @@ public enum Palette {
      *
      * <p>{@code customColor} is asked only by {@link #CUSTOM}, and only for what it
      * cannot know itself. Where those colors are kept is the caller's business: the
-     * config parses them out of hex in the file, the config screen reads three live
+     * config parses them out of hex in the file, the config screen reads four live
      * pickers, and neither format reaches this enum.
      */
     public Map<Source, Integer> colors(ToIntFunction<Source> customColor) {

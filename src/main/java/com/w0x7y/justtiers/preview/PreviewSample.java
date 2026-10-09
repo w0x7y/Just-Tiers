@@ -1,6 +1,5 @@
 package com.w0x7y.justtiers.preview;
 
-import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.resolve.ResolvedTier;
 import com.w0x7y.justtiers.tier.Gamemode;
 import com.w0x7y.justtiers.tier.Gamemodes;
@@ -10,12 +9,13 @@ import com.w0x7y.justtiers.tier.Tier;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * The made-up nametag the config screen draws. It is deliberately <em>not</em> a
  * leaderboard lookup: every placement is tier 1, so the preview shows what a setting
  * looks like rather than what anyone has actually earned. A valid selection is always
- * the gamemode you see, and the preview is never empty — the only substitution is a
+ * the gamemode you see, and the preview includes every enabled site — the only substitution is a
  * selection naming a gamemode its site no longer has, which draws that site's first
  * gamemode instead of nothing.
  *
@@ -35,12 +35,13 @@ public final class PreviewSample {
     public static final long RETIRED_CYCLE_MILLIS = 5_000L;
 
     /**
-     * What "all sites" previews, whatever the gamemode pickers say. Those pickers are
-     * greyed in this mode, so the preview shows one fixed headline gamemode per site
+     * What multiple enabled sites preview, whatever the gamemode pickers say. Those pickers are
+     * greyed with multiple sites enabled, so the preview shows one fixed headline gamemode per site
      * instead of pretending the greyed selections still matter.
      */
-    public static final Map<Source, String> ALL_MODE_GAMEMODES = Map.of(
-            Source.MCTIERS, "vanilla",
+    public static final Map<Source, String> MULTI_SITE_GAMEMODES = Map.of(
+            Source.PVPTIERS, "crystal",
+            Source.PVPHQ, "vanilla",
             Source.SUBTIERS, "minecart",
             Source.NOVATIERS, "spearmace");
 
@@ -56,26 +57,26 @@ public final class PreviewSample {
         return Math.floorMod(Math.floorDiv(timeMillis, RETIRED_CYCLE_MILLIS), 2L) == 1L;
     }
 
-    public static List<ResolvedTier> resolve(DisplayMode mode,
+    public static List<ResolvedTier> resolve(Set<Source> sites,
                                              Map<Source, String> selectedGamemodes,
                                              boolean retired) {
         Tier tier = retired ? RETIRED : ACTIVE;
-        return gamemodes(mode, selectedGamemodes).stream()
+        return gamemodes(sites, selectedGamemodes).stream()
                 .map(gamemode -> new ResolvedTier(gamemode, tier))
                 .toList();
     }
 
-    /** The gamemodes the tag shows: the selection on one site, or the fixed trio. */
-    private static List<Gamemode> gamemodes(DisplayMode mode,
+    /** The gamemodes the tag shows: the selection on one site, or fixed samples for the enabled sites. */
+    private static List<Gamemode> gamemodes(Set<Source> sites,
                                             Map<Source, String> selectedGamemodes) {
-        var single = mode.singleSource();
-        if (single.isPresent()) {
-            return List.of(gamemodeOf(single.get(), selectedGamemodes));
+        if (sites.size() == 1) {
+            return List.of(gamemodeOf(sites.iterator().next(), selectedGamemodes));
         }
 
         List<Gamemode> all = new ArrayList<>(Source.ALL.size());
         for (Source source : Source.ALL) {
-            all.add(gamemodeOf(source, ALL_MODE_GAMEMODES));
+            if (!sites.contains(source)) continue;
+            all.add(gamemodeOf(source, MULTI_SITE_GAMEMODES));
         }
         return List.copyOf(all);
     }

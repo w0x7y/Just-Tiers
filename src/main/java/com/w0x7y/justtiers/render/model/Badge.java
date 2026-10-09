@@ -1,7 +1,6 @@
 package com.w0x7y.justtiers.render.model;
 
 import com.w0x7y.justtiers.preview.PreviewSample;
-import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.resolve.ResolvedTier;
 import com.w0x7y.justtiers.resolve.TierResolver;
 import com.w0x7y.justtiers.tier.Source;
@@ -10,6 +9,7 @@ import com.w0x7y.justtiers.tier.Tier;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.IntUnaryOperator;
 
@@ -52,9 +52,8 @@ public record Badge(List<Segment> segments, BadgePosition position) {
      * caller to get right. Empty when the mod is off, when the player cannot be on a
      * leaderboard, or when no site has answered yet.
      *
-     * <p>Only the sites the display mode actually reads are asked, so switching to a
-     * single-site mode stops the other two from reaching the tag even when their answers
-     * are already cached.
+     * <p>Only enabled sites are asked, so disabled sites neither start nametag lookups
+     * nor reach the badge even when their answers are cached.
      */
     public static Badge forPlayer(TierView view, UUID uuid) {
         NametagSettings settings = view.settings();
@@ -67,10 +66,11 @@ public record Badge(List<Segment> segments, BadgePosition position) {
         }
 
         Map<Source, Map<String, Tier>> answers = new EnumMap<>(Source.class);
-        for (Source source : settings.displayMode().sources()) {
+        for (Source source : Source.ALL) {
+            if (!settings.enabledSources().contains(source)) continue;
             view.peek(source, uuid).ifPresent(tiers -> answers.put(source, tiers));
         }
-        return forPlayer(settings.displayMode(), answers, settings.selectedGamemodes(),
+        return forPlayer(settings.enabledSources(), answers, settings.selectedGamemodes(),
                 settings.showRetired(), settings.style());
     }
 
@@ -79,7 +79,7 @@ public record Badge(List<Segment> segments, BadgePosition position) {
      * in flight are simply absent from {@code tiersBySource}, so a badge appears as soon
      * as the first one answers and fills in over the next few frames.
      */
-    public static Badge forPlayer(DisplayMode mode,
+    public static Badge forPlayer(Set<Source> sites,
                                   Map<Source, Map<String, Tier>> tiersBySource,
                                   Map<Source, String> selectedGamemodes,
                                   boolean showRetired,
@@ -87,7 +87,7 @@ public record Badge(List<Segment> segments, BadgePosition position) {
         if (tiersBySource == null || tiersBySource.isEmpty()) {
             return NONE;
         }
-        return of(TierResolver.resolve(mode, tiersBySource, selectedGamemodes, showRetired),
+        return of(TierResolver.resolve(sites, tiersBySource, selectedGamemodes, showRetired),
                 style);
     }
 
@@ -96,13 +96,13 @@ public record Badge(List<Segment> segments, BadgePosition position) {
      * {@link PreviewSample} — so this is a picture of the settings, never a lookup, and
      * {@code timeMillis} is what drives the active/retired cycle.
      */
-    public static Badge preview(DisplayMode mode,
+    public static Badge preview(Set<Source> sites,
                                 Map<Source, String> selectedGamemodes,
                                 boolean showRetired,
                                 long timeMillis,
                                 NametagStyle style) {
         boolean retired = PreviewSample.retiredPhase(showRetired, timeMillis);
-        return of(PreviewSample.resolve(mode, selectedGamemodes, retired), style);
+        return of(PreviewSample.resolve(sites, selectedGamemodes, retired), style);
     }
 
     public boolean isEmpty() {

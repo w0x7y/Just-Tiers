@@ -70,6 +70,13 @@ class TargetDiscoveryTest(unittest.TestCase):
                 self.assertEqual("", result.stdout)
                 self.assertIn("26.3.properties", result.stderr)
 
+    def test_legacy_12110_rendering_strategy_is_a_valid_explicit_policy(self):
+        profile = PROFILE.replace("source_strategy=native", "source_strategy=legacy_render_1_21_10")
+        self.write("1.21.10", profile)
+        result = self.run_cli("matrix")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual({"minecraft": ["1.21.10"]}, json.loads(result.stdout))
+
     def test_empty_catalog_and_invalid_target_filename_fail(self):
         self.assertNotEqual(0, self.run_cli("matrix").returncode)
         self.write("26.3;echo oops")

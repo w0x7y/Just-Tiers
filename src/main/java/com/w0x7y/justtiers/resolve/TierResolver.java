@@ -11,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Turns raw per-site tier maps into the list of tiers to render.
@@ -24,17 +25,16 @@ public final class TierResolver {
      * their best active tier rather than disappearing, and one who is only ever retired
      * shows nothing for that site.
      */
-    public static List<ResolvedTier> resolve(DisplayMode mode,
+    public static List<ResolvedTier> resolve(Set<Source> sites,
                                              Map<Source, Map<String, Tier>> tiersBySource,
                                              Map<Source, String> selectedGamemodes,
                                              boolean showRetired) {
         Map<Source, Map<String, Tier>> effective =
                 showRetired ? tiersBySource : withoutRetired(tiersBySource);
-        Optional<Source> single = mode.singleSource();
-        if (single.isPresent()) {
-            return resolveSingleSite(single.get(), effective, selectedGamemodes);
+        if (sites.size() == 1) {
+            return resolveSingleSite(sites.iterator().next(), effective, selectedGamemodes);
         }
-        return resolveAll(effective);
+        return resolveEnabled(sites, effective);
     }
 
     private static Map<Source, Map<String, Tier>> withoutRetired(
@@ -111,9 +111,10 @@ public final class TierResolver {
         return highestOn(source, tiers).map(List::of).orElse(List.of());
     }
 
-    private static List<ResolvedTier> resolveAll(Map<Source, Map<String, Tier>> tiersBySource) {
+    private static List<ResolvedTier> resolveEnabled(Set<Source> sites, Map<Source, Map<String, Tier>> tiersBySource) {
         List<ResolvedTier> result = new ArrayList<>(Source.ALL.size());
         for (Source source : Source.ALL) {
+            if (!sites.contains(source)) continue;
             highestOn(source, tiersBySource.getOrDefault(source, Map.of())).ifPresent(result::add);
         }
         return List.copyOf(result);

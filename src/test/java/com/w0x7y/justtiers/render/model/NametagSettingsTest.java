@@ -1,34 +1,35 @@
 package com.w0x7y.justtiers.render.model;
 
-import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Source;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class NametagSettingsTest {
 
     private static final Map<Source, String> SELECTED = Map.of(
-            Source.MCTIERS, "vanilla",
+            Source.PVPTIERS, "crystal",
             Source.SUBTIERS, "bow",
             Source.NOVATIERS, "spleef");
 
     private static NametagSettings settings() {
-        return new NametagSettings(true, DisplayMode.ALL, SELECTED, true, NametagStyle.DEFAULT);
+        return new NametagSettings(true, Set.copyOf(Source.ALL), SELECTED, true, NametagStyle.DEFAULT);
     }
 
     @Test
     void swappingOneGamemodeLeavesEverythingElseAlone() {
-        NametagSettings swapped = settings().withGamemode(Source.MCTIERS, "axe");
+        NametagSettings swapped = settings().withGamemode(Source.PVPTIERS, "axe");
 
-        assertEquals("axe", swapped.selectedGamemodes().get(Source.MCTIERS));
+        assertEquals("axe", swapped.selectedGamemodes().get(Source.PVPTIERS));
         assertEquals("bow", swapped.selectedGamemodes().get(Source.SUBTIERS));
         assertEquals("spleef", swapped.selectedGamemodes().get(Source.NOVATIERS));
         assertEquals(settings().enabled(), swapped.enabled());
-        assertEquals(settings().displayMode(), swapped.displayMode());
+        assertEquals(settings().enabledSources(), swapped.enabledSources());
         assertEquals(settings().showRetired(), swapped.showRetired());
         assertEquals(settings().style(), swapped.style());
     }
@@ -36,26 +37,26 @@ class NametagSettingsTest {
     @Test
     void swappingAGamemodeLeavesTheOriginalUntouched() {
         NametagSettings original = settings();
-        original.withGamemode(Source.MCTIERS, "axe");
+        original.withGamemode(Source.PVPTIERS, "axe");
 
-        assertEquals("vanilla", original.selectedGamemodes().get(Source.MCTIERS));
+        assertEquals("crystal", original.selectedGamemodes().get(Source.PVPTIERS));
     }
 
     @Test
     void theSelectionIsCopiedRatherThanBorrowed() {
         Map<Source, String> mutable = new HashMap<>(SELECTED);
-        NametagSettings settings = new NametagSettings(true, DisplayMode.ALL, mutable, true,
+        NametagSettings settings = new NametagSettings(true, Set.copyOf(Source.ALL), mutable, true,
                 NametagStyle.DEFAULT);
 
-        mutable.put(Source.MCTIERS, "axe");
-        assertEquals("vanilla", settings.selectedGamemodes().get(Source.MCTIERS));
+        mutable.put(Source.PVPTIERS, "axe");
+        assertEquals("crystal", settings.selectedGamemodes().get(Source.PVPTIERS));
     }
 
     /** A hand-edited config can leave the style out; a nametag that refused to draw
      * would be worse than one in the default shape. */
     @Test
     void aMissingStyleFallsBackToTheDefault() {
-        NametagSettings settings = new NametagSettings(true, DisplayMode.ALL, SELECTED, true, null);
+        NametagSettings settings = new NametagSettings(true, Set.copyOf(Source.ALL), SELECTED, true, null);
 
         assertEquals(NametagStyle.DEFAULT, settings.style());
     }
@@ -63,7 +64,7 @@ class NametagSettingsTest {
     @Test
     void thePreviewBadgeFollowsTheSettings() {
         assertEquals(settings().previewBadge(0L).plainText(),
-                Badge.preview(DisplayMode.ALL, SELECTED, true, 0L, NametagStyle.DEFAULT)
+                Badge.preview(Set.copyOf(Source.ALL), SELECTED, true, 0L, NametagStyle.DEFAULT)
                         .plainText());
     }
 }

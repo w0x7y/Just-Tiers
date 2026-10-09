@@ -2,11 +2,12 @@ package com.w0x7y.justtiers.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.w0x7y.justtiers.JustTiers;
 import com.w0x7y.justtiers.render.model.BadgePosition;
 import com.w0x7y.justtiers.render.model.NametagSettings;
 import com.w0x7y.justtiers.render.model.NametagStyle;
-import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Gamemodes;
 import com.w0x7y.justtiers.tier.Source;
 
@@ -18,15 +19,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 public class JustTiersConfig {
 
     private static final Gson GSON = new GsonBuilder()
             .setPrettyPrinting()
-            .registerTypeAdapter(DisplayMode.class, new IdEnumAdapter<>(
-                    "displayMode", DisplayMode.class, DisplayMode.ALL, DisplayMode::id))
             .registerTypeAdapter(BadgePosition.class, new IdEnumAdapter<>(
                     "badgePosition", BadgePosition.class, BadgePosition.BEFORE,
                     BadgePosition::id))
@@ -35,13 +37,14 @@ public class JustTiersConfig {
             .create();
 
     private static final Map<Source, String> DEFAULT_GAMEMODES = Map.of(
-            Source.MCTIERS, "vanilla",
+            Source.PVPTIERS, "crystal",
+            Source.PVPHQ, "vanilla",
             Source.SUBTIERS, "elytra",
             Source.NOVATIERS, "vanilla");
 
     private boolean enabled = true;
     private boolean showRetired = true;
-    private DisplayMode displayMode = DisplayMode.ALL;
+    private Map<String, Boolean> enabledSites = new HashMap<>();
     private Map<String, String> selectedGamemodes = new HashMap<>();
     private int novaRefreshMinutes = 30;
     private boolean showDownloadProgress = true;
@@ -59,6 +62,7 @@ public class JustTiersConfig {
      * render thread reads it.
      */
     private transient volatile Map<Source, String> resolvedSelection;
+    private transient volatile Set<Source> resolvedEnabledSources;
 
     /**
      * Cache for {@link #colors()}, dropped whenever the palette or a custom color
@@ -79,7 +83,7 @@ public class JustTiersConfig {
         resolvedNametagSettings = null;
     }
 
-    /** Applies to every display mode: when false, retired tiers are never rendered. */
+    /** When false, retired tiers are never rendered. */
     public boolean isShowRetired() {
         return showRetired;
     }
@@ -89,13 +93,27 @@ public class JustTiersConfig {
         resolvedNametagSettings = null;
     }
 
-    public DisplayMode getDisplayMode() {
-        return displayMode == null ? DisplayMode.ALL : displayMode;
+    public boolean isSiteEnabled(Source source) {
+        return enabledSites == null || !Boolean.FALSE.equals(enabledSites.get(source.name()));
     }
 
-    public void setDisplayMode(DisplayMode displayMode) {
-        this.displayMode = displayMode;
+    public void setSiteEnabled(Source source, boolean enabled) {
+        if (enabledSites == null) enabledSites = new HashMap<>();
+        enabledSites.put(source.name(), enabled);
+        resolvedEnabledSources = null;
         resolvedNametagSettings = null;
+    }
+
+    public Set<Source> enabledSources() {
+        Set<Source> cached = resolvedEnabledSources;
+        if (cached != null) return cached;
+        EnumSet<Source> sources = EnumSet.noneOf(Source.class);
+        for (Source source : Source.ALL) {
+            if (isSiteEnabled(source)) sources.add(source);
+        }
+        cached = Set.copyOf(sources);
+        resolvedEnabledSources = cached;
+        return cached;
     }
 
     public int getNovaRefreshMinutes() {
@@ -180,7 +198,7 @@ public class JustTiersConfig {
         if (customColors == null) {
             return source.defaultColor();
         }
-        // Per site, so one typo in a hand-edited file costs one color rather than three.
+        // Per site, so one typo in a hand-edited file costs one color rather than four.
         return HexColor.parse(customColors.get(source.name())).orElseGet(source::defaultColor);
     }
 
@@ -234,7 +252,7 @@ public class JustTiersConfig {
     public NametagSettings nametagSettings() {
         NametagSettings cached = resolvedNametagSettings;
         if (cached != null) return cached;
-        cached = new NametagSettings(enabled, getDisplayMode(), selectedGamemodesBySource(),
+        cached = new NametagSettings(enabled, enabledSources(), selectedGamemodesBySource(),
                 showRetired, nametagStyle());
         resolvedNametagSettings = cached;
         return cached;
@@ -268,7 +286,7 @@ public class JustTiersConfig {
 
     /**
      * Every site's selection, resolved once. The nametag asks for this per player per
-     * frame, and resolving it means three validity checks and a fresh map each time;
+     * frame, and resolving it means four validity checks and a fresh map each time;
      * only a setter can change the answer, so it is held until one does.
      */
     public Map<Source, String> selectedGamemodesBySource() {
@@ -290,10 +308,13 @@ public class JustTiersConfig {
             return new JustTiersConfig();
         }
         try (Reader reader = Files.newBufferedReader(path)) {
-            JustTiersConfig config = GSON.fromJson(reader, JustTiersConfig.class);
-            if (config == null) {
+            var json = JsonParser.parseReader(reader);
+            if (json.isJsonNull()) {
                 return new JustTiersConfig();
             }
+            JsonObject root = json.getAsJsonObject();
+            migrateLegacySettings(root);
+            JustTiersConfig config = GSON.fromJson(root, JustTiersConfig.class);
             // clamp bypassed by reflection during deserialization
             config.setNovaRefreshMinutes(config.getNovaRefreshMinutes());
             config.setTierCacheMinutes(config.getTierCacheMinutes());
@@ -305,6 +326,37 @@ public class JustTiersConfig {
             JustTiers.LOGGER.warn("Could not read config at {}, using defaults", path, e);
             return new JustTiersConfig();
         }
+    }
+
+    /** Translate the removed display modes and MCTiers keys before deserialization. */
+    private static void migrateLegacySettings(JsonObject root) {
+        if (!root.has("enabledSites") || root.get("enabledSites").isJsonNull()) {
+            String mode = root.has("displayMode") && root.get("displayMode").isJsonPrimitive()
+                    ? root.get("displayMode").getAsString().toLowerCase(Locale.ROOT) : "all";
+            Source only = switch (mode) {
+                case "mctiers_only", "pvptiers_only" -> Source.PVPTIERS;
+                case "pvphq_only" -> Source.PVPHQ;
+                case "subtiers_only" -> Source.SUBTIERS;
+                case "novatiers_only" -> Source.NOVATIERS;
+                default -> null;
+            };
+            JsonObject sites = new JsonObject();
+            for (Source source : Source.ALL) sites.addProperty(source.name(), only == null || only == source);
+            root.add("enabledSites", sites);
+        }
+        for (String key : new String[]{"selectedGamemodes", "customColors"}) {
+            if (!root.has(key) || !root.get(key).isJsonObject()) continue;
+            JsonObject settings = root.getAsJsonObject(key);
+            var oldValue = settings.remove("MCTIERS");
+            if (oldValue != null && !settings.has("PVPTIERS")) settings.add("PVPTIERS", oldValue);
+            if (key.equals("selectedGamemodes") && settings.has("PVPTIERS")
+                    && settings.get("PVPTIERS").isJsonPrimitive()) {
+                String slug = settings.get("PVPTIERS").getAsString();
+                if (slug.equals("vanilla")) settings.addProperty("PVPTIERS", "crystal");
+                if (slug.equals("nethop")) settings.addProperty("PVPTIERS", "neth_pot");
+            }
+        }
+        root.remove("displayMode");
     }
 
     /** Independent draft for a settings screen; Cancel never mutates the live config. */

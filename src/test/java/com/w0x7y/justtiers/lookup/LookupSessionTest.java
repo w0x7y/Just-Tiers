@@ -5,6 +5,7 @@ import com.w0x7y.justtiers.api.TierSource;
 import com.w0x7y.justtiers.cache.TierCache;
 import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayDeque;
@@ -26,7 +27,7 @@ class LookupSessionTest {
         fixture.players.online = Optional.of(PLAYER);
         LookupSession session = fixture.start("typedName");
         assertEquals("typedName", session.name());
-        assertEquals(0, fixture.sources.get(Source.MCTIERS).calls);
+        assertEquals(0, fixture.sources.get(Source.PVPTIERS).calls);
         fixture.executor.drain();
         assertEquals("CanonicalName", session.name());
         assertEquals(0, fixture.players.requests);
@@ -73,10 +74,10 @@ class LookupSessionTest {
         assertEquals(1, fixture.players.requests);
         fixture.sources.values().forEach(source -> assertEquals(1, source.calls));
 
-        fixture.sources.get(Source.MCTIERS).pending.complete(Map.of("axe", new Tier(2, true, true)));
-        assertTrue(session.result(Source.MCTIERS).section().isEmpty());
+        fixture.sources.get(Source.PVPTIERS).pending.complete(Map.of("axe", new Tier(2, true, true)));
+        assertTrue(session.result(Source.PVPTIERS).section().isEmpty());
         fixture.executor.drain();
-        assertEquals(LookupSection.Status.RANKED, session.result(Source.MCTIERS).section().orElseThrow().status());
+        assertEquals(LookupSection.Status.RANKED, session.result(Source.PVPTIERS).section().orElseThrow().status());
         assertTrue(session.result(Source.SUBTIERS).section().isEmpty());
         assertFalse(session.complete());
         assertFalse(session.rankedNowhere());
@@ -88,11 +89,12 @@ class LookupSessionTest {
         fixture.players.online = Optional.of(PLAYER);
         LookupSession session = fixture.start(PLAYER.name());
         fixture.executor.drain();
-        fixture.sources.get(Source.MCTIERS).pending.complete(Map.of());
+        fixture.sources.get(Source.PVPTIERS).pending.complete(Map.of());
         fixture.executor.drain();
         assertFalse(session.rankedNowhere());
         fixture.sources.get(Source.SUBTIERS).pending.completeExceptionally(new IllegalStateException("offline"));
         fixture.sources.get(Source.NOVATIERS).pending.complete(Map.of());
+        fixture.sources.get(Source.PVPHQ).pending.complete(Map.of());
         fixture.executor.drain();
         assertTrue(session.complete());
         assertTrue(session.rankedNowhere());
@@ -127,16 +129,17 @@ class LookupSessionTest {
         fixture.players.online = Optional.of(PLAYER);
         LookupSession first = fixture.start(PLAYER.name());
         fixture.executor.drain();
-        fixture.sources.get(Source.MCTIERS).pending.complete(Map.of());
+        fixture.sources.get(Source.PVPTIERS).pending.complete(Map.of());
         fixture.sources.get(Source.SUBTIERS).pending.completeExceptionally(new IllegalStateException("offline"));
         fixture.executor.drain();
         LookupSession retry = fixture.start(PLAYER.name());
         fixture.executor.drain();
-        assertEquals(1, fixture.sources.get(Source.MCTIERS).calls);
+        assertEquals(1, fixture.sources.get(Source.PVPTIERS).calls);
         assertEquals(2, fixture.sources.get(Source.SUBTIERS).calls);
         assertEquals(1, fixture.sources.get(Source.NOVATIERS).calls);
         fixture.sources.get(Source.SUBTIERS).pending.complete(Map.of());
         fixture.sources.get(Source.NOVATIERS).pending.complete(Map.of());
+        fixture.sources.get(Source.PVPHQ).pending.complete(Map.of());
         fixture.executor.drain();
         assertTrue(first.complete());
         assertTrue(retry.complete());
@@ -174,16 +177,16 @@ class LookupSessionTest {
 
         LookupSession refreshing = fixture.start(PLAYER.name());
         fixture.executor.drain();
-        assertEquals(LookupSection.Status.RANKED, refreshing.result(Source.MCTIERS).section().orElseThrow().status());
-        assertTrue(refreshing.result(Source.MCTIERS).freshness().orElseThrow().status() == LookupResult.RefreshStatus.REFRESHING);
+        assertEquals(LookupSection.Status.RANKED, refreshing.result(Source.PVPTIERS).section().orElseThrow().status());
+        assertTrue(refreshing.result(Source.PVPTIERS).freshness().orElseThrow().status() == LookupResult.RefreshStatus.REFRESHING);
         assertFalse(refreshing.complete(), "cached sections do not mean the new requests have settled");
-        fixture.sources.get(Source.MCTIERS).pending.completeExceptionally(new IllegalStateException("offline"));
+        fixture.sources.get(Source.PVPTIERS).pending.completeExceptionally(new IllegalStateException("offline"));
         fixture.executor.drain();
-        assertEquals(LookupSection.Status.RANKED, refreshing.result(Source.MCTIERS).section().orElseThrow().status());
-        assertEquals(LookupResult.RefreshStatus.REFRESH_FAILED, refreshing.result(Source.MCTIERS).freshness().orElseThrow().status());
-        assertTrue(refreshing.result(Source.MCTIERS).complete());
+        assertEquals(LookupSection.Status.RANKED, refreshing.result(Source.PVPTIERS).section().orElseThrow().status());
+        assertEquals(LookupResult.RefreshStatus.REFRESH_FAILED, refreshing.result(Source.PVPTIERS).freshness().orElseThrow().status());
+        assertTrue(refreshing.result(Source.PVPTIERS).complete());
         fixture.time.addAndGet(java.time.Duration.ofMinutes(2).toNanos());
-        assertEquals(java.time.Duration.ofMinutes(2), refreshing.result(Source.MCTIERS).freshness().orElseThrow().age());
+        assertEquals(java.time.Duration.ofMinutes(2), refreshing.result(Source.PVPTIERS).freshness().orElseThrow().age());
     }
 
     @Test
@@ -193,24 +196,24 @@ class LookupSessionTest {
         LookupSession first = fixture.start(PLAYER.name());
         fixture.executor.drain();
         Map<String, Tier> tiers = Map.of("axe", new Tier(2, true, false));
-        fixture.sources.get(Source.MCTIERS).pending.complete(tiers);
+        fixture.sources.get(Source.PVPTIERS).pending.complete(tiers);
         fixture.executor.drain();
         fixture.time.addAndGet(java.time.Duration.ofMinutes(10).toNanos());
         fixture.cache.refreshAll();
         LookupSession failed = fixture.start(PLAYER.name());
         fixture.executor.drain();
-        fixture.sources.get(Source.MCTIERS).pending.completeExceptionally(new IllegalStateException("offline"));
+        fixture.sources.get(Source.PVPTIERS).pending.completeExceptionally(new IllegalStateException("offline"));
         fixture.executor.drain();
         fixture.cache.refreshAll();
         fixture.time.addAndGet(java.time.Duration.ofMinutes(5).toNanos());
         LookupSession retry = fixture.start(PLAYER.name());
         fixture.executor.drain();
-        fixture.sources.get(Source.MCTIERS).pending.complete(tiers);
+        fixture.sources.get(Source.PVPTIERS).pending.complete(tiers);
         fixture.executor.drain();
 
-        LookupResult before = first.result(Source.MCTIERS);
-        LookupResult failure = failed.result(Source.MCTIERS);
-        LookupResult recovered = retry.result(Source.MCTIERS);
+        LookupResult before = first.result(Source.PVPTIERS);
+        LookupResult failure = failed.result(Source.PVPTIERS);
+        LookupResult recovered = retry.result(Source.PVPTIERS);
         assertEquals(java.time.Duration.ofMinutes(15), before.freshness().orElseThrow().age());
         assertEquals(java.time.Duration.ofMinutes(15), failure.freshness().orElseThrow().age());
         assertEquals(LookupResult.RefreshStatus.REFRESH_FAILED, failure.freshness().orElseThrow().status());
@@ -225,11 +228,11 @@ class LookupSessionTest {
         fixture.players.online = Optional.of(PLAYER);
         LookupSession session = fixture.start(PLAYER.name());
         fixture.executor.drain();
-        fixture.sources.get(Source.MCTIERS).pending.complete(Map.of("axe", new Tier(2, true, false)));
+        fixture.sources.get(Source.PVPTIERS).pending.complete(Map.of("axe", new Tier(2, true, false)));
         fixture.executor.drain();
         fixture.cache.invalidateAll();
         fixture.time.addAndGet(java.time.Duration.ofMinutes(60).toNanos());
-        LookupResult result = session.result(Source.MCTIERS);
+        LookupResult result = session.result(Source.PVPTIERS);
         assertEquals(LookupSection.Status.RANKED, result.section().orElseThrow().status());
         assertEquals(LookupResult.RefreshStatus.STALE, result.freshness().orElseThrow().status());
         assertEquals(java.time.Duration.ofMinutes(60), result.freshness().orElseThrow().age());
@@ -242,13 +245,13 @@ class LookupSessionTest {
         fixture.players.online = Optional.of(PLAYER);
         LookupSession session = fixture.start(PLAYER.name());
         fixture.executor.drain();
-        fixture.sources.get(Source.MCTIERS).pending.complete(Map.of("axe", new Tier(2, true, false)));
+        fixture.sources.get(Source.PVPTIERS).pending.complete(Map.of("axe", new Tier(2, true, false)));
         fixture.time.addAndGet(java.time.Duration.ofMinutes(2).toNanos());
-        fixture.cache.invalidate(Source.MCTIERS);
-        fixture.cache.load(Source.MCTIERS, PLAYER.uuid());
-        fixture.sources.get(Source.MCTIERS).pending.complete(Map.of("axe", new Tier(1, true, false)));
+        fixture.cache.invalidate(Source.PVPTIERS);
+        fixture.cache.load(Source.PVPTIERS, PLAYER.uuid());
+        fixture.sources.get(Source.PVPTIERS).pending.complete(Map.of("axe", new Tier(1, true, false)));
         fixture.executor.drain();
-        LookupResult result = session.result(Source.MCTIERS);
+        LookupResult result = session.result(Source.PVPTIERS);
         assertEquals("HT2", result.section().orElseThrow().cells().stream()
                 .filter(cell -> cell.gamemode().slug().equals("axe")).findFirst().orElseThrow().tier().orElseThrow().label());
         assertEquals(java.time.Duration.ofMinutes(2), result.freshness().orElseThrow().age());
@@ -282,11 +285,11 @@ class LookupSessionTest {
         fixture.players.online = Optional.of(PLAYER);
         LookupSession session = fixture.start(PLAYER.name());
         fixture.executor.drain();
-        fixture.sources.get(Source.MCTIERS).pending.complete(Map.of());
+        fixture.sources.get(Source.PVPTIERS).pending.complete(Map.of());
         fixture.executor.drain();
         fixture.cache.invalidateAll();
         fixture.time.addAndGet(java.time.Duration.ofDays(2).toNanos());
-        LookupResult result = session.result(Source.MCTIERS);
+        LookupResult result = session.result(Source.PVPTIERS);
         assertEquals(LookupResult.RefreshStatus.FRESH, result.freshness().orElseThrow().status());
         assertEquals(java.time.Duration.ofDays(2), result.freshness().orElseThrow().age());
         assertEquals(LookupSection.Status.UNRANKED, result.section().orElseThrow().status());

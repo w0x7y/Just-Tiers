@@ -10,11 +10,11 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Parses the shared MCTiers/SubTiers v2 rankings payload:
+ * Parses the shared PvPTiers/SubTiers rankings map:
  * {@code {"<slug>": {"tier":1-5, "pos":0|1, "retired":bool, ...}}}.
  * {@code pos == 0} means HT. Peak fields are deliberately ignored.
  */
-public final class MctiersParser {
+public final class RankingsParser {
 
     private static final Gson GSON = new Gson();
 
@@ -45,7 +45,7 @@ public final class MctiersParser {
                 if (tier < 1 || tier > 5 || (pos != 0 && pos != 1)) {
                     continue;
                 }
-                result.put(entry.getKey(), Tier.fromMctiers(tier, pos, retired));
+                result.put(entry.getKey(), Tier.fromRanking(tier, pos, retired));
             } catch (RuntimeException e) {
                 // A single bad gamemode entry must never sink the whole profile.
                 JustTiers.LOGGER.warn("Skipping unparseable ranking '{}'", entry.getKey(), e);
@@ -57,6 +57,6 @@ public final class MctiersParser {
         return result;
     }
 
-    private MctiersParser() {
+    private RankingsParser() {
     }
 }

@@ -3,6 +3,7 @@ package com.w0x7y.justtiers.cache;
 import com.w0x7y.justtiers.api.TierSource;
 import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
+
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -46,56 +47,56 @@ class TierCacheTest {
 
     @Test
     void peekReturnsEmptyWhilePendingThenTheResult() {
-        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of("axe", new Tier(2, true, false)));
+        FakeSource fake = new FakeSource(Source.PVPTIERS, Map.of("axe", new Tier(2, true, false)));
         TierCache cache = new TierCache(List.of(fake));
 
-        assertEquals(Optional.empty(), cache.peek(Source.MCTIERS, PLAYER));
+        assertEquals(Optional.empty(), cache.peek(Source.PVPTIERS, PLAYER));
         assertEquals(1, fake.calls.get());
 
         fake.complete();
-        Optional<Map<String, Tier>> loaded = cache.peek(Source.MCTIERS, PLAYER);
+        Optional<Map<String, Tier>> loaded = cache.peek(Source.PVPTIERS, PLAYER);
         assertTrue(loaded.isPresent());
         assertEquals("HT2", loaded.get().get("axe").label());
     }
 
     @Test
     void repeatedPeeksIssueOnlyOneFetch() {
-        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
+        FakeSource fake = new FakeSource(Source.PVPTIERS, Map.of());
         TierCache cache = new TierCache(List.of(fake));
 
-        cache.peek(Source.MCTIERS, PLAYER);
-        cache.peek(Source.MCTIERS, PLAYER);
-        cache.peek(Source.MCTIERS, PLAYER);
+        cache.peek(Source.PVPTIERS, PLAYER);
+        cache.peek(Source.PVPTIERS, PLAYER);
+        cache.peek(Source.PVPTIERS, PLAYER);
 
         assertEquals(1, fake.calls.get(), "in-flight requests must be coalesced");
     }
 
     @Test
     void unrankedResultsAreCachedAsEmptyNotRefetched() {
-        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
+        FakeSource fake = new FakeSource(Source.PVPTIERS, Map.of());
         TierCache cache = new TierCache(List.of(fake));
 
-        cache.peek(Source.MCTIERS, PLAYER);
+        cache.peek(Source.PVPTIERS, PLAYER);
         fake.complete();
 
-        Optional<Map<String, Tier>> loaded = cache.peek(Source.MCTIERS, PLAYER);
+        Optional<Map<String, Tier>> loaded = cache.peek(Source.PVPTIERS, PLAYER);
         assertTrue(loaded.isPresent(), "a known-unranked player is loaded, not pending");
         assertTrue(loaded.get().isEmpty());
 
-        cache.peek(Source.MCTIERS, PLAYER);
+        cache.peek(Source.PVPTIERS, PLAYER);
         assertEquals(1, fake.calls.get(), "negative results must not be refetched");
     }
 
     @Test
     void sourcesAreCachedIndependently() {
-        FakeSource mct = new FakeSource(Source.MCTIERS, Map.of("axe", new Tier(1, true, false)));
+        FakeSource mct = new FakeSource(Source.PVPTIERS, Map.of("axe", new Tier(1, true, false)));
         FakeSource sub = new FakeSource(Source.SUBTIERS, Map.of("bow", new Tier(3, false, false)));
         TierCache cache = new TierCache(List.of(mct, sub));
 
-        cache.peek(Source.MCTIERS, PLAYER);
+        cache.peek(Source.PVPTIERS, PLAYER);
         mct.complete();
 
-        assertTrue(cache.peek(Source.MCTIERS, PLAYER).isPresent());
+        assertTrue(cache.peek(Source.PVPTIERS, PLAYER).isPresent());
         assertEquals(Optional.empty(), cache.peek(Source.SUBTIERS, PLAYER));
         assertEquals(1, sub.calls.get());
     }
@@ -110,31 +111,31 @@ class TierCacheTest {
 
     @Test
     void invalidateAllForcesARefetch() {
-        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
+        FakeSource fake = new FakeSource(Source.PVPTIERS, Map.of());
         TierCache cache = new TierCache(List.of(fake));
 
-        cache.peek(Source.MCTIERS, PLAYER);
+        cache.peek(Source.PVPTIERS, PLAYER);
         fake.complete();
         cache.invalidateAll();
-        cache.peek(Source.MCTIERS, PLAYER);
+        cache.peek(Source.PVPTIERS, PLAYER);
 
         assertEquals(2, fake.calls.get());
     }
 
     @Test
     void invalidateOnlyForcesARefetchForTheGivenSource() {
-        FakeSource mct = new FakeSource(Source.MCTIERS, Map.of());
+        FakeSource mct = new FakeSource(Source.PVPTIERS, Map.of());
         FakeSource sub = new FakeSource(Source.SUBTIERS, Map.of());
         TierCache cache = new TierCache(List.of(mct, sub));
 
-        cache.peek(Source.MCTIERS, PLAYER);
+        cache.peek(Source.PVPTIERS, PLAYER);
         mct.complete();
         cache.peek(Source.SUBTIERS, PLAYER);
         sub.complete();
 
-        cache.invalidate(Source.MCTIERS);
+        cache.invalidate(Source.PVPTIERS);
 
-        cache.peek(Source.MCTIERS, PLAYER);
+        cache.peek(Source.PVPTIERS, PLAYER);
         assertEquals(2, mct.calls.get(), "the invalidated source must be refetched");
 
         cache.peek(Source.SUBTIERS, PLAYER);
@@ -143,67 +144,67 @@ class TierCacheTest {
 
     @Test
     void loadExposesTheAwaitableFuture() throws Exception {
-        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of("axe", new Tier(4, false, false)));
+        FakeSource fake = new FakeSource(Source.PVPTIERS, Map.of("axe", new Tier(4, false, false)));
         TierCache cache = new TierCache(List.of(fake));
 
-        CompletableFuture<Map<String, Tier>> future = cache.load(Source.MCTIERS, PLAYER);
+        CompletableFuture<Map<String, Tier>> future = cache.load(Source.PVPTIERS, PLAYER);
         fake.complete();
         assertEquals("LT4", future.get().get("axe").label());
     }
 
     @Test
     void aFailedFetchIsNotCachedAndIsRetriedOnceTheDelayHasPassed() {
-        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
+        FakeSource fake = new FakeSource(Source.PVPTIERS, Map.of());
         TierCache cache = new TierCache(List.of(fake), CachePolicy.DEFAULT.withBaseRetry(Duration.ZERO));
 
-        cache.peek(Source.MCTIERS, PLAYER);
+        cache.peek(Source.PVPTIERS, PLAYER);
         fake.pending.completeExceptionally(new RuntimeException("network down"));
 
-        assertEquals(Optional.empty(), cache.peek(Source.MCTIERS, PLAYER),
+        assertEquals(Optional.empty(), cache.peek(Source.PVPTIERS, PLAYER),
                 "a failed lookup must not be reported as loaded");
-        assertEquals(Optional.empty(), cache.peek(Source.MCTIERS, PLAYER));
+        assertEquals(Optional.empty(), cache.peek(Source.PVPTIERS, PLAYER));
         assertEquals(2, fake.calls.get(), "a failed lookup must be retried");
     }
 
     @Test
     void aFailedFetchIsNotRetriedWhileTheDelayIsStillRunning() {
-        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
+        FakeSource fake = new FakeSource(Source.PVPTIERS, Map.of());
         TierCache cache = new TierCache(List.of(fake), CachePolicy.DEFAULT.withBaseRetry(Duration.ofMinutes(10)));
 
-        cache.peek(Source.MCTIERS, PLAYER);
+        cache.peek(Source.PVPTIERS, PLAYER);
         fake.pending.completeExceptionally(new RuntimeException("network down"));
 
         // peek() runs every frame, so the backoff is what stops a failing site being hammered.
         for (int i = 0; i < 50; i++) {
-            assertEquals(Optional.empty(), cache.peek(Source.MCTIERS, PLAYER));
+            assertEquals(Optional.empty(), cache.peek(Source.PVPTIERS, PLAYER));
         }
         assertEquals(1, fake.calls.get(), "the retry delay must suppress further attempts");
     }
 
     @Test
     void aFailedFetchIsNeverReportedAsAnUnrankedPlayer() {
-        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
+        FakeSource fake = new FakeSource(Source.PVPTIERS, Map.of());
         TierCache cache = new TierCache(List.of(fake), CachePolicy.DEFAULT.withBaseRetry(Duration.ofMinutes(10)));
 
-        cache.peek(Source.MCTIERS, PLAYER);
+        cache.peek(Source.PVPTIERS, PLAYER);
         fake.pending.completeExceptionally(new RuntimeException("site down"));
 
         // Optional.of(Map.of()) would mean "known unranked" and would blank the badge.
-        assertTrue(cache.peek(Source.MCTIERS, PLAYER).isEmpty());
+        assertTrue(cache.peek(Source.PVPTIERS, PLAYER).isEmpty());
     }
 
     @Test
     void invalidatingClearsTheRetryDelaySoRefreshRetriesImmediately() {
-        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
+        FakeSource fake = new FakeSource(Source.PVPTIERS, Map.of());
         TierCache cache = new TierCache(List.of(fake), CachePolicy.DEFAULT.withBaseRetry(Duration.ofMinutes(10)));
 
-        cache.peek(Source.MCTIERS, PLAYER);
+        cache.peek(Source.PVPTIERS, PLAYER);
         fake.pending.completeExceptionally(new RuntimeException("site down"));
-        cache.peek(Source.MCTIERS, PLAYER);
+        cache.peek(Source.PVPTIERS, PLAYER);
         assertEquals(1, fake.calls.get());
 
         cache.invalidateAll();
-        cache.peek(Source.MCTIERS, PLAYER);
+        cache.peek(Source.PVPTIERS, PLAYER);
         assertEquals(2, fake.calls.get(), "/justtiers refresh must not wait out the backoff");
     }
 
@@ -213,52 +214,52 @@ class TierCacheTest {
     void loadOnItsOwnWouldKeepAFailureForever() {
         // The behaviour forgetFailed exists to correct: nothing peeks at a player who is
         // not in the world, so a failed load would be replayed by every later lookup.
-        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
+        FakeSource fake = new FakeSource(Source.PVPTIERS, Map.of());
         TierCache cache = new TierCache(List.of(fake));
 
-        cache.load(Source.MCTIERS, PLAYER);
+        cache.load(Source.PVPTIERS, PLAYER);
         fake.pending.completeExceptionally(new RuntimeException("site down"));
 
-        assertTrue(cache.load(Source.MCTIERS, PLAYER).isCompletedExceptionally());
+        assertTrue(cache.load(Source.PVPTIERS, PLAYER).isCompletedExceptionally());
         assertEquals(1, fake.calls.get());
     }
 
     @Test
     void forgetFailedLetsTheNextLoadTryAgain() {
-        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of("axe", new Tier(1, true, false)));
+        FakeSource fake = new FakeSource(Source.PVPTIERS, Map.of("axe", new Tier(1, true, false)));
         TierCache cache = new TierCache(List.of(fake));
 
-        cache.load(Source.MCTIERS, PLAYER);
+        cache.load(Source.PVPTIERS, PLAYER);
         fake.pending.completeExceptionally(new RuntimeException("site down"));
-        cache.forgetFailed(Source.MCTIERS, PLAYER);
+        cache.forgetFailed(Source.PVPTIERS, PLAYER);
 
-        cache.load(Source.MCTIERS, PLAYER);
+        cache.load(Source.PVPTIERS, PLAYER);
         assertEquals(2, fake.calls.get());
     }
 
     @Test
     void forgetFailedLeavesASuccessfulEntryAlone() throws Exception {
-        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of("axe", new Tier(1, true, false)));
+        FakeSource fake = new FakeSource(Source.PVPTIERS, Map.of("axe", new Tier(1, true, false)));
         TierCache cache = new TierCache(List.of(fake));
 
-        CompletableFuture<Map<String, Tier>> loaded = cache.load(Source.MCTIERS, PLAYER);
+        CompletableFuture<Map<String, Tier>> loaded = cache.load(Source.PVPTIERS, PLAYER);
         fake.complete();
-        cache.forgetFailed(Source.MCTIERS, PLAYER);
+        cache.forgetFailed(Source.PVPTIERS, PLAYER);
 
-        assertSame(loaded, cache.load(Source.MCTIERS, PLAYER));
+        assertSame(loaded, cache.load(Source.PVPTIERS, PLAYER));
         assertEquals(1, fake.calls.get());
         assertEquals("HT1", loaded.get().get("axe").label());
     }
 
     @Test
     void forgetFailedLeavesALookupStillInFlightAlone() {
-        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
+        FakeSource fake = new FakeSource(Source.PVPTIERS, Map.of());
         TierCache cache = new TierCache(List.of(fake));
 
-        CompletableFuture<Map<String, Tier>> inFlight = cache.load(Source.MCTIERS, PLAYER);
-        cache.forgetFailed(Source.MCTIERS, PLAYER);
+        CompletableFuture<Map<String, Tier>> inFlight = cache.load(Source.PVPTIERS, PLAYER);
+        cache.forgetFailed(Source.PVPTIERS, PLAYER);
 
-        assertSame(inFlight, cache.load(Source.MCTIERS, PLAYER));
+        assertSame(inFlight, cache.load(Source.PVPTIERS, PLAYER));
         assertEquals(1, fake.calls.get());
     }
 
@@ -267,17 +268,17 @@ class TierCacheTest {
         // /justtiers lookup goes through load(), which ignores the backoff. When it
         // succeeds the site has answered, so peek() must stop reporting "not yet known"
         // rather than blanking the badge for the rest of the delay.
-        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of("axe", new Tier(1, true, false)));
+        FakeSource fake = new FakeSource(Source.PVPTIERS, Map.of("axe", new Tier(1, true, false)));
         TierCache cache = new TierCache(List.of(fake), CachePolicy.DEFAULT.withBaseRetry(Duration.ofMinutes(10)));
 
-        cache.peek(Source.MCTIERS, PLAYER);
+        cache.peek(Source.PVPTIERS, PLAYER);
         fake.pending.completeExceptionally(new RuntimeException("site down"));
-        assertEquals(Optional.empty(), cache.peek(Source.MCTIERS, PLAYER));
+        assertEquals(Optional.empty(), cache.peek(Source.PVPTIERS, PLAYER));
 
-        cache.load(Source.MCTIERS, PLAYER);
+        cache.load(Source.PVPTIERS, PLAYER);
         fake.complete();
 
-        Optional<Map<String, Tier>> loaded = cache.peek(Source.MCTIERS, PLAYER);
+        Optional<Map<String, Tier>> loaded = cache.peek(Source.PVPTIERS, PLAYER);
         assertTrue(loaded.isPresent(), "the badge must not stay blank behind a spent backoff");
         assertEquals("HT1", loaded.get().get("axe").label());
     }
@@ -286,19 +287,19 @@ class TierCacheTest {
     void aFailedLoadLeavesTheBackoffInPlace() {
         // Only an answer spends the backoff; a second failure must not hand peek() a
         // free retry, or a failing site gets hammered every frame again.
-        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
+        FakeSource fake = new FakeSource(Source.PVPTIERS, Map.of());
         TierCache cache = new TierCache(List.of(fake), CachePolicy.DEFAULT.withBaseRetry(Duration.ofMinutes(10)));
 
-        cache.peek(Source.MCTIERS, PLAYER);
+        cache.peek(Source.PVPTIERS, PLAYER);
         fake.pending.completeExceptionally(new RuntimeException("site down"));
-        cache.peek(Source.MCTIERS, PLAYER);
+        cache.peek(Source.PVPTIERS, PLAYER);
 
-        cache.load(Source.MCTIERS, PLAYER);
+        cache.load(Source.PVPTIERS, PLAYER);
         fake.pending.completeExceptionally(new RuntimeException("still down"));
-        cache.forgetFailed(Source.MCTIERS, PLAYER);
+        cache.forgetFailed(Source.PVPTIERS, PLAYER);
 
         for (int i = 0; i < 10; i++) {
-            assertEquals(Optional.empty(), cache.peek(Source.MCTIERS, PLAYER));
+            assertEquals(Optional.empty(), cache.peek(Source.PVPTIERS, PLAYER));
         }
         assertEquals(2, fake.calls.get(), "the backoff must survive a failed load");
     }
@@ -318,7 +319,7 @@ class TierCacheTest {
         final TierCache cache;
 
         Controlled(Map<String, Tier> result, CachePolicy policy) {
-            this.fake = new FakeSource(Source.MCTIERS, result);
+            this.fake = new FakeSource(Source.PVPTIERS, result);
             this.cache = new TierCache(List.of(fake), policy, clock::get, () -> 0.5);
         }
 
@@ -335,11 +336,11 @@ class TierCacheTest {
     void aFreshAnswerIsNotFetchedAgain() {
         Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
 
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
         it.fake.complete();
         it.advance(Duration.ofMinutes(59));
 
-        assertTrue(it.cache.peek(Source.MCTIERS, PLAYER).isPresent());
+        assertTrue(it.cache.peek(Source.PVPTIERS, PLAYER).isPresent());
         assertEquals(1, it.fake.calls.get());
     }
 
@@ -347,11 +348,11 @@ class TierCacheTest {
     void anAnswerIsFetchedAgainOnceItIsStale() {
         Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
 
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
         it.fake.complete();
         it.advance(Duration.ofMinutes(60));
 
-        assertEquals("HT1", it.cache.peek(Source.MCTIERS, PLAYER).orElseThrow().get("axe").label(),
+        assertEquals("HT1", it.cache.peek(Source.PVPTIERS, PLAYER).orElseThrow().get("axe").label(),
                 "the previous answer remains visible while refreshing");
         assertEquals(2, it.fake.calls.get(), "it must be asked again");
     }
@@ -362,12 +363,12 @@ class TierCacheTest {
         // as untested all session once they have been.
         Controlled it = new Controlled(Map.of(), policy());
 
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
         it.fake.complete();
-        assertEquals(Optional.of(Map.of()), it.cache.peek(Source.MCTIERS, PLAYER));
+        assertEquals(Optional.of(Map.of()), it.cache.peek(Source.PVPTIERS, PLAYER));
 
         it.advance(Duration.ofMinutes(60));
-        assertEquals(Optional.of(Map.of()), it.cache.peek(Source.MCTIERS, PLAYER));
+        assertEquals(Optional.of(Map.of()), it.cache.peek(Source.PVPTIERS, PLAYER));
         assertEquals(2, it.fake.calls.get());
     }
 
@@ -376,11 +377,11 @@ class TierCacheTest {
         Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)),
                 policy().withTtl(Duration.ZERO));
 
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
         it.fake.complete();
         it.advance(Duration.ofDays(30));
 
-        assertTrue(it.cache.peek(Source.MCTIERS, PLAYER).isPresent());
+        assertTrue(it.cache.peek(Source.PVPTIERS, PLAYER).isPresent());
         assertEquals(1, it.fake.calls.get());
     }
 
@@ -388,11 +389,11 @@ class TierCacheTest {
     void loadAlsoRefusesToServeAStaleAnswer() {
         Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
 
-        it.cache.load(Source.MCTIERS, PLAYER);
+        it.cache.load(Source.PVPTIERS, PLAYER);
         it.fake.complete();
         it.advance(Duration.ofMinutes(60));
 
-        it.cache.load(Source.MCTIERS, PLAYER);
+        it.cache.load(Source.PVPTIERS, PLAYER);
         assertEquals(2, it.fake.calls.get());
     }
 
@@ -401,27 +402,27 @@ class TierCacheTest {
         Controlled it = new Controlled(Map.of(), policy());
 
         // First failure: a minute.
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
         it.fake.pending.completeExceptionally(new RuntimeException("down"));
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
 
         it.advance(Duration.ofSeconds(59));
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
         assertEquals(1, it.fake.calls.get(), "a minute has not passed");
 
         it.advance(Duration.ofSeconds(1));
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
         assertEquals(2, it.fake.calls.get());
 
         // Second failure: two minutes, so the minute that sufficed before does not.
         it.fake.pending.completeExceptionally(new RuntimeException("still down"));
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
         it.advance(Duration.ofSeconds(60));
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
         assertEquals(2, it.fake.calls.get(), "the wait must have grown");
 
         it.advance(Duration.ofSeconds(60));
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
         assertEquals(3, it.fake.calls.get());
     }
 
@@ -429,22 +430,22 @@ class TierCacheTest {
     void aSuccessResetsTheGrowthSoTheNextFailureWaitsAMinuteAgain() {
         Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
 
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
         it.fake.pending.completeExceptionally(new RuntimeException("down"));
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
         it.advance(Duration.ofSeconds(60));
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
         it.fake.complete();
         it.advance(Duration.ofMinutes(60));
 
         // Stale, so it is asked again, and this time it fails.
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
         it.fake.pending.completeExceptionally(new RuntimeException("down again"));
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
 
         int before = it.fake.calls.get();
         it.advance(Duration.ofSeconds(60));
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
         assertEquals(before + 1, it.fake.calls.get(),
                 "the run of failures was broken, so this is a first failure again");
     }
@@ -457,14 +458,14 @@ class TierCacheTest {
         // but the site has now failed eight times in a row.
         for (int i = 0; i < 8; i++) {
             UUID player = UUID.randomUUID();
-            it.cache.peek(Source.MCTIERS, player);
+            it.cache.peek(Source.PVPTIERS, player);
             it.fake.pending.completeExceptionally(new RuntimeException("down"));
-            it.cache.peek(Source.MCTIERS, player);
+            it.cache.peek(Source.PVPTIERS, player);
         }
         assertEquals(8, it.fake.calls.get());
 
         // A ninth player, never seen before, is not asked either: the site is closed.
-        assertEquals(Optional.empty(), it.cache.peek(Source.MCTIERS, UUID.randomUUID()));
+        assertEquals(Optional.empty(), it.cache.peek(Source.PVPTIERS, UUID.randomUUID()));
         assertEquals(8, it.fake.calls.get(), "a closed site must not be asked");
     }
 
@@ -474,13 +475,13 @@ class TierCacheTest {
 
         for (int i = 0; i < 8; i++) {
             UUID player = UUID.randomUUID();
-            it.cache.peek(Source.MCTIERS, player);
+            it.cache.peek(Source.PVPTIERS, player);
             it.fake.pending.completeExceptionally(new RuntimeException("down"));
-            it.cache.peek(Source.MCTIERS, player);
+            it.cache.peek(Source.PVPTIERS, player);
         }
 
         // A lobby of two hundred players must not wave them all past the gate.
-        CompletableFuture<Map<String, Tier>> future = it.cache.load(Source.MCTIERS, UUID.randomUUID());
+        CompletableFuture<Map<String, Tier>> future = it.cache.load(Source.PVPTIERS, UUID.randomUUID());
         assertTrue(future.isCompletedExceptionally());
         assertEquals(8, it.fake.calls.get());
     }
@@ -491,21 +492,21 @@ class TierCacheTest {
 
         for (int i = 0; i < 8; i++) {
             UUID player = UUID.randomUUID();
-            it.cache.peek(Source.MCTIERS, player);
+            it.cache.peek(Source.PVPTIERS, player);
             it.fake.pending.completeExceptionally(new RuntimeException("down"));
-            it.cache.peek(Source.MCTIERS, player);
+            it.cache.peek(Source.PVPTIERS, player);
         }
         it.advance(Duration.ofSeconds(30));
 
         // Exactly one request goes out, however many players are on screen.
         for (int i = 0; i < 20; i++) {
-            it.cache.peek(Source.MCTIERS, UUID.randomUUID());
+            it.cache.peek(Source.PVPTIERS, UUID.randomUUID());
         }
         assertEquals(9, it.fake.calls.get(), "the pause must end with a single probe");
 
         // It answers, so the site is open for business again.
         it.fake.complete();
-        it.cache.peek(Source.MCTIERS, UUID.randomUUID());
+        it.cache.peek(Source.PVPTIERS, UUID.randomUUID());
         assertEquals(10, it.fake.calls.get());
     }
 
@@ -515,16 +516,16 @@ class TierCacheTest {
 
         for (int i = 0; i < 8; i++) {
             UUID player = UUID.randomUUID();
-            it.cache.peek(Source.MCTIERS, player);
+            it.cache.peek(Source.PVPTIERS, player);
             it.fake.pending.completeExceptionally(new RuntimeException("down"));
-            it.cache.peek(Source.MCTIERS, player);
+            it.cache.peek(Source.PVPTIERS, player);
         }
-        assertEquals(Optional.empty(), it.cache.peek(Source.MCTIERS, UUID.randomUUID()));
+        assertEquals(Optional.empty(), it.cache.peek(Source.PVPTIERS, UUID.randomUUID()));
         assertEquals(8, it.fake.calls.get());
 
         // /justtiers refresh is the user saying "try again now".
         it.cache.invalidateAll();
-        it.cache.peek(Source.MCTIERS, UUID.randomUUID());
+        it.cache.peek(Source.PVPTIERS, UUID.randomUUID());
         assertEquals(9, it.fake.calls.get());
     }
 
@@ -533,12 +534,12 @@ class TierCacheTest {
         // The setting is a slider; nudging it must not blank every badge on screen.
         Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
 
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
         it.fake.complete();
-        assertTrue(it.cache.peek(Source.MCTIERS, PLAYER).isPresent());
+        assertTrue(it.cache.peek(Source.PVPTIERS, PLAYER).isPresent());
 
         it.cache.setTtl(Duration.ofMinutes(120));
-        assertTrue(it.cache.peek(Source.MCTIERS, PLAYER).isPresent(),
+        assertTrue(it.cache.peek(Source.PVPTIERS, PLAYER).isPresent(),
                 "the answer was still fresh and must have survived");
         assertEquals(1, it.fake.calls.get());
     }
@@ -547,12 +548,12 @@ class TierCacheTest {
     void aLongerTtlKeepsAnAnswerThatWouldHaveGoneStale() {
         Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
 
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
         it.fake.complete();
         it.cache.setTtl(Duration.ofMinutes(120));
         it.advance(Duration.ofMinutes(90));
 
-        assertTrue(it.cache.peek(Source.MCTIERS, PLAYER).isPresent());
+        assertTrue(it.cache.peek(Source.PVPTIERS, PLAYER).isPresent());
         assertEquals(1, it.fake.calls.get());
     }
 
@@ -560,37 +561,37 @@ class TierCacheTest {
     void aShorterTtlCanMakeACachedAnswerStaleAtOnce() {
         Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
 
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
         it.fake.complete();
         it.advance(Duration.ofMinutes(30));
         it.cache.setTtl(Duration.ofMinutes(10));
 
-        assertTrue(it.cache.peek(Source.MCTIERS, PLAYER).isPresent());
+        assertTrue(it.cache.peek(Source.PVPTIERS, PLAYER).isPresent());
         assertEquals(2, it.fake.calls.get());
     }
 
     @Test
     void failedRefreshRetainsTheLastSuccessfulBadgeUntilTheGracePeriodEnds() {
         Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
         it.fake.complete();
         it.advance(Duration.ofMinutes(60));
-        assertTrue(it.cache.peek(Source.MCTIERS, PLAYER).isPresent());
+        assertTrue(it.cache.peek(Source.PVPTIERS, PLAYER).isPresent());
         it.fake.pending.completeExceptionally(new RuntimeException("offline"));
-        assertEquals("HT1", it.cache.peek(Source.MCTIERS, PLAYER).orElseThrow().get("axe").label());
+        assertEquals("HT1", it.cache.peek(Source.PVPTIERS, PLAYER).orElseThrow().get("axe").label());
         it.advance(Duration.ofHours(6));
-        assertTrue(it.cache.peek(Source.MCTIERS, PLAYER).isEmpty(), "old data has a finite lifetime");
+        assertTrue(it.cache.peek(Source.PVPTIERS, PLAYER).isEmpty(), "old data has a finite lifetime");
     }
 
     @Test
     void replacementAnswerCanRemoveAnOldBadgeByReportingUnranked() {
         Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
         it.fake.complete();
         it.advance(Duration.ofMinutes(60));
-        assertTrue(it.cache.peek(Source.MCTIERS, PLAYER).isPresent());
+        assertTrue(it.cache.peek(Source.PVPTIERS, PLAYER).isPresent());
         it.fake.pending.complete(Map.of());
-        assertEquals(Optional.of(Map.of()), it.cache.peek(Source.MCTIERS, PLAYER));
+        assertEquals(Optional.of(Map.of()), it.cache.peek(Source.PVPTIERS, PLAYER));
     }
 
     @Test
@@ -598,9 +599,9 @@ class TierCacheTest {
         MultiSource source = new MultiSource();
         TierCache cache = new TierCache(List.of(source));
         UUID[] players = java.util.stream.IntStream.range(0, 8).mapToObj(i -> UUID.randomUUID()).toArray(UUID[]::new);
-        for (UUID player : players) cache.peek(Source.MCTIERS, player);
+        for (UUID player : players) cache.peek(Source.PVPTIERS, player);
         assertEquals(4, source.started.size(), "only four requests may be active per site");
-        var explicit = cache.load(Source.MCTIERS, players[7]);
+        var explicit = cache.load(Source.PVPTIERS, players[7]);
         source.pending.get(players[0]).complete(Map.of());
         assertEquals(players[7], source.started.get(4), "an explicit lookup overtakes background work");
         source.pending.get(players[7]).complete(Map.of("axe", new Tier(2, true, false)));
@@ -614,15 +615,15 @@ class TierCacheTest {
         TierCache cache = new TierCache(List.of(source));
         UUID[] players = java.util.stream.IntStream.range(0, 8)
                 .mapToObj(i -> UUID.randomUUID()).toArray(UUID[]::new);
-        for (UUID player : players) cache.peek(Source.MCTIERS, player);
+        for (UUID player : players) cache.peek(Source.PVPTIERS, player);
 
-        var first = cache.load(Source.MCTIERS, players[7]);
-        var repeated = cache.load(Source.MCTIERS, players[7]);
-        cache.peek(Source.MCTIERS, players[7]);
+        var first = cache.load(Source.PVPTIERS, players[7]);
+        var repeated = cache.load(Source.PVPTIERS, players[7]);
+        cache.peek(Source.PVPTIERS, players[7]);
 
         assertFalse(first.isDone());
         assertFalse(repeated.isDone());
-        assertEquals(4, cache.queuedRequests(Source.MCTIERS), "promotion never inserts another request");
+        assertEquals(4, cache.queuedRequests(Source.PVPTIERS), "promotion never inserts another request");
         source.pending.get(players[0]).complete(Map.of());
         assertEquals(players[7], source.started.get(4));
         source.pending.get(players[7]).complete(Map.of("axe", new Tier(2, true, false)));
@@ -636,7 +637,7 @@ class TierCacheTest {
         var shared = new java.util.concurrent.atomic.AtomicReference<CompletableFuture<Map<String, Tier>>>();
         var response = new CompletableFuture<Map<String, Tier>>();
         TierSource source = new TierSource() {
-            public Source source() { return Source.MCTIERS; }
+            public Source source() { return Source.PVPTIERS; }
             public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) {
                 try {
                     shared.set(CompletableFuture.supplyAsync(() -> cacheReference.get().load(source(), uuid),
@@ -649,7 +650,7 @@ class TierCacheTest {
         };
         TierCache cache = new TierCache(List.of(source));
         cacheReference.set(cache);
-        var requested = cache.load(Source.MCTIERS, PLAYER);
+        var requested = cache.load(Source.PVPTIERS, PLAYER);
         assertNotNull(shared.get());
         assertFalse(shared.get().isDone());
         response.complete(Map.of());
@@ -661,14 +662,14 @@ class TierCacheTest {
     void completedLookupCallbacksObserveTheReleasedActiveSlot() {
         MultiSource source = new MultiSource();
         TierCache cache = new TierCache(List.of(source));
-        var first = cache.load(Source.MCTIERS, PLAYER);
-        for (int i = 0; i < 3; i++) cache.load(Source.MCTIERS, UUID.randomUUID());
+        var first = cache.load(Source.PVPTIERS, PLAYER);
+        for (int i = 0; i < 3; i++) cache.load(Source.PVPTIERS, UUID.randomUUID());
         UUID replacement = UUID.randomUUID();
         AtomicInteger observedActive = new AtomicInteger(-1);
         var startedDuringCallback = new java.util.concurrent.atomic.AtomicBoolean();
         first.whenComplete((answer, error) -> {
-            observedActive.set(cache.activeRequests(Source.MCTIERS));
-            cache.load(Source.MCTIERS, replacement);
+            observedActive.set(cache.activeRequests(Source.PVPTIERS));
+            cache.load(Source.PVPTIERS, replacement);
             startedDuringCallback.set(source.started.contains(replacement));
         });
 
@@ -676,24 +677,24 @@ class TierCacheTest {
 
         assertEquals(3, observedActive.get(), "the completed request releases capacity before publication");
         assertTrue(startedDuringCallback.get(), "a continuation can immediately use the released slot");
-        assertEquals(4, cache.activeRequests(Source.MCTIERS));
+        assertEquals(4, cache.activeRequests(Source.PVPTIERS));
     }
 
     @Test
     void cancelledRequestCallbacksCanAdmitWorkInTheNewGeneration() {
         MultiSource source = new MultiSource();
         TierCache cache = new TierCache(List.of(source));
-        for (int i = 0; i < 4; i++) cache.peek(Source.MCTIERS, UUID.randomUUID());
-        var obsolete = cache.load(Source.MCTIERS, UUID.randomUUID());
+        for (int i = 0; i < 4; i++) cache.peek(Source.PVPTIERS, UUID.randomUUID());
+        var obsolete = cache.load(Source.PVPTIERS, UUID.randomUUID());
         var replacement = new java.util.concurrent.atomic.AtomicReference<CompletableFuture<Map<String, Tier>>>();
-        obsolete.whenComplete((answer, error) -> replacement.set(cache.load(Source.MCTIERS, PLAYER)));
+        obsolete.whenComplete((answer, error) -> replacement.set(cache.load(Source.PVPTIERS, PLAYER)));
 
-        cache.invalidate(Source.MCTIERS);
+        cache.invalidate(Source.PVPTIERS);
 
         assertTrue(obsolete.isCompletedExceptionally());
         assertNotNull(replacement.get());
         assertFalse(replacement.get().isDone());
-        assertEquals(1, cache.queuedRequests(Source.MCTIERS));
+        assertEquals(1, cache.queuedRequests(Source.PVPTIERS));
         source.pending.get(source.started.getFirst()).complete(Map.of());
         assertEquals(PLAYER, source.started.getLast());
         source.pending.get(PLAYER).complete(Map.of());
@@ -705,7 +706,7 @@ class TierCacheTest {
         var cacheReference = new java.util.concurrent.atomic.AtomicReference<TierCache>();
         var observeAdmission = new java.util.concurrent.atomic.AtomicBoolean();
         TierSource source = new TierSource() {
-            public Source source() { return Source.MCTIERS; }
+            public Source source() { return Source.PVPTIERS; }
             public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) {
                 return CompletableFuture.completedFuture(Map.of("axe", new Tier(1, true, false)));
             }
@@ -723,39 +724,39 @@ class TierCacheTest {
         };
         TierCache cache = new TierCache(List.of(source));
         cacheReference.set(cache);
-        cache.load(Source.MCTIERS, PLAYER).join();
+        cache.load(Source.PVPTIERS, PLAYER).join();
         observeAdmission.set(true);
 
         assertDoesNotThrow(cache::refreshAll);
-        assertTrue(cache.cachedAnswer(Source.MCTIERS, PLAYER).orElseThrow().stale());
+        assertTrue(cache.cachedAnswer(Source.PVPTIERS, PLAYER).orElseThrow().stale());
     }
 
     @Test
     void loadAnswerCapturesTheCompletedGenerationRatherThanReadingAReplacement() {
         Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
-        var oldRequest = it.cache.loadAnswer(Source.MCTIERS, PLAYER);
+        var oldRequest = it.cache.loadAnswer(Source.PVPTIERS, PLAYER);
         it.fake.complete();
         TierCache.CachedAnswer captured = oldRequest.join();
         it.advance(Duration.ofMinutes(10));
-        it.cache.invalidate(Source.MCTIERS);
-        it.cache.load(Source.MCTIERS, PLAYER);
+        it.cache.invalidate(Source.PVPTIERS);
+        it.cache.load(Source.PVPTIERS, PLAYER);
         it.fake.complete();
 
         assertEquals(Duration.ZERO, captured.age());
         assertEquals(Optional.of(Duration.ofMinutes(60)), captured.freshFor());
         assertFalse(captured.stale());
         assertEquals(captured, oldRequest.join(), "the completed request remains its own immutable answer");
-        assertEquals(Duration.ZERO, it.cache.cachedAnswer(Source.MCTIERS, PLAYER).orElseThrow().age());
+        assertEquals(Duration.ZERO, it.cache.cachedAnswer(Source.PVPTIERS, PLAYER).orElseThrow().age());
     }
 
     @Test
     void cachedLoadAnswerAgesWithoutFetchingThePlayerAgain() {
         Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
-        it.cache.loadAnswer(Source.MCTIERS, PLAYER);
+        it.cache.loadAnswer(Source.PVPTIERS, PLAYER);
         it.fake.complete();
         it.advance(Duration.ofMinutes(10));
 
-        TierCache.CachedAnswer answer = it.cache.loadAnswer(Source.MCTIERS, PLAYER).join();
+        TierCache.CachedAnswer answer = it.cache.loadAnswer(Source.PVPTIERS, PLAYER).join();
 
         assertEquals(Duration.ofMinutes(10), answer.age());
         assertEquals(Optional.of(Duration.ofMinutes(50)), answer.freshFor());
@@ -765,37 +766,37 @@ class TierCacheTest {
     @Test
     void identicalAnswersAtTheSameTimeStillHaveDifferentRevisions() {
         Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
-        it.cache.load(Source.MCTIERS, PLAYER);
+        it.cache.load(Source.PVPTIERS, PLAYER);
         it.fake.complete();
-        long first = it.cache.cachedAnswer(Source.MCTIERS, PLAYER).orElseThrow().revision();
+        long first = it.cache.cachedAnswer(Source.PVPTIERS, PLAYER).orElseThrow().revision();
 
         it.cache.refreshAll();
-        assertEquals(first, it.cache.cachedAnswer(Source.MCTIERS, PLAYER).orElseThrow().revision(),
+        assertEquals(first, it.cache.cachedAnswer(Source.PVPTIERS, PLAYER).orElseThrow().revision(),
                 "retained placements keep the original response's revision");
-        it.cache.load(Source.MCTIERS, PLAYER);
+        it.cache.load(Source.PVPTIERS, PLAYER);
         it.fake.complete();
 
-        assertNotEquals(first, it.cache.cachedAnswer(Source.MCTIERS, PLAYER).orElseThrow().revision(),
+        assertNotEquals(first, it.cache.cachedAnswer(Source.PVPTIERS, PLAYER).orElseThrow().revision(),
                 "another response has a new revision even if its placements and timestamp match");
     }
 
     @Test
     void completedEntriesCannotAccumulateAcrossThousandsOfDepartedPlayers() {
         TierSource immediate = new TierSource() {
-            public Source source() { return Source.MCTIERS; }
+            public Source source() { return Source.PVPTIERS; }
             public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) {
                 return CompletableFuture.completedFuture(Map.of());
             }
         };
         TierCache cache = new TierCache(List.of(immediate));
-        for (int i = 0; i < 4200; i++) cache.load(Source.MCTIERS, UUID.randomUUID()).join();
-        assertTrue(cache.cachedPlayers(Source.MCTIERS) <= 4096, "retention is bounded even without another peek");
+        for (int i = 0; i < 4200; i++) cache.load(Source.PVPTIERS, UUID.randomUUID()).join();
+        assertTrue(cache.cachedPlayers(Source.PVPTIERS) <= 4096, "retention is bounded even without another peek");
     }
 
     private static final class MultiSource implements TierSource {
         final java.util.List<UUID> started = new java.util.ArrayList<>();
         final java.util.Map<UUID, CompletableFuture<Map<String, Tier>>> pending = new java.util.HashMap<>();
-        public Source source() { return Source.MCTIERS; }
+        public Source source() { return Source.PVPTIERS; }
         public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) {
             started.add(uuid);
             var result = new CompletableFuture<Map<String, Tier>>();
@@ -807,27 +808,27 @@ class TierCacheTest {
     @Test
     void refreshPreservesAnswersWhileDiscardingObsoleteCompletions() {
         Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
-        it.cache.load(Source.MCTIERS, PLAYER);
+        it.cache.load(Source.PVPTIERS, PLAYER);
         it.fake.complete();
         it.advance(Duration.ofMinutes(60));
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
         var obsolete = it.fake.pending;
         it.cache.refreshAll();
-        assertEquals("HT1", it.cache.peek(Source.MCTIERS, PLAYER).orElseThrow().get("axe").label());
+        assertEquals("HT1", it.cache.peek(Source.PVPTIERS, PLAYER).orElseThrow().get("axe").label());
         obsolete.complete(Map.of("axe", new Tier(5, false, false)));
-        assertEquals("HT1", it.cache.peek(Source.MCTIERS, PLAYER).orElseThrow().get("axe").label());
+        assertEquals("HT1", it.cache.peek(Source.PVPTIERS, PLAYER).orElseThrow().get("axe").label());
         it.fake.pending.complete(Map.of("axe", new Tier(2, true, false)));
-        assertEquals("HT2", it.cache.peek(Source.MCTIERS, PLAYER).orElseThrow().get("axe").label());
+        assertEquals("HT2", it.cache.peek(Source.PVPTIERS, PLAYER).orElseThrow().get("axe").label());
     }
 
     @Test
     void maintenanceReclaimsExpiredPlayersWithoutAnotherLookup() {
         Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
-        it.cache.load(Source.MCTIERS, PLAYER);
+        it.cache.load(Source.PVPTIERS, PLAYER);
         it.fake.complete();
         it.advance(Duration.ofHours(8));
         it.cache.maintain();
-        assertEquals(0, it.cache.cachedPlayers(Source.MCTIERS));
+        assertEquals(0, it.cache.cachedPlayers(Source.PVPTIERS));
     }
 
     @Test
@@ -863,14 +864,14 @@ class TierCacheTest {
         AtomicLong time = new AtomicLong();
         TierCache cache = new TierCache(List.of(source), policy(), time::get, () -> 0.5);
         UUID limited = UUID.randomUUID();
-        cache.load(Source.MCTIERS, limited);
+        cache.load(Source.PVPTIERS, limited);
         source.pending.get(limited).completeExceptionally(new com.w0x7y.justtiers.api.RetryAfterException(
                 "rate limited", Duration.ofMinutes(2)));
         cache.refreshAll();
-        assertTrue(cache.load(Source.MCTIERS, UUID.randomUUID()).isCompletedExceptionally());
+        assertTrue(cache.load(Source.PVPTIERS, UUID.randomUUID()).isCompletedExceptionally());
         assertEquals(1, source.started.size());
         time.set(Duration.ofMinutes(2).toNanos());
-        cache.load(Source.MCTIERS, UUID.randomUUID());
+        cache.load(Source.PVPTIERS, UUID.randomUUID());
         assertEquals(2, source.started.size());
     }
 
@@ -878,26 +879,26 @@ class TierCacheTest {
     void queueOverflowStaysBoundedAndExplicitWorkCanDisplaceBackgroundWork() {
         MultiSource source = new MultiSource();
         TierCache cache = new TierCache(List.of(source));
-        for (int i = 0; i < 200; i++) cache.peek(Source.MCTIERS, UUID.randomUUID());
+        for (int i = 0; i < 200; i++) cache.peek(Source.PVPTIERS, UUID.randomUUID());
         assertEquals(4, source.started.size());
-        assertEquals(128, cache.queuedRequests(Source.MCTIERS));
+        assertEquals(128, cache.queuedRequests(Source.PVPTIERS));
         UUID requested = UUID.randomUUID();
-        var explicit = cache.load(Source.MCTIERS, requested);
+        var explicit = cache.load(Source.PVPTIERS, requested);
         assertFalse(explicit.isDone());
         source.pending.get(source.started.getFirst()).complete(Map.of());
         assertEquals(requested, source.started.getLast());
-        assertTrue(cache.queuedRequests(Source.MCTIERS) <= 128);
-        assertEquals(0, cache.health(Source.MCTIERS).failures(), "queue pressure is not a site failure");
+        assertTrue(cache.queuedRequests(Source.PVPTIERS) <= 128);
+        assertEquals(0, cache.health(Source.PVPTIERS).failures(), "queue pressure is not a site failure");
     }
 
     @Test
     void invalidationCancelsQueuedWorkWithoutResettingActiveRequestCapacity() {
         MultiSource source = new MultiSource();
         TierCache cache = new TierCache(List.of(source));
-        for (int i = 0; i < 8; i++) cache.peek(Source.MCTIERS, UUID.randomUUID());
+        for (int i = 0; i < 8; i++) cache.peek(Source.PVPTIERS, UUID.randomUUID());
         UUID oldActive = source.started.getFirst();
-        cache.invalidate(Source.MCTIERS);
-        cache.load(Source.MCTIERS, PLAYER);
+        cache.invalidate(Source.PVPTIERS);
+        cache.load(Source.PVPTIERS, PLAYER);
         assertEquals(4, source.started.size(), "old active HTTP requests still occupy slots");
         source.pending.get(oldActive).complete(Map.of());
         assertEquals(PLAYER, source.started.getLast());
@@ -910,11 +911,11 @@ class TierCacheTest {
     void aSuccessIsTimedFromWhenTheRequestWentOut() {
         Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
 
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
         it.advance(Duration.ofMillis(250));
         it.fake.complete();
 
-        SiteHealth.Snapshot health = it.cache.health(Source.MCTIERS);
+        SiteHealth.Snapshot health = it.cache.health(Source.PVPTIERS);
         assertEquals(1, health.successes());
         assertEquals(0, health.failures());
         assertEquals(Duration.ofMillis(250).toNanos(), health.lastLatencyNanos().getAsLong());
@@ -925,11 +926,11 @@ class TierCacheTest {
     void aFailureIsTimedAndItsReasonKept() {
         Controlled it = new Controlled(Map.of(), policy());
 
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
         it.advance(Duration.ofSeconds(10));
         it.fake.pending.completeExceptionally(new RuntimeException("site down"));
 
-        SiteHealth.Snapshot health = it.cache.health(Source.MCTIERS);
+        SiteHealth.Snapshot health = it.cache.health(Source.PVPTIERS);
         assertEquals(1, health.failures());
         // A site that timed out and one that refused the connection look identical
         // without this.
@@ -953,28 +954,28 @@ class TierCacheTest {
     void inFlightLookupsAreCountedSeparatelyFromSettledOnes() {
         Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
 
-        it.cache.peek(Source.MCTIERS, PLAYER);
-        assertEquals(1, it.cache.cachedPlayers(Source.MCTIERS));
-        assertEquals(1, it.cache.pendingLookups(Source.MCTIERS));
+        it.cache.peek(Source.PVPTIERS, PLAYER);
+        assertEquals(1, it.cache.cachedPlayers(Source.PVPTIERS));
+        assertEquals(1, it.cache.pendingLookups(Source.PVPTIERS));
 
         it.fake.complete();
-        assertEquals(1, it.cache.cachedPlayers(Source.MCTIERS));
-        assertEquals(0, it.cache.pendingLookups(Source.MCTIERS));
+        assertEquals(1, it.cache.cachedPlayers(Source.PVPTIERS));
+        assertEquals(0, it.cache.pendingLookups(Source.PVPTIERS));
     }
 
     @Test
     void playersWaitingOutARetryAreCountedWhileTheyWait() {
         Controlled it = new Controlled(Map.of(), policy());
 
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
         it.fake.pending.completeExceptionally(new RuntimeException("site down"));
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
 
-        assertEquals(1, it.cache.playersAwaitingRetry(Source.MCTIERS));
+        assertEquals(1, it.cache.playersAwaitingRetry(Source.PVPTIERS));
 
         // Once the delay is up the player is free to be tried again, and stops counting.
         it.advance(Duration.ofMinutes(5));
-        assertEquals(0, it.cache.playersAwaitingRetry(Source.MCTIERS));
+        assertEquals(0, it.cache.playersAwaitingRetry(Source.PVPTIERS));
     }
 
     @Test
@@ -983,11 +984,11 @@ class TierCacheTest {
 
         for (int i = 0; i < CachePolicy.DEFAULT.siteFailureThreshold(); i++) {
             UUID player = UUID.randomUUID();
-            it.cache.peek(Source.MCTIERS, player);
+            it.cache.peek(Source.PVPTIERS, player);
             it.fake.pending.completeExceptionally(new RuntimeException("site down"));
         }
 
-        SiteGate.Status gate = it.cache.gateStatus(Source.MCTIERS);
+        SiteGate.Status gate = it.cache.gateStatus(Source.PVPTIERS);
         assertTrue(gate.closed(), "the report has to be able to say why nothing is being asked");
         assertEquals(CachePolicy.DEFAULT.basePause().toNanos(), gate.reopensInNanos());
     }
@@ -996,16 +997,16 @@ class TierCacheTest {
     void refreshingReopensTheGateWithoutRewritingHistory() {
         Controlled it = new Controlled(Map.of(), policy());
 
-        it.cache.peek(Source.MCTIERS, PLAYER);
+        it.cache.peek(Source.PVPTIERS, PLAYER);
         it.fake.pending.completeExceptionally(new RuntimeException("site down"));
-        it.cache.invalidate(Source.MCTIERS);
+        it.cache.invalidate(Source.PVPTIERS);
 
-        assertEquals(0, it.cache.gateStatus(Source.MCTIERS).consecutiveFailures());
+        assertEquals(0, it.cache.gateStatus(Source.PVPTIERS).consecutiveFailures());
         // The failures leading up to a refresh are usually the interesting half of a
         // bug report, so clearing the cache must not clear them.
-        assertEquals(1, it.cache.health(Source.MCTIERS).failures());
+        assertEquals(1, it.cache.health(Source.PVPTIERS).failures());
         assertEquals("RuntimeException: site down",
-                it.cache.health(Source.MCTIERS).lastError().orElseThrow());
+                it.cache.health(Source.PVPTIERS).lastError().orElseThrow());
     }
     @Test
     void aFailureBetweenCompletionChecksNeverEscapesPeek() {
@@ -1021,43 +1022,43 @@ class TierCacheTest {
         }
         RacingFuture response = new RacingFuture();
         TierSource source = new TierSource() {
-            public Source source() { return Source.MCTIERS; }
+            public Source source() { return Source.PVPTIERS; }
             public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) { return response; }
         };
         TierCache cache = new TierCache(List.of(source));
-        cache.load(Source.MCTIERS, PLAYER);
+        cache.load(Source.PVPTIERS, PLAYER);
         response.armed = true;
-        assertTrue(assertDoesNotThrow(() -> cache.peek(Source.MCTIERS, PLAYER)).isEmpty());
+        assertTrue(assertDoesNotThrow(() -> cache.peek(Source.PVPTIERS, PLAYER)).isEmpty());
     }
 
     @Test
     void discardedFailuresCannotCloseARefreshedGate() {
-        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
+        FakeSource fake = new FakeSource(Source.PVPTIERS, Map.of());
         TierCache cache = new TierCache(List.of(fake));
         var discarded = new java.util.ArrayList<CompletableFuture<Map<String, Tier>>>();
         for (int i = 0; i < 4; i++) {
-            cache.load(Source.MCTIERS, UUID.randomUUID());
+            cache.load(Source.PVPTIERS, UUID.randomUUID());
             discarded.add(fake.pending);
         }
         cache.invalidateAll();
         discarded.forEach(future -> future.completeExceptionally(new RuntimeException("old failure")));
-        assertFalse(cache.gateStatus(Source.MCTIERS).closed());
-        assertEquals(0, cache.playersAwaitingRetry(Source.MCTIERS));
-        assertEquals(4, cache.health(Source.MCTIERS).failures(), "history still records old requests");
+        assertFalse(cache.gateStatus(Source.PVPTIERS).closed());
+        assertEquals(0, cache.playersAwaitingRetry(Source.PVPTIERS));
+        assertEquals(4, cache.health(Source.PVPTIERS).failures(), "history still records old requests");
     }
 
     @Test
     void aDiscardedSuccessCannotEraseTheNewRequestsBackoff() {
-        FakeSource fake = new FakeSource(Source.MCTIERS, Map.of());
+        FakeSource fake = new FakeSource(Source.PVPTIERS, Map.of());
         TierCache cache = new TierCache(List.of(fake));
-        cache.load(Source.MCTIERS, PLAYER);
+        cache.load(Source.PVPTIERS, PLAYER);
         var discarded = fake.pending;
-        cache.invalidate(Source.MCTIERS);
-        cache.load(Source.MCTIERS, PLAYER);
+        cache.invalidate(Source.PVPTIERS);
+        cache.load(Source.PVPTIERS, PLAYER);
         fake.pending.completeExceptionally(new RuntimeException("new failure"));
         discarded.complete(Map.of());
-        assertEquals(1, cache.playersAwaitingRetry(Source.MCTIERS));
-        assertEquals(1, cache.gateStatus(Source.MCTIERS).consecutiveFailures());
+        assertEquals(1, cache.playersAwaitingRetry(Source.PVPTIERS));
+        assertEquals(1, cache.gateStatus(Source.PVPTIERS).consecutiveFailures());
     }
 
 }

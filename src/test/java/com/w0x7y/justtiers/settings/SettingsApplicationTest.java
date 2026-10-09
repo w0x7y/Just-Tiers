@@ -6,6 +6,7 @@ import com.w0x7y.justtiers.cache.TierCache;
 import com.w0x7y.justtiers.config.JustTiersConfig;
 import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -28,7 +29,7 @@ class SettingsApplicationTest {
     private final AtomicLong clock = new AtomicLong();
     private final UUID player = UUID.randomUUID();
     private final Map<Source, Integer> fetches = new EnumMap<>(Source.class);
-    private final TierCache cache = new TierCache(List.of(source(Source.MCTIERS), source(Source.NOVATIERS)),
+    private final TierCache cache = new TierCache(List.of(source(Source.PVPTIERS), source(Source.NOVATIERS)),
             CachePolicy.DEFAULT, clock::get, () -> 0.5);
     private final ManualTimer timer = new ManualTimer();
     private final List<CompletableFuture<Void>> downloads = new ArrayList<>();
@@ -46,7 +47,7 @@ class SettingsApplicationTest {
         Path blocked = blockedDestination();
         String diskBefore = Files.readString(blocked.resolve("previous.json"));
         SettingsApplication settings = application(blocked);
-        cache.peek(Source.MCTIERS, player);
+        cache.peek(Source.PVPTIERS, player);
         JustTiersConfig draft = settings.draft();
         draft.setEnabled(false);
         draft.setTierCacheMinutes(5);
@@ -59,8 +60,8 @@ class SettingsApplicationTest {
         assertEquals(30, settings.active().getNovaRefreshMinutes());
         assertEquals(diskBefore, Files.readString(blocked.resolve("previous.json")));
         clock.set(Duration.ofMinutes(6).toNanos());
-        assertTrue(cache.peek(Source.MCTIERS, player).isPresent());
-        assertEquals(1, fetches.get(Source.MCTIERS));
+        assertTrue(cache.peek(Source.PVPTIERS, player).isPresent());
+        assertEquals(1, fetches.get(Source.PVPTIERS));
         timer.advance(6);
         assertEquals(0, downloads.size());
         assertFalse(draft.isEnabled(), "the failed draft remains available for retry");
@@ -85,7 +86,7 @@ class SettingsApplicationTest {
         Path blocked = blockedDestination();
         String diskBefore = Files.readString(blocked.resolve("previous.json"));
         SettingsApplication settings = application(blocked);
-        cache.peek(Source.MCTIERS, player);
+        cache.peek(Source.PVPTIERS, player);
 
         assertThrows(UncheckedIOException.class, () -> settings.editSession(config -> {
             config.setEnabled(false);
@@ -98,8 +99,8 @@ class SettingsApplicationTest {
         assertEquals(5, settings.active().getNovaRefreshMinutes());
         assertEquals(diskBefore, Files.readString(blocked.resolve("previous.json")));
         clock.set(Duration.ofMinutes(6).toNanos());
-        cache.peek(Source.MCTIERS, player);
-        assertEquals(2, fetches.get(Source.MCTIERS));
+        cache.peek(Source.PVPTIERS, player);
+        assertEquals(2, fetches.get(Source.PVPTIERS));
         timer.advance(5);
         assertEquals(1, downloads.size());
     }
@@ -107,7 +108,7 @@ class SettingsApplicationTest {
     @Test void successfulDraftPublishesIndependentValuesAndUpdatesExistingCacheTtl() {
         Path file = directory.resolve("justtiers.json");
         SettingsApplication settings = application(file);
-        cache.peek(Source.MCTIERS, player);
+        cache.peek(Source.PVPTIERS, player);
         JustTiersConfig draft = settings.draft();
         draft.setEnabled(false);
         draft.setTierCacheMinutes(5);
@@ -118,10 +119,10 @@ class SettingsApplicationTest {
         assertFalse(settings.active().isEnabled());
         assertFalse(JustTiersConfig.load(file).isEnabled());
         assertEquals(5, JustTiersConfig.load(file).getTierCacheMinutes());
-        assertTrue(cache.peek(Source.MCTIERS, player).isPresent(), "saving retains fresh entries");
+        assertTrue(cache.peek(Source.PVPTIERS, player).isPresent(), "saving retains fresh entries");
         clock.set(Duration.ofMinutes(6).toNanos());
-        cache.peek(Source.MCTIERS, player);
-        assertEquals(2, fetches.get(Source.MCTIERS), "the existing entry uses the new TTL");
+        cache.peek(Source.PVPTIERS, player);
+        assertEquals(2, fetches.get(Source.PVPTIERS), "the existing entry uses the new TTL");
         timer.advance(5);
         assertEquals(1, downloads.size());
     }
@@ -152,7 +153,7 @@ class SettingsApplicationTest {
     @Test void scheduledRefreshRetainsEntriesUntilSuccessAndPreservesOtherSites() {
         application(directory.resolve("justtiers.json"));
         cache.peek(Source.NOVATIERS, player);
-        cache.peek(Source.MCTIERS, player);
+        cache.peek(Source.PVPTIERS, player);
         timer.advance(30);
         assertEquals(1, cache.cachedPlayers(Source.NOVATIERS));
         downloads.getFirst().completeExceptionally(new IllegalStateException("offline"));
@@ -160,7 +161,7 @@ class SettingsApplicationTest {
         timer.advance(30);
         downloads.getLast().complete(null);
         assertEquals(0, cache.cachedPlayers(Source.NOVATIERS));
-        assertEquals(1, cache.cachedPlayers(Source.MCTIERS));
+        assertEquals(1, cache.cachedPlayers(Source.PVPTIERS));
     }
 
     @Test void synchronousDownloadFailureDoesNotStopTheRepeatingTimer() {
@@ -180,10 +181,10 @@ class SettingsApplicationTest {
 
     @Test void manualRefreshRetainsAnswersAndOnlyInvalidatesNewNovaEntriesOnSuccess() {
         application(directory.resolve("justtiers.json"));
-        cache.peek(Source.MCTIERS, player);
+        cache.peek(Source.PVPTIERS, player);
         cache.peek(Source.NOVATIERS, player);
         CompletableFuture<Void> failed = refresh.refreshNow();
-        assertEquals(1, cache.cachedPlayers(Source.MCTIERS));
+        assertEquals(1, cache.cachedPlayers(Source.PVPTIERS));
         assertEquals(1, cache.cachedPlayers(Source.NOVATIERS));
         cache.peek(Source.NOVATIERS, player);
         downloads.getLast().completeExceptionally(new IllegalStateException("offline"));

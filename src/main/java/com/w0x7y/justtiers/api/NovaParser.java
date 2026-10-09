@@ -107,7 +107,7 @@ public final class NovaParser {
                 understood = true;
                 Tier tier = parsed.get();
                 if (retirement != null && !retirement.isJsonNull()) {
-                    tier = new Tier(tier.level(), tier.high(), retirement.getAsBoolean());
+                    tier = new Tier(tier.level(), tier.division(), retirement.getAsBoolean());
                 }
                 Optional<String> slug = Gamemodes.normaliseNovaKey(entry.getKey());
                 // Unknown valid gamemodes are understood wire data, even without an icon.

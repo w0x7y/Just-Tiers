@@ -64,7 +64,7 @@ def load_target(path: Path) -> Target:
             "tested loader_version is below loader_min_version")
     for key, choices in {
         "mapping_strategy": {"official", "intermediary"},
-        "source_strategy": {"native", "legacy_render"},
+        "source_strategy": {"native", "legacy_render", "legacy_render_1_21_10"},
         "screen_event": {"afterRender", "afterExtract", "afterForeground"},
     }.items():
         require(values[key] in choices, f"unknown {key}: {values[key]}")

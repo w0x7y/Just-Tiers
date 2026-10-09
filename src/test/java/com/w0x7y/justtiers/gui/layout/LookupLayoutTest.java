@@ -21,7 +21,7 @@ class LookupLayoutTest {
 
     @Test
     void aSmallerSkinAvoidsScrollingWhenTheWholePanelCanFit() {
-        for (int height : List.of(300, 320)) {
+        for (int height : List.of(320, 340)) {
             LookupLayout layout = layout(854, height);
             assertEquals(0, layout.maxScroll(), "screen height " + height);
             assertTrue(layout.panelY() >= LookupLayout.SEARCH_BOTTOM);
@@ -100,7 +100,7 @@ class LookupLayoutTest {
 
     @Test
     void oneRowPerSiteThatWasMeasured() {
-        assertEquals(3, layout(854, 480).rows().size());
+        assertEquals(4, layout(854, 480).rows().size());
         for (LookupLayout.Row row : layout(854, 480).rows()) {
             assertTrue(row.grid().itemCount() > 0);
         }
@@ -168,7 +168,7 @@ class LookupLayoutTest {
     @Test
     void cellsAreCentredInABoxWiderThanTheyNeed() {
         LookupLayout layout = layout(854, 480);
-        LookupLayout.Row widest = layout.rows().get(1);
+        LookupLayout.Row widest = layout.rows().get(2);
         LookupLayout.Row narrowest = layout.rows().getFirst();
 
         // The panel is sized around the widest row, which therefore has exactly the

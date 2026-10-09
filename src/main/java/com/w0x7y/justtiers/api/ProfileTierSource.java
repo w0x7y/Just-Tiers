@@ -12,14 +12,15 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-/** Serves MCTiers and SubTiers, which expose an identical v2 API. */
-public final class MctiersLikeSource implements TierSource {
+/** Per-player HTTP lookups with shared status handling and site-specific payloads. */
+public final class ProfileTierSource implements TierSource {
 
     private final Source source;
     private final HttpClient client;
     private final String baseUrl;
 
-    public MctiersLikeSource(Source source, HttpClient client, String baseUrl) {
+    public ProfileTierSource(Source source, HttpClient client, String baseUrl) {
+        if (source == Source.NOVATIERS) throw new IllegalArgumentException("NovaTiers uses a bulk index");
         this.source = source;
         this.client = client;
         this.baseUrl = JustTiers.trimTrailingSlash(baseUrl);
@@ -33,7 +34,7 @@ public final class MctiersLikeSource implements TierSource {
     @Override
     public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) {
         HttpRequest request = JustTiers.jsonRequest(
-                baseUrl + "/v2/profile/" + uuid + "/rankings", Duration.ofSeconds(10));
+                baseUrl + profilePath(uuid), Duration.ofSeconds(10));
 
         return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenApply(response -> {
@@ -52,7 +53,12 @@ public final class MctiersLikeSource implements TierSource {
                         throw new TierLookupException(
                                 source + " returned HTTP " + status + " for " + uuid);
                     }
-                    return MctiersParser.parseRankings(response.body());
+                    return switch (source) {
+                        case PVPTIERS -> PvpTiersParser.parseProfile(response.body());
+                        case PVPHQ -> PvpHqParser.parseProfile(response.body());
+                        case SUBTIERS -> RankingsParser.parseRankings(response.body());
+                        case NOVATIERS -> throw new IllegalStateException("NovaTiers uses a bulk index");
+                    };
                 })
                 .whenComplete((tiers, throwable) -> {
                     if (throwable != null) {
@@ -60,5 +66,14 @@ public final class MctiersLikeSource implements TierSource {
                                 source, uuid, throwable.toString());
                     }
                 });
+    }
+
+    private String profilePath(UUID uuid) {
+        return switch (source) {
+            case PVPTIERS -> "/profile/" + uuid.toString().replace("-", "");
+            case PVPHQ -> "/players/" + uuid;
+            case SUBTIERS -> "/v2/profile/" + uuid + "/rankings";
+            case NOVATIERS -> throw new IllegalStateException("NovaTiers uses a bulk index");
+        };
     }
 }

@@ -3,17 +3,79 @@ package com.w0x7y.justtiers.config;
 import com.w0x7y.justtiers.render.model.BadgePosition;
 import com.w0x7y.justtiers.render.model.NametagSettings;
 import com.w0x7y.justtiers.render.model.NametagStyle;
-import com.w0x7y.justtiers.resolve.DisplayMode;
 import com.w0x7y.justtiers.tier.Source;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class JustTiersConfigTest {
+
+    @Test
+    void siteTogglesRoundTripIndependentlyAndDraftsKeepTheirOwnSelection(@TempDir Path dir) {
+        JustTiersConfig config = new JustTiersConfig();
+        NametagSettings before = config.nametagSettings();
+        JustTiersConfig draft = config.copy();
+        draft.setSiteEnabled(Source.PVPTIERS, false);
+        draft.setSiteEnabled(Source.SUBTIERS, false);
+        draft.setSiteEnabled(Source.NOVATIERS, false);
+        assertEquals(Set.of(Source.PVPHQ), draft.nametagSettings().enabledSources());
+        assertEquals(Set.copyOf(Source.ALL), before.enabledSources());
+        assertSame(before, config.nametagSettings());
+        Path file = dir.resolve("sites.json");
+        draft.save(file);
+        assertEquals(Set.of(Source.PVPHQ), JustTiersConfig.load(file).enabledSources());
+        draft.setSiteEnabled(Source.PVPHQ, false);
+        draft.save(file);
+        assertEquals(Set.of(), JustTiersConfig.load(file).enabledSources());
+    }
+
+    @Test
+    void explicitSiteTogglesOverrideLegacyModeAndMissingTogglesDefaultOn(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("mixed.json");
+        Files.writeString(file, """
+                {"displayMode":"subtiers_only","enabledSites":{"PVPTIERS":false,"NOVATIERS":false}}
+                """);
+        assertEquals(Set.of(Source.PVPHQ, Source.SUBTIERS), JustTiersConfig.load(file).enabledSources());
+    }
+
+    @Test
+    void legacyAllAndSingleSiteModesMigrateWithoutEnablingUnwantedSites(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("modes.json");
+        for (String mode : new String[]{"all", "subtiers_only", "novatiers_only"}) {
+            Files.writeString(file, "{\"displayMode\":\"" + mode + "\"}");
+            Set<Source> expected = switch (mode) {
+                case "subtiers_only" -> Set.of(Source.SUBTIERS);
+                case "novatiers_only" -> Set.of(Source.NOVATIERS);
+                default -> Set.of(Source.PVPTIERS, Source.PVPHQ, Source.SUBTIERS, Source.NOVATIERS);
+            };
+            assertEquals(expected, JustTiersConfig.load(file).enabledSources(), mode);
+        }
+    }
+
+    @Test
+    void legacyModesAreReplacedBySavedSiteToggles(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("legacy-sites.json");
+        Files.writeString(file, """
+                {"displayMode":"mctiers_only","selectedGamemodes":{"MCTIERS":"nethop"},
+                 "customColors":{"MCTIERS":"#123456"}}
+                """);
+        JustTiersConfig.load(file).save(file);
+        String saved = Files.readString(file);
+        assertFalse(saved.contains("displayMode"));
+        assertFalse(saved.contains("MCTIERS"));
+        assertTrue(saved.contains("\"PVPTIERS\": true"));
+        assertTrue(saved.contains("\"PVPHQ\": false"));
+        assertTrue(saved.contains("\"SUBTIERS\": false"));
+        assertTrue(saved.contains("\"NOVATIERS\": false"));
+        assertTrue(saved.contains("neth_pot"));
+        assertTrue(saved.contains("#123456"));
+    }
 
     @Test
     void aFailedSaveIsReportedAndLeavesExistingContentsAlone(@TempDir Path temp) throws Exception {
@@ -52,8 +114,8 @@ class JustTiersConfigTest {
     void defaultsAreSensible() {
         JustTiersConfig config = new JustTiersConfig();
         assertTrue(config.isEnabled());
-        assertEquals(DisplayMode.ALL, config.getDisplayMode());
-        assertEquals("vanilla", config.selectedGamemode(Source.MCTIERS));
+        assertEquals(Set.copyOf(Source.ALL), config.enabledSources());
+        assertEquals("crystal", config.selectedGamemode(Source.PVPTIERS));
         assertEquals("elytra", config.selectedGamemode(Source.SUBTIERS));
         assertEquals("vanilla", config.selectedGamemode(Source.NOVATIERS));
         assertEquals(30, config.getNovaRefreshMinutes());
@@ -66,9 +128,9 @@ class JustTiersConfigTest {
     @Test
     void aStoredCustomColorIsParsedOutOfItsHex() {
         JustTiersConfig config = new JustTiersConfig();
-        config.setCustomColor(Source.MCTIERS, 0x123456);
+        config.setCustomColor(Source.PVPTIERS, 0x123456);
 
-        assertEquals(0x123456, config.getCustomColor(Source.MCTIERS));
+        assertEquals(0x123456, config.getCustomColor(Source.PVPTIERS));
     }
 
     @Test
@@ -97,16 +159,16 @@ class JustTiersConfigTest {
     void everySettingTheNametagReadsComesOutInOneValue() {
         JustTiersConfig config = new JustTiersConfig();
         config.setEnabled(false);
-        config.setDisplayMode(DisplayMode.SUBTIERS_ONLY);
+        Source.ALL.forEach(source -> config.setSiteEnabled(source, source == Source.SUBTIERS));
         config.setShowRetired(false);
-        config.setSelectedGamemode(Source.MCTIERS, "axe");
+        config.setSelectedGamemode(Source.PVPTIERS, "axe");
         config.setBadgePosition(BadgePosition.AFTER);
 
         NametagSettings settings = config.nametagSettings();
         assertFalse(settings.enabled());
-        assertEquals(DisplayMode.SUBTIERS_ONLY, settings.displayMode());
+        assertEquals(Set.of(Source.SUBTIERS), settings.enabledSources());
         assertFalse(settings.showRetired());
-        assertEquals("axe", settings.selectedGamemodes().get(Source.MCTIERS));
+        assertEquals("axe", settings.selectedGamemodes().get(Source.PVPTIERS));
         assertEquals(config.nametagStyle(), settings.style());
     }
 
@@ -123,31 +185,31 @@ class JustTiersConfigTest {
     @Test
     void selectedGamemodesAreExposedBySource() {
         JustTiersConfig config = new JustTiersConfig();
-        config.setSelectedGamemode(Source.MCTIERS, "axe");
-        assertEquals("axe", config.selectedGamemodesBySource().get(Source.MCTIERS));
+        config.setSelectedGamemode(Source.PVPTIERS, "axe");
+        assertEquals("axe", config.selectedGamemodesBySource().get(Source.PVPTIERS));
     }
 
     @Test
     void aLaterSelectionReplacesAnAlreadyReadOne() {
         JustTiersConfig config = new JustTiersConfig();
-        config.setSelectedGamemode(Source.MCTIERS, "axe");
-        assertEquals("axe", config.selectedGamemodesBySource().get(Source.MCTIERS));
+        config.setSelectedGamemode(Source.PVPTIERS, "axe");
+        assertEquals("axe", config.selectedGamemodesBySource().get(Source.PVPTIERS));
 
-        config.setSelectedGamemode(Source.MCTIERS, "sword");
-        assertEquals("sword", config.selectedGamemodesBySource().get(Source.MCTIERS));
+        config.setSelectedGamemode(Source.PVPTIERS, "sword");
+        assertEquals("sword", config.selectedGamemodesBySource().get(Source.PVPTIERS));
     }
 
     @Test
     void roundTripsThroughDisk(@TempDir Path dir) {
         Path file = dir.resolve("justtiers.json");
         JustTiersConfig config = new JustTiersConfig();
-        config.setDisplayMode(DisplayMode.SUBTIERS_ONLY);
+        Source.ALL.forEach(source -> config.setSiteEnabled(source, source == Source.SUBTIERS));
         config.setSelectedGamemode(Source.SUBTIERS, "trident");
         config.setEnabled(false);
         config.save(file);
 
         JustTiersConfig loaded = JustTiersConfig.load(file);
-        assertEquals(DisplayMode.SUBTIERS_ONLY, loaded.getDisplayMode());
+        assertEquals(Set.of(Source.SUBTIERS), loaded.enabledSources());
         assertEquals("trident", loaded.selectedGamemode(Source.SUBTIERS));
         assertFalse(loaded.isEnabled());
     }
@@ -155,7 +217,7 @@ class JustTiersConfigTest {
     @Test
     void loadingAMissingFileYieldsDefaults(@TempDir Path dir) {
         JustTiersConfig loaded = JustTiersConfig.load(dir.resolve("absent.json"));
-        assertEquals(DisplayMode.ALL, loaded.getDisplayMode());
+        assertEquals(Set.copyOf(Source.ALL), loaded.enabledSources());
         assertTrue(loaded.isEnabled());
     }
 
@@ -163,7 +225,7 @@ class JustTiersConfigTest {
     void loadingCorruptJsonYieldsDefaults(@TempDir Path dir) throws Exception {
         Path file = dir.resolve("bad.json");
         Files.writeString(file, "{ this is not json");
-        assertEquals(DisplayMode.ALL, JustTiersConfig.load(file).getDisplayMode());
+        assertEquals(Set.copyOf(Source.ALL), JustTiersConfig.load(file).enabledSources());
     }
 
     @Test
@@ -174,7 +236,7 @@ class JustTiersConfigTest {
                  "selectedGamemodes":{"MCTIERS":"mode_that_no_longer_exists"},
                  "novaRefreshMinutes":30}
                 """);
-        assertEquals("vanilla", JustTiersConfig.load(file).selectedGamemode(Source.MCTIERS));
+        assertEquals("crystal", JustTiersConfig.load(file).selectedGamemode(Source.PVPTIERS));
     }
 
     @Test
@@ -198,14 +260,14 @@ class JustTiersConfigTest {
     }
 
     @Test
-    void saveWritesDisplayModeAsLowerCaseId(@TempDir Path dir) throws Exception {
+    void saveWritesIndividualSiteToggles(@TempDir Path dir) throws Exception {
         Path file = dir.resolve("lowercase.json");
         JustTiersConfig config = new JustTiersConfig();
-        config.setDisplayMode(DisplayMode.MCTIERS_ONLY);
+        Source.ALL.forEach(source -> config.setSiteEnabled(source, source == Source.PVPTIERS));
         config.save(file);
         String written = Files.readString(file);
-        assertTrue(written.contains("\"mctiers_only\""));
-        assertFalse(written.contains("\"MCTIERS_ONLY\""));
+        assertTrue(written.contains("\"PVPTIERS\": true"));
+        assertFalse(written.contains("displayMode"));
     }
 
     @Test
@@ -216,7 +278,7 @@ class JustTiersConfigTest {
                  "selectedGamemodes":{},
                  "novaRefreshMinutes":30}
                 """);
-        assertEquals(DisplayMode.MCTIERS_ONLY, JustTiersConfig.load(file).getDisplayMode());
+        assertEquals(Set.of(Source.PVPTIERS), JustTiersConfig.load(file).enabledSources());
     }
 
     @Test
@@ -227,7 +289,7 @@ class JustTiersConfigTest {
                  "selectedGamemodes":{},
                  "novaRefreshMinutes":30}
                 """);
-        assertEquals(DisplayMode.ALL, JustTiersConfig.load(file).getDisplayMode());
+        assertEquals(Set.copyOf(Source.ALL), JustTiersConfig.load(file).enabledSources());
     }
 
     @Test
@@ -360,7 +422,7 @@ class JustTiersConfigTest {
                 """);
         JustTiersConfig config = JustTiersConfig.load(file);
 
-        assertEquals(0xE69F00, config.colorOf(Source.MCTIERS));
+        assertEquals(0xE69F00, config.colorOf(Source.PVPTIERS));
         assertEquals(0x56B4E9, config.colorOf(Source.SUBTIERS));
         assertEquals(0xFFFFFF, config.colorOf(Source.NOVATIERS));
     }
@@ -374,7 +436,7 @@ class JustTiersConfigTest {
         JustTiersConfig config = JustTiersConfig.load(file);
 
         assertEquals(Palette.DEFAULT, config.getPalette());
-        assertEquals(Source.MCTIERS.defaultColor(), config.colorOf(Source.MCTIERS));
+        assertEquals(Source.PVPTIERS.defaultColor(), config.colorOf(Source.PVPTIERS));
     }
 
     @Test
@@ -393,15 +455,15 @@ class JustTiersConfigTest {
                 {"palette":"custom","customColors":{"MCTIERS":"#123456"},
                  "selectedGamemodes":{}}
                 """);
-        assertEquals(0x123456, JustTiersConfig.load(custom).colorOf(Source.MCTIERS));
+        assertEquals(0x123456, JustTiersConfig.load(custom).colorOf(Source.PVPTIERS));
 
         Path preset = dir.resolve("preset-with-custom.json");
         Files.writeString(preset, """
                 {"palette":"default","customColors":{"MCTIERS":"#123456"},
                  "selectedGamemodes":{}}
                 """);
-        assertEquals(Source.MCTIERS.defaultColor(),
-                JustTiersConfig.load(preset).colorOf(Source.MCTIERS));
+        assertEquals(Source.PVPTIERS.defaultColor(),
+                JustTiersConfig.load(preset).colorOf(Source.PVPTIERS));
     }
 
     @Test
@@ -414,7 +476,7 @@ class JustTiersConfigTest {
                 """);
         JustTiersConfig config = JustTiersConfig.load(file);
 
-        assertEquals(0x123456, config.colorOf(Source.MCTIERS));
+        assertEquals(0x123456, config.colorOf(Source.PVPTIERS));
         assertEquals(Source.SUBTIERS.defaultColor(), config.colorOf(Source.SUBTIERS));
         assertEquals(Source.NOVATIERS.defaultColor(), config.colorOf(Source.NOVATIERS));
     }
@@ -439,13 +501,13 @@ class JustTiersConfigTest {
         Path file = dir.resolve("kept.json");
         JustTiersConfig config = new JustTiersConfig();
         config.setPalette(Palette.CUSTOM);
-        config.setCustomColor(Source.MCTIERS, 0x123456);
+        config.setCustomColor(Source.PVPTIERS, 0x123456);
         config.setPalette(Palette.DEFAULT);
         config.save(file);
 
         JustTiersConfig loaded = JustTiersConfig.load(file);
-        assertEquals(Source.MCTIERS.defaultColor(), loaded.colorOf(Source.MCTIERS));
-        assertEquals(0x123456, loaded.getCustomColor(Source.MCTIERS));
+        assertEquals(Source.PVPTIERS.defaultColor(), loaded.colorOf(Source.PVPTIERS));
+        assertEquals(0x123456, loaded.getCustomColor(Source.PVPTIERS));
     }
 
     @Test

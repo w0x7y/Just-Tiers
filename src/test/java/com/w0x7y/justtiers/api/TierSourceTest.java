@@ -1,9 +1,10 @@
 package com.w0x7y.justtiers.api;
 
+import com.sun.net.httpserver.HttpServer;
 import com.w0x7y.justtiers.download.DownloadProgress;
 import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
-import com.sun.net.httpserver.HttpServer;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -75,14 +76,76 @@ class TierSourceTest {
         bodies.put(path, body);
     }
 
-    // --- MctiersLikeSource ---
+    // --- ProfileTierSource ---
+
+    @Test
+    void pvpTiersUsesACompactUuidAndUnwrapsTheProfileRankings() throws Exception {
+        respond("/profile/" + PLAYER.toString().replace("-", ""), 200, """
+                {"uuid":"4b25be2497f54adf967d8d69ef54d504","name":"Player",
+                 "rankings":{"crystal":{"tier":2,"pos":0,"retired":true,"peak_tier":1},
+                             "neth_pot":{"tier":3,"pos":1}},"points":28}
+                """);
+        Map<String, Tier> tiers = new ProfileTierSource(Source.PVPTIERS, client, baseUrl).fetch(PLAYER).get();
+        assertEquals("RHT2", tiers.get("crystal").label());
+        assertEquals("LT3", tiers.get("neth_pot").label());
+    }
+
+    @Test
+    void pvpHqReadsCurrentTiersAndTheCartAliasWithoutTreatingInactivityAsRetirement() throws Exception {
+        respond("/players/" + PLAYER, 200, """
+                {"uuid":"4b25be24-97f5-4adf-967d-8d69ef54d504","name":"Player",
+                 "ranked":[{"gametype":"sword","tier":"MT3","unranked":false,
+                            "inactive":true,"peakTier":"HT1"},
+                           {"gametype":"ht_cart","tier":"HT4","unranked":false},
+                           {"gametype":"axe","tier":"HT1","unranked":true}]}
+                """);
+        Map<String, Tier> tiers = new ProfileTierSource(Source.PVPHQ, client, baseUrl).fetch(PLAYER).get();
+        assertEquals("MT3", tiers.get("sword").label());
+        assertEquals("HT4", tiers.get("cart").label());
+        assertFalse(tiers.containsKey("axe"));
+        assertEquals(2, tiers.size());
+    }
+
+    @Test
+    void newSitesKeepUnrankedFailureAndRateLimitOutcomesDistinct() throws Exception {
+        for (Source source : java.util.List.of(Source.PVPTIERS, Source.PVPHQ)) {
+            String path = source == Source.PVPTIERS
+                    ? "/profile/" + PLAYER.toString().replace("-", "") : "/players/" + PLAYER;
+            var api = new ProfileTierSource(source, client, baseUrl);
+            respond(path, 404, "");
+            assertTrue(api.fetch(PLAYER).get().isEmpty());
+            respond(path, 200, source == Source.PVPTIERS ? "{\"rankings\":{}}" : "{\"ranked\":[]}");
+            assertTrue(api.fetch(PLAYER).get().isEmpty());
+            for (String body : java.util.List.of("{}", "null", "[]", "<html>maintenance</html>",
+                    "{\"rankings\":{\"sword\":{}},\"ranked\":[{\"gametype\":\"sword\",\"tier\":\"bad\"}]}")) {
+                respond(path, 200, body);
+                assertThrows(ExecutionException.class, () -> api.fetch(PLAYER).get(), source + ": " + body);
+            }
+            respond(path, 500, "");
+            assertInstanceOf(TierLookupException.class,
+                    assertThrows(ExecutionException.class, () -> api.fetch(PLAYER).get()).getCause());
+            respond(path, 429, "");
+            retryAfterHeaders.put(path, "120");
+            var error = assertThrows(ExecutionException.class, () -> api.fetch(PLAYER).get());
+            assertEquals(java.time.Duration.ofSeconds(120),
+                    assertInstanceOf(RetryAfterException.class, error.getCause()).delay());
+        }
+    }
+
+    @Test
+    void pvpHqCanReturnOnlyUnrankedGamemodes() throws Exception {
+        respond("/players/" + PLAYER, 200, """
+                {"ranked":[{"gametype":"sword","tier":null,"unranked":true}]}
+                """);
+        assertTrue(new ProfileTierSource(Source.PVPHQ, client, baseUrl).fetch(PLAYER).get().isEmpty());
+    }
 
     @Test
     void fetchesAndParsesRankings() throws Exception {
         respond("/v2/profile/" + PLAYER + "/rankings", 200,
                 "{\"vanilla\":{\"tier\":2,\"pos\":0,\"retired\":false}}");
         Map<String, Tier> tiers =
-                new MctiersLikeSource(Source.MCTIERS, client, baseUrl).fetch(PLAYER).get();
+                new ProfileTierSource(Source.SUBTIERS, client, baseUrl).fetch(PLAYER).get();
         assertEquals("HT2", tiers.get("vanilla").label());
     }
 
@@ -90,7 +153,7 @@ class TierSourceTest {
     void notFoundMeansUnrankedNotFailure() throws Exception {
         respond("/v2/profile/" + PLAYER + "/rankings", 404, "");
         Map<String, Tier> tiers =
-                new MctiersLikeSource(Source.MCTIERS, client, baseUrl).fetch(PLAYER).get();
+                new ProfileTierSource(Source.SUBTIERS, client, baseUrl).fetch(PLAYER).get();
         assertNotNull(tiers);
         assertTrue(tiers.isEmpty());
     }
@@ -99,15 +162,15 @@ class TierSourceTest {
     void serverErrorsFailRatherThanLookingLikeAnUnrankedPlayer() {
         respond("/v2/profile/" + PLAYER + "/rankings", 500, "boom");
         ExecutionException thrown = assertThrows(ExecutionException.class,
-                () -> new MctiersLikeSource(Source.MCTIERS, client, baseUrl).fetch(PLAYER).get());
+                () -> new ProfileTierSource(Source.SUBTIERS, client, baseUrl).fetch(PLAYER).get());
         assertInstanceOf(TierLookupException.class, thrown.getCause());
     }
 
     @Test
     void connectionFailuresFailRatherThanLookingLikeAnUnrankedPlayer() {
         // Nothing is listening here, so the transport error must reach the caller.
-        MctiersLikeSource dead = new MctiersLikeSource(
-                Source.MCTIERS, client, "http://127.0.0.1:1");
+        ProfileTierSource dead = new ProfileTierSource(
+                Source.SUBTIERS, client, "http://127.0.0.1:1");
         assertThrows(ExecutionException.class, () -> dead.fetch(PLAYER).get());
     }
 
@@ -224,7 +287,7 @@ class TierSourceTest {
         for (String body : java.util.List.of("<html>unavailable</html>", "[]", "null", "", "{\"error\":\"maintenance\"}")) {
             respond("/v2/profile/" + PLAYER + "/rankings", 200, body);
             assertThrows(ExecutionException.class,
-                    () -> new MctiersLikeSource(Source.MCTIERS, client, baseUrl).fetch(PLAYER).get(), body);
+                    () -> new ProfileTierSource(Source.SUBTIERS, client, baseUrl).fetch(PLAYER).get(), body);
         }
     }
 

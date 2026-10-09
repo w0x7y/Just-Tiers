@@ -35,7 +35,7 @@ val loaderComparison = versions.getValue("loader_version").zip(versions.getValue
 require(loaderComparison >= 0) { "$targetFile: tested loader_version is below loader_min_version" }
 mapOf(
     "mapping_strategy" to setOf("official", "intermediary"),
-    "source_strategy" to setOf("native", "legacy_render"),
+    "source_strategy" to setOf("native", "legacy_render", "legacy_render_1_21_10"),
     "screen_event" to setOf("afterRender", "afterExtract", "afterForeground")
 ).forEach { (key, choices) ->
     require(target.getValue(key) in choices) { "$targetFile: unknown $key: ${target.getValue(key)}" }

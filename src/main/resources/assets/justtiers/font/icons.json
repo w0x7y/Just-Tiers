@@ -2,7 +2,7 @@
   "providers": [
     {
       "type": "bitmap",
-      "file": "justtiers:mctiers/axe.png",
+      "file": "justtiers:pvptiers/axe.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -11,7 +11,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:mctiers/mace.png",
+      "file": "justtiers:pvptiers/crystal.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -20,7 +20,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:mctiers/nethop.png",
+      "file": "justtiers:pvptiers/mace.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -29,7 +29,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:mctiers/pot.png",
+      "file": "justtiers:pvptiers/neth_pot.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -38,7 +38,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:mctiers/smp.png",
+      "file": "justtiers:pvptiers/pot.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -47,7 +47,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:mctiers/sword.png",
+      "file": "justtiers:pvptiers/smp.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -56,7 +56,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:mctiers/uhc.png",
+      "file": "justtiers:pvptiers/sword.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -65,11 +65,110 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:mctiers/vanilla.png",
+      "file": "justtiers:pvptiers/uhc.png",
       "ascent": 8,
       "height": 8,
       "chars": [
         "\ue108"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:pvphq/axe.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue401"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:pvphq/cart.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue402"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:pvphq/diamond_smp.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue403"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:pvphq/mace.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue404"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:pvphq/netherite_pot.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue405"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:pvphq/pot.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue406"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:pvphq/smp.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue407"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:pvphq/spear_mace.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue408"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:pvphq/sword.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue409"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:pvphq/uhc.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue40a"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "justtiers:pvphq/vanilla.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ue40b"
       ]
     },
     {

@@ -4,6 +4,7 @@ import com.w0x7y.justtiers.tier.Gamemode;
 import com.w0x7y.justtiers.tier.Gamemodes;
 import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.EnumMap;
@@ -49,22 +50,22 @@ class LookupReportTest {
         // The screen draws a fixed row of columns, so the cells must line up with the
         // site's own gamemode order however few placements came back.
         var answers = answers();
-        answers.put(Source.MCTIERS, Optional.of(Map.of(
-                "axe", ht(3), "vanilla", ht(1), "sword", lt(1))));
+        answers.put(Source.PVPTIERS, Optional.of(Map.of(
+                "axe", ht(3), "crystal", ht(1), "sword", lt(1))));
 
-        LookupSection section = sectionFor(sections(answers), Source.MCTIERS);
+        LookupSection section = sectionFor(sections(answers), Source.PVPTIERS);
 
         assertEquals(LookupSection.Status.RANKED, section.status());
-        assertEquals(Gamemodes.of(Source.MCTIERS).stream().map(Gamemode::slug).toList(),
+        assertEquals(Gamemodes.of(Source.PVPTIERS).stream().map(Gamemode::slug).toList(),
                 slugs(section));
     }
 
     @Test
     void aGamemodeThePlayerHasNotPlacedInHasAnEmptyCell() {
         var answers = answers();
-        answers.put(Source.MCTIERS, Optional.of(Map.of("axe", ht(3))));
+        answers.put(Source.PVPTIERS, Optional.of(Map.of("axe", ht(3))));
 
-        LookupSection section = sectionFor(sections(answers), Source.MCTIERS);
+        LookupSection section = sectionFor(sections(answers), Source.PVPTIERS);
 
         assertEquals(Optional.of(ht(3)), tierOf(section, "axe"));
         assertTrue(tierOf(section, "sword").isEmpty(), "sword was never placed in");
@@ -75,21 +76,21 @@ class LookupReportTest {
         // Same rule TierResolver.highestOn follows: a slug we have no icon or name for is
         // skipped rather than guessed at, so it must not become a nameless column.
         var answers = answers();
-        answers.put(Source.MCTIERS, Optional.of(Map.of("trident_but_on_fire", ht(2))));
+        answers.put(Source.PVPTIERS, Optional.of(Map.of("trident_but_on_fire", ht(2))));
 
-        LookupSection section = sectionFor(sections(answers), Source.MCTIERS);
+        LookupSection section = sectionFor(sections(answers), Source.PVPTIERS);
 
-        assertEquals(Gamemodes.of(Source.MCTIERS).size(), section.cells().size());
+        assertEquals(Gamemodes.of(Source.PVPTIERS).size(), section.cells().size());
         assertFalse(slugs(section).contains("trident_but_on_fire"));
     }
 
     @Test
     void aSiteWithOnlyUnknownGamemodesIsUnranked() {
         var answers = answers();
-        answers.put(Source.MCTIERS, Optional.of(Map.of("trident_but_on_fire", ht(2))));
+        answers.put(Source.PVPTIERS, Optional.of(Map.of("trident_but_on_fire", ht(2))));
 
         assertEquals(LookupSection.Status.UNRANKED,
-                sectionFor(sections(answers), Source.MCTIERS).status());
+                sectionFor(sections(answers), Source.PVPTIERS).status());
     }
 
     @Test
@@ -128,18 +129,18 @@ class LookupReportTest {
     void aSiteMissingFromTheAnswersIsTreatedAsUnavailable() {
         // Nothing put an answer in for it at all, which can only mean it never reported.
         assertEquals(LookupSection.Status.UNAVAILABLE,
-                sectionFor(sections(answers()), Source.MCTIERS).status());
+                sectionFor(sections(answers()), Source.PVPTIERS).status());
     }
 
     @Test
     void oneSiteBeingDownDoesNotAffectTheOthers() {
         var answers = answers();
-        answers.put(Source.MCTIERS, Optional.of(Map.of("axe", ht(2))));
+        answers.put(Source.PVPTIERS, Optional.of(Map.of("axe", ht(2))));
         answers.put(Source.SUBTIERS, Optional.empty());
         answers.put(Source.NOVATIERS, Optional.of(Map.of()));
 
         List<LookupSection> sections = sections(answers);
-        assertEquals(LookupSection.Status.RANKED, sectionFor(sections, Source.MCTIERS).status());
+        assertEquals(LookupSection.Status.RANKED, sectionFor(sections, Source.PVPTIERS).status());
         assertEquals(LookupSection.Status.UNAVAILABLE, sectionFor(sections, Source.SUBTIERS).status());
         assertEquals(LookupSection.Status.UNRANKED, sectionFor(sections, Source.NOVATIERS).status());
     }
@@ -149,9 +150,9 @@ class LookupReportTest {
         // A lookup is an inspection, not a nametag: showRetired shortens the tag, it does
         // not decide what a player has actually placed in.
         var answers = answers();
-        answers.put(Source.MCTIERS, Optional.of(Map.of("axe", retiredHt(1))));
+        answers.put(Source.PVPTIERS, Optional.of(Map.of("axe", retiredHt(1))));
 
-        LookupSection section = sectionFor(sections(answers), Source.MCTIERS);
+        LookupSection section = sectionFor(sections(answers), Source.PVPTIERS);
         assertEquals(LookupSection.Status.RANKED, section.status());
         assertEquals("RHT1", tierOf(section, "axe").orElseThrow().label());
     }
@@ -165,7 +166,7 @@ class LookupReportTest {
     @Test
     void nothingRankedIsTrueOnlyWhenNoSiteHasAPlacement() {
         var empty = answers();
-        empty.put(Source.MCTIERS, Optional.of(Map.of()));
+        empty.put(Source.PVPTIERS, Optional.of(Map.of()));
         empty.put(Source.SUBTIERS, Optional.empty());
         assertTrue(LookupReport.nothingRanked(sections(empty)));
 
@@ -191,7 +192,7 @@ class LookupReportTest {
     @Test
     void aSiteAnsweringUnrankedCountsAsAnAnswer() {
         var mixed = answers();
-        mixed.put(Source.MCTIERS, Optional.of(Map.of()));
+        mixed.put(Source.PVPTIERS, Optional.of(Map.of()));
         mixed.put(Source.SUBTIERS, Optional.empty());
 
         List<LookupSection> sections = sections(mixed);
@@ -211,8 +212,8 @@ class LookupReportTest {
     @Test
     void sectionsAreImmutableOnceBuilt() {
         var answers = answers();
-        answers.put(Source.MCTIERS, Optional.of(Map.of("axe", ht(2))));
-        LookupSection section = sectionFor(sections(answers), Source.MCTIERS);
+        answers.put(Source.PVPTIERS, Optional.of(Map.of("axe", ht(2))));
+        LookupSection section = sectionFor(sections(answers), Source.PVPTIERS);
 
         assertThrows(UnsupportedOperationException.class, () -> section.cells().clear());
     }

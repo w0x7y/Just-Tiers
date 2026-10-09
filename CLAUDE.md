@@ -25,7 +25,7 @@ python3 tools/minecraft_targets.py list
 
 `build` runs tests, resource contracts and packaging. Select a version with
 `-Pminecraft_version=<version>`. Installable JARs are in `build/<version>/libs/`;
-1.21.11 uses `remapJar`, while 26.x uses `jar`. Edit authored sources in `src/main/java`.
+1.21.10 and 1.21.11 use `remapJar`, while 26.x uses `jar`. Edit authored sources in `src/main/java`.
 Mechanical API renames live in `gradle/compatibility.gradle.kts`; generated sources are
 build outputs. When changing integration APIs, build every target and run
 `python3 tools/verify_artifact.py <version>`. See `docs/minecraft-compatibility.md`.
@@ -83,7 +83,7 @@ completion callbacks have evicted them.
 
 Preserve these distinctions when changing API or cache code:
 
-- MCTiers/SubTiers HTTP 404 and valid empty payloads mean unranked and may be cached.
+- PvPTiers/PvPHQ/SubTiers HTTP 404 and valid empty payloads mean unranked and may be cached.
 - Unexpected statuses, transport failures and malformed or wholly unrecognized payloads
   fail the lookup. A malformed HTTP 200 is not a successful empty answer.
 - The per-player Backoff and per-site SiteGate limit retries independently.
@@ -127,7 +127,7 @@ at 320 by 240 GUI pixels; scroll the result content when it does not fit.
 
 Player-facing strings belong in `assets/justtiers/lang/en_us.json`. DebugReport is the
 exception: it deliberately uses English and Locale.ROOT for bug reports. ResourceContractTest
-checks literal keys, checkbox descriptions and the mode/badge/palette enum families. Extend
+checks literal keys, checkbox descriptions and the badge/palette enum families. Extend
 its explicit expansion when adding another dynamically assembled translation family.
 
 ## Icon assets
@@ -158,6 +158,11 @@ A release tag v<version> must match mod_version. The release job builds and test
 the GitHub JAR first, then uploads to Modrinth. Alpha/beta release_type values mark GitHub
 prereleases; release marks a regular release. Dry-run publishing is available through the
 manual workflow or `MODRINTH_TOKEN=... ./gradlew modrinth -Pmodrinth_dry_run=true`.
-modrinthSyncBody overwrites the live listing and is deliberately outside the release job.
+The manual description workflow runs `tools/modrinth_project.py --apply` to synchronize
+the summary in `Modrinth/project.json` and the body in `Modrinth/description.md`.
+Without `--apply`, the tool only prints the exact update payload. Live project updates
+are deliberately outside the release job. The same workflow uses `--gallery --apply`
+to update existing gallery captions from `Modrinth/gallery.json`.
+`modrinthSyncBody` updates only the body.
 Use the manual Sync Modrinth description workflow when a listing update is requested.
 Release notes use docs/releases/v<version>.md when available, otherwise commit summaries.
