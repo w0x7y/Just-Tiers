@@ -302,4 +302,66 @@ class TierResolverTest {
         assertTrue(TierResolver.activeOnly(null).isEmpty());
         assertTrue(TierResolver.activeOnly(Map.of()).isEmpty());
     }
+
+    // --- preferring selected gamemodes with several sites ---
+
+    @Test
+    void preferringSelectionsShowsEachSitesSelectedGamemode() {
+        List<ResolvedTier> result = TierResolver.resolve(
+                Set.of(Source.PVPTIERS, Source.SUBTIERS),
+                Map.of(Source.PVPTIERS, Map.of("crystal", lt(4), "axe", ht(1)),
+                       Source.SUBTIERS, Map.of("bow", lt(3), "elytra", ht(1))),
+                SELECTED, true, true);
+
+        assertEquals(List.of("crystal", "bow"),
+                result.stream().map(tier -> tier.gamemode().slug()).toList());
+        assertEquals(List.of("LT4", "LT3"), result.stream().map(tier -> tier.tier().label()).toList());
+    }
+
+    @Test
+    void preferringSelectionsFallsBackToTheBestTierPerSite() {
+        List<ResolvedTier> result = TierResolver.resolve(
+                Set.of(Source.PVPTIERS, Source.SUBTIERS),
+                Map.of(Source.PVPTIERS, Map.of("crystal", lt(4)),
+                       Source.SUBTIERS, Map.of("elytra", ht(2), "minecart", lt(5))),
+                SELECTED, true, true);
+
+        assertEquals(List.of("crystal", "elytra"),
+                result.stream().map(tier -> tier.gamemode().slug()).toList());
+    }
+
+    @Test
+    void withoutPreferringSelectionsSeveralSitesKeepTheirBestTier() {
+        Map<Source, Map<String, Tier>> tiers = Map.of(
+                Source.PVPTIERS, Map.of("crystal", lt(4), "axe", ht(1)));
+        Set<Source> sites = Set.of(Source.PVPTIERS, Source.SUBTIERS);
+
+        assertEquals("axe", TierResolver.resolve(sites, tiers, SELECTED, true, false)
+                .getFirst().gamemode().slug());
+        assertEquals(TierResolver.resolve(sites, tiers, SELECTED, true),
+                TierResolver.resolve(sites, tiers, SELECTED, true, false));
+    }
+
+    @Test
+    void preferringSelectionsSkipsAHiddenRetiredSelection() {
+        List<ResolvedTier> result = TierResolver.resolve(
+                Set.of(Source.PVPTIERS, Source.SUBTIERS),
+                Map.of(Source.PVPTIERS, Map.of("crystal", retiredHt(1), "axe", lt(3))),
+                SELECTED, false, true);
+
+        assertEquals(1, result.size());
+        assertEquals("axe", result.getFirst().gamemode().slug());
+        assertFalse(result.getFirst().tier().retired());
+    }
+
+    @Test
+    void preferringSelectionsLeavesAnUnansweredSiteOut() {
+        List<ResolvedTier> result = TierResolver.resolve(
+                Set.copyOf(Source.ALL),
+                Map.of(Source.NOVATIERS, Map.of("spleef", lt(2))),
+                SELECTED, true, true);
+
+        assertEquals(List.of(Source.NOVATIERS),
+                result.stream().map(tier -> tier.gamemode().source()).toList());
+    }
 }

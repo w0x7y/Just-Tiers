@@ -29,12 +29,30 @@ public final class TierResolver {
                                              Map<Source, Map<String, Tier>> tiersBySource,
                                              Map<Source, String> selectedGamemodes,
                                              boolean showRetired) {
+        return resolve(sites, tiersBySource, selectedGamemodes, showRetired, false);
+    }
+
+    /**
+     * As {@link #resolve(Set, Map, Map, boolean)}. With {@code preferSelected}, several
+     * enabled sites each prefer their selected gamemode the way a single site always
+     * does, falling back to that site's best tier; without it they show their best.
+     */
+    public static List<ResolvedTier> resolve(Set<Source> sites,
+                                             Map<Source, Map<String, Tier>> tiersBySource,
+                                             Map<Source, String> selectedGamemodes,
+                                             boolean showRetired,
+                                             boolean preferSelected) {
         Map<Source, Map<String, Tier>> effective =
                 showRetired ? tiersBySource : withoutRetired(tiersBySource);
-        if (sites.size() == 1) {
-            return resolveSingleSite(sites.iterator().next(), effective, selectedGamemodes);
+        boolean selecting = sites.size() == 1 || preferSelected;
+        List<ResolvedTier> result = new ArrayList<>(Source.ALL.size());
+        for (Source source : Source.ALL) {
+            if (!sites.contains(source)) continue;
+            Map<String, Tier> tiers = effective.getOrDefault(source, Map.of());
+            (selecting ? preferringSelected(source, tiers, selectedGamemodes)
+                    : highestOn(source, tiers)).ifPresent(result::add);
         }
-        return resolveEnabled(sites, effective);
+        return List.copyOf(result);
     }
 
     private static Map<Source, Map<String, Tier>> withoutRetired(
@@ -90,12 +108,12 @@ public final class TierResolver {
         return false;
     }
 
-    private static List<ResolvedTier> resolveSingleSite(Source source,
-                                                        Map<Source, Map<String, Tier>> tiersBySource,
-                                                        Map<Source, String> selectedGamemodes) {
-        Map<String, Tier> tiers = tiersBySource.getOrDefault(source, Map.of());
+    /** The selected gamemode's tier, or this site's best when the player has none there. */
+    private static Optional<ResolvedTier> preferringSelected(Source source,
+                                                             Map<String, Tier> tiers,
+                                                             Map<Source, String> selectedGamemodes) {
         if (tiers.isEmpty()) {
-            return List.of();
+            return Optional.empty();
         }
 
         String selectedSlug = selectedGamemodes.get(source);
@@ -103,21 +121,12 @@ public final class TierResolver {
         if (selected != null) {
             Optional<Gamemode> gamemode = Gamemodes.find(source, selectedSlug);
             if (gamemode.isPresent()) {
-                return List.of(new ResolvedTier(gamemode.get(), selected));
+                return Optional.of(new ResolvedTier(gamemode.get(), selected));
             }
         }
 
         // Not ranked in the selected mode: fall back to their best on this same site.
-        return highestOn(source, tiers).map(List::of).orElse(List.of());
-    }
-
-    private static List<ResolvedTier> resolveEnabled(Set<Source> sites, Map<Source, Map<String, Tier>> tiersBySource) {
-        List<ResolvedTier> result = new ArrayList<>(Source.ALL.size());
-        for (Source source : Source.ALL) {
-            if (!sites.contains(source)) continue;
-            highestOn(source, tiersBySource.getOrDefault(source, Map.of())).ifPresent(result::add);
-        }
-        return List.copyOf(result);
+        return highestOn(source, tiers);
     }
 
     /**
