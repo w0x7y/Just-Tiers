@@ -156,6 +156,11 @@ on PATH or through JAVA_HOME.
   and custom colors under a preset. They must explain the current restriction.
 - Toggle each site individually, then try PvPTiers + PvPHQ and all sites disabled.
   Check the preview and saved nametags. The old mode selector must be absent.
+- With several sites enabled, turn on Prefer selected gamemodes. Every enabled site's picker
+  must become available before Save, and the preview must show the selections. Check a
+  ranked selection and fallback from an unranked one on world nametags. With one site
+  enabled, the option must be greyed with an explanation. Run `/justtiers preferselected`
+  and `/justtiers gamemode <site> <slug>` and confirm chat feedback and nametags.
 - Change position, palette, own-badge and icons. Preview must reflect pending values. Cancel
   must preserve live settings and the file; Undo restores pending changes. Save must persist
   and survive reopening and restart.
