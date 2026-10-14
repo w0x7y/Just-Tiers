@@ -22,7 +22,7 @@ class TierResolverTest {
                        Source.PVPHQ, Map.of("sword", Tier.parse("MT3").orElseThrow(), "axe", lt(3)),
                        Source.SUBTIERS, Map.of("bow", ht(1)),
                        Source.NOVATIERS, Map.of("spleef", ht(2))),
-                Map.of(Source.PVPHQ, "axe"), true);
+                Map.of(Source.PVPHQ, "axe"), true, false);
         assertEquals(List.of(Source.PVPHQ, Source.NOVATIERS),
                 result.stream().map(tier -> tier.gamemode().source()).toList());
         assertEquals(List.of("MT3", "HT2"), result.stream().map(tier -> tier.tier().label()).toList());
@@ -44,7 +44,7 @@ class TierResolverTest {
         List<ResolvedTier> result = TierResolver.resolve(
                 Set.of(Source.PVPTIERS),
                 Map.of(Source.PVPTIERS, Map.of("crystal", ht(2), "axe", ht(1))),
-                SELECTED, true);
+                SELECTED, true, false);
 
         assertEquals(1, result.size());
         assertEquals("crystal", result.get(0).gamemode().slug());
@@ -56,7 +56,7 @@ class TierResolverTest {
         List<ResolvedTier> result = TierResolver.resolve(
                 Set.of(Source.PVPTIERS),
                 Map.of(Source.PVPTIERS, Map.of("axe", ht(3), "sword", lt(1), "pot", ht(4))),
-                SELECTED, true);
+                SELECTED, true, false);
 
         assertEquals(1, result.size());
         assertEquals("sword", result.get(0).gamemode().slug());
@@ -68,7 +68,7 @@ class TierResolverTest {
         assertTrue(TierResolver.resolve(
                 Set.of(Source.PVPTIERS),
                 Map.of(Source.PVPTIERS, Map.of()),
-                SELECTED, true).isEmpty());
+                SELECTED, true, false).isEmpty());
     }
 
     @Test
@@ -78,7 +78,7 @@ class TierResolverTest {
                 Map.of(Source.PVPTIERS, Map.of(),
                        Source.SUBTIERS, Map.of("bow", ht(1)),
                        Source.NOVATIERS, Map.of("spleef", ht(1))),
-                SELECTED, true);
+                SELECTED, true, false);
 
         assertTrue(result.isEmpty(), "MCTiers-only must not borrow tiers from other sites");
     }
@@ -88,14 +88,14 @@ class TierResolverTest {
         List<ResolvedTier> sub = TierResolver.resolve(
                 Set.of(Source.SUBTIERS),
                 Map.of(Source.SUBTIERS, Map.of("bow", lt(2))),
-                SELECTED, true);
+                SELECTED, true, false);
         assertEquals("bow", sub.get(0).gamemode().slug());
         assertEquals(Source.SUBTIERS, sub.get(0).gamemode().source());
 
         List<ResolvedTier> nova = TierResolver.resolve(
                 Set.of(Source.NOVATIERS),
                 Map.of(Source.NOVATIERS, Map.of("axe", ht(5))),
-                SELECTED, true);
+                SELECTED, true, false);
         assertEquals("axe", nova.get(0).gamemode().slug(), "falls back to highest on Nova");
         assertEquals(Source.NOVATIERS, nova.get(0).gamemode().source());
     }
@@ -109,7 +109,7 @@ class TierResolverTest {
                 Map.of(Source.PVPTIERS, Map.of("axe", ht(2), "pot", lt(4)),
                        Source.SUBTIERS, Map.of("bow", lt(3)),
                        Source.NOVATIERS, Map.of("spleef", ht(4), "uhc", ht(1))),
-                SELECTED, true);
+                SELECTED, true, false);
 
         assertEquals(3, result.size());
         assertEquals(List.of(Source.PVPTIERS, Source.SUBTIERS, Source.NOVATIERS),
@@ -127,7 +127,7 @@ class TierResolverTest {
                 Map.of(Source.PVPTIERS, Map.of("axe", ht(2)),
                        Source.SUBTIERS, Map.of(),
                        Source.NOVATIERS, Map.of("uhc", ht(1))),
-                SELECTED, true);
+                SELECTED, true, false);
 
         assertEquals(2, result.size());
         assertEquals(List.of(Source.PVPTIERS, Source.NOVATIERS),
@@ -140,7 +140,7 @@ class TierResolverTest {
         List<ResolvedTier> result = TierResolver.resolve(
                 Set.copyOf(Source.ALL),
                 Map.of(Source.PVPTIERS, Map.of("crystal", lt(5), "axe", ht(1))),
-                SELECTED, true);
+                SELECTED, true, false);
 
         assertEquals(1, result.size());
         assertEquals("axe", result.get(0).gamemode().slug());
@@ -151,7 +151,7 @@ class TierResolverTest {
         assertTrue(TierResolver.resolve(
                 Set.copyOf(Source.ALL),
                 Map.of(Source.PVPTIERS, Map.of(), Source.SUBTIERS, Map.of(), Source.NOVATIERS, Map.of()),
-                SELECTED, true).isEmpty());
+                SELECTED, true, false).isEmpty());
     }
 
     // --- highest-tier semantics ---
@@ -162,7 +162,7 @@ class TierResolverTest {
         List<ResolvedTier> result = TierResolver.resolve(
                 Set.of(Source.PVPTIERS),
                 Map.of(Source.PVPTIERS, Map.of("crystal", retiredHt(1), "axe", ht(3))),
-                Map.of(Source.PVPTIERS, "sword"), true);
+                Map.of(Source.PVPTIERS, "sword"), true, false);
 
         assertEquals("RHT1", result.get(0).tier().label());
         assertEquals("crystal", result.get(0).gamemode().slug());
@@ -173,7 +173,7 @@ class TierResolverTest {
         List<ResolvedTier> result = TierResolver.resolve(
                 Set.of(Source.PVPTIERS),
                 Map.of(Source.PVPTIERS, Map.of("crystal", retiredHt(2), "axe", ht(2))),
-                Map.of(Source.PVPTIERS, "sword"), true);
+                Map.of(Source.PVPTIERS, "sword"), true, false);
 
         assertEquals("HT2", result.get(0).tier().label());
         assertEquals("axe", result.get(0).gamemode().slug());
@@ -185,7 +185,7 @@ class TierResolverTest {
         List<ResolvedTier> result = TierResolver.resolve(
                 Set.of(Source.PVPTIERS),
                 Map.of(Source.PVPTIERS, Map.of("sword", ht(2), "axe", ht(2))),
-                Map.of(Source.PVPTIERS, "pot"), true);
+                Map.of(Source.PVPTIERS, "pot"), true, false);
 
         assertEquals("axe", result.get(0).gamemode().slug());
     }
@@ -195,7 +195,7 @@ class TierResolverTest {
         List<ResolvedTier> result = TierResolver.resolve(
                 Set.of(Source.PVPTIERS),
                 Map.of(Source.PVPTIERS, Map.of("brand_new_mode", ht(1), "axe", ht(4))),
-                Map.of(Source.PVPTIERS, "crystal"), true);
+                Map.of(Source.PVPTIERS, "crystal"), true, false);
 
         assertEquals(1, result.size());
         assertEquals("brand_new_mode", result.get(0).gamemode().slug());
@@ -204,8 +204,8 @@ class TierResolverTest {
 
     @Test
     void missingSourceEntriesAreTreatedAsUnranked() {
-        assertTrue(TierResolver.resolve(Set.copyOf(Source.ALL), Map.of(), SELECTED, true).isEmpty());
-        assertTrue(TierResolver.resolve(Set.of(Source.PVPTIERS), Map.of(), SELECTED, true).isEmpty());
+        assertTrue(TierResolver.resolve(Set.copyOf(Source.ALL), Map.of(), SELECTED, true, false).isEmpty());
+        assertTrue(TierResolver.resolve(Set.of(Source.PVPTIERS), Map.of(), SELECTED, true, false).isEmpty());
     }
 
 
@@ -217,7 +217,7 @@ class TierResolverTest {
                 Set.copyOf(Source.ALL),
                 Map.of(Source.PVPTIERS, Map.of("crystal", retiredHt(1), "axe", lt(3))),
                 SELECTED,
-                false);
+                false, false);
 
         assertEquals(1, result.size());
         assertEquals("axe", result.get(0).gamemode().slug());
@@ -230,7 +230,7 @@ class TierResolverTest {
                 Set.copyOf(Source.ALL),
                 Map.of(Source.PVPTIERS, Map.of("crystal", retiredHt(1), "axe", retiredHt(4))),
                 SELECTED,
-                false);
+                false, false);
 
         assertTrue(result.isEmpty());
     }
@@ -241,7 +241,7 @@ class TierResolverTest {
                 Set.of(Source.PVPTIERS),
                 Map.of(Source.PVPTIERS, Map.of("crystal", retiredHt(1), "axe", ht(5))),
                 SELECTED,
-                false);
+                false, false);
 
         assertEquals(1, result.size());
         assertEquals("axe", result.get(0).gamemode().slug());
@@ -255,7 +255,7 @@ class TierResolverTest {
                 Map.of(Source.PVPTIERS, Map.of("crystal", retiredHt(1)),
                        Source.NOVATIERS, Map.of("uhc", ht(2))),
                 SELECTED,
-                false);
+                false, false);
 
         assertEquals(1, result.size());
         assertEquals(Source.NOVATIERS, result.get(0).gamemode().source());
@@ -267,8 +267,8 @@ class TierResolverTest {
         Map<Source, Map<String, Tier>> tiers =
                 Map.of(Source.PVPTIERS, Map.of("crystal", ht(3), "axe", lt(2)));
 
-        assertEquals(TierResolver.resolve(Set.copyOf(Source.ALL), tiers, SELECTED, true),
-                TierResolver.resolve(Set.copyOf(Source.ALL), tiers, SELECTED, false));
+        assertEquals(TierResolver.resolve(Set.copyOf(Source.ALL), tiers, SELECTED, true, false),
+                TierResolver.resolve(Set.copyOf(Source.ALL), tiers, SELECTED, false, false));
     }
 
     @Test
@@ -324,7 +324,7 @@ class TierResolverTest {
         var result = TierResolver.resolve(Set.of(Source.PVPTIERS, Source.SUBTIERS),
                 Map.of(Source.PVPTIERS, Map.of("new_mode", lt(2)),
                        Source.SUBTIERS, Map.of("bow", ht(4))),
-                SELECTED, true);
+                SELECTED, true, false);
         assertEquals(List.of("new_mode", "bow"),
                 result.stream().map(tier -> tier.gamemode().slug()).toList());
     }
@@ -333,12 +333,12 @@ class TierResolverTest {
     void theSingleSiteFallbackConsidersDiscoveredGamemodes() {
         var selected = TierResolver.resolve(Set.of(Source.PVPTIERS),
                 Map.of(Source.PVPTIERS, Map.of("crystal", lt(4), "new_mode", ht(1))),
-                SELECTED, true);
+                SELECTED, true, false);
         assertEquals("crystal", selected.getFirst().gamemode().slug(), "the selection still wins");
 
         var fallback = TierResolver.resolve(Set.of(Source.PVPTIERS),
                 Map.of(Source.PVPTIERS, Map.of("axe", lt(4), "new_mode", ht(1))),
-                SELECTED, true);
+                SELECTED, true, false);
         assertEquals("new_mode", fallback.getFirst().gamemode().slug());
     }
 
@@ -348,7 +348,7 @@ class TierResolverTest {
         // and the player's best placement on the site is shown instead.
         var result = TierResolver.resolve(Set.of(Source.PVPTIERS),
                 Map.of(Source.PVPTIERS, Map.of("new_mode", lt(4), "axe", ht(2))),
-                Map.of(Source.PVPTIERS, "new_mode"), true);
+                Map.of(Source.PVPTIERS, "new_mode"), true, false);
         assertEquals("axe", result.getFirst().gamemode().slug());
     }
 
@@ -356,7 +356,7 @@ class TierResolverTest {
     void hiddenRetiredDiscoveredPlacementsFallBackToActiveOnes() {
         var result = TierResolver.resolve(Set.of(Source.PVPTIERS, Source.SUBTIERS),
                 Map.of(Source.PVPTIERS, Map.of("new_mode", retiredHt(1), "axe", lt(3))),
-                SELECTED, false);
+                SELECTED, false, false);
         assertEquals("axe", result.getFirst().gamemode().slug());
     }
 
@@ -419,7 +419,7 @@ class TierResolverTest {
 
         assertEquals("axe", TierResolver.resolve(sites, tiers, SELECTED, true, false)
                 .getFirst().gamemode().slug());
-        assertEquals(TierResolver.resolve(sites, tiers, SELECTED, true),
+        assertEquals(TierResolver.resolve(sites, tiers, SELECTED, true, false),
                 TierResolver.resolve(sites, tiers, SELECTED, true, false));
     }
 
@@ -444,5 +444,42 @@ class TierResolverTest {
 
         assertEquals(List.of(Source.NOVATIERS),
                 result.stream().map(tier -> tier.gamemode().source()).toList());
+    }
+
+    // --- one placement order for every listing ---
+
+    @Test
+    void rankedListsBestFirstAndKeepsTheSitesOrderAmongEqualTiers() {
+        Map<String, Tier> tiers = new LinkedHashMap<>();
+        tiers.put("zz_new", ht(1));
+        tiers.put("sword", ht(1));
+        tiers.put("aa_new", ht(1));
+        tiers.put("axe", ht(1));
+        tiers.put("pot", lt(3));
+        tiers.put("mace", retiredHt(1));
+
+        List<ResolvedTier> ranked = TierResolver.ranked(Source.PVPTIERS, tiers);
+
+        assertEquals(List.of("axe", "sword", "aa_new", "zz_new", "mace", "pot"),
+                ranked.stream().map(tier -> tier.gamemode().slug()).toList());
+        assertEquals(TierResolver.highestOn(Source.PVPTIERS, tiers).orElseThrow(), ranked.getFirst());
+    }
+
+    @Test
+    void aStrictlyBetterDiscoveredPlacementLeadsAndAnUnacceptableSlugIsIgnored() {
+        Map<String, Tier> tiers = Map.of("axe", lt(2), "quake_pro", ht(1), "Bad Slug!", ht(1));
+
+        List<ResolvedTier> ranked = TierResolver.ranked(Source.PVPTIERS, tiers);
+
+        assertEquals(List.of("quake_pro", "axe"),
+                ranked.stream().map(tier -> tier.gamemode().slug()).toList());
+        assertEquals("quake_pro", TierResolver.highestOn(Source.PVPTIERS, tiers).orElseThrow()
+                .gamemode().slug());
+    }
+
+    @Test
+    void rankedIsEmptyWithoutPlacements() {
+        assertTrue(TierResolver.ranked(Source.SUBTIERS, Map.of()).isEmpty());
+        assertTrue(TierResolver.ranked(Source.SUBTIERS, null).isEmpty());
     }
 }

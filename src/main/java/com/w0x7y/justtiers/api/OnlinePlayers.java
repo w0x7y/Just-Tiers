@@ -29,7 +29,7 @@ public final class OnlinePlayers {
         }
         for (GameProfile profile : profiles()) {
             if (profile.name() != null && profile.name().equalsIgnoreCase(name)) {
-                return profile.id() != null && profile.id().version() == 4
+                return PlayerRef.isAccount(profile.id())
                         ? Optional.of(new PlayerRef(profile.name(), profile.id()))
                         : Optional.empty();
             }

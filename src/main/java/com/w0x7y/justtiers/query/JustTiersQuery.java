@@ -58,7 +58,7 @@ public final class JustTiersQuery {
     /** The sites automatic lookups may use under the active settings, or null before initialization. */
     private static Set<Source> lookupSites() {
         SettingsApplication settings = JustTiersClient.settings();
-        return settings == null ? null : TierQuery.lookupSites(settings.active().nametagSettings());
+        return settings == null ? null : settings.active().nametagSettings().automaticLookupSites();
     }
 
     /** Whether Just-Tiers has initialized. Before then every answer is pending. */

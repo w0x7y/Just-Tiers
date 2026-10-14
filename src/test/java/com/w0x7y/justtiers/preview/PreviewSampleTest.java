@@ -2,6 +2,7 @@ package com.w0x7y.justtiers.preview;
 
 import com.w0x7y.justtiers.render.model.Badge;
 import com.w0x7y.justtiers.render.model.BadgePosition;
+import com.w0x7y.justtiers.render.model.NametagSettings;
 import com.w0x7y.justtiers.render.model.NametagStyle;
 import com.w0x7y.justtiers.tier.Gamemode;
 import com.w0x7y.justtiers.tier.Gamemodes;
@@ -24,7 +25,7 @@ class PreviewSampleTest {
 
     /** What the sample tiers draw as, through the same Badge the config screen uses. */
     private String text(Set<Source> sites, Map<Source, String> selected, boolean retired) {
-        return Badge.of(PreviewSample.resolve(sites, selected, retired), NametagStyle.DEFAULT)
+        return Badge.of(PreviewSample.resolve(sites, selected, false, retired), NametagStyle.DEFAULT)
                 .plainText();
     }
 
@@ -103,11 +104,9 @@ class PreviewSampleTest {
     void thePreviewPicksItsPhaseFromTheClock() {
         long retiredTime = PreviewSample.RETIRED_CYCLE_MILLIS;
         assertEquals(text(Set.copyOf(Source.ALL), DEFAULTS, true),
-                Badge.preview(Set.copyOf(Source.ALL), DEFAULTS, true, retiredTime,
-                        NametagStyle.DEFAULT).plainText());
+                new NametagSettings(true, Set.copyOf(Source.ALL), DEFAULTS, true, NametagStyle.DEFAULT, false).previewBadge(retiredTime).plainText());
         assertEquals(text(Set.copyOf(Source.ALL), DEFAULTS, false),
-                Badge.preview(Set.copyOf(Source.ALL), DEFAULTS, true, 0,
-                        NametagStyle.DEFAULT).plainText());
+                new NametagSettings(true, Set.copyOf(Source.ALL), DEFAULTS, true, NametagStyle.DEFAULT, false).previewBadge(0).plainText());
     }
 
     @Test
@@ -125,8 +124,8 @@ class PreviewSampleTest {
     @Test
     void thePreviewIsNeverEmpty() {
         for (Set<Source> sites : java.util.List.of(Set.of(Source.PVPTIERS), Set.of(Source.PVPHQ), Set.of(Source.SUBTIERS), Set.of(Source.NOVATIERS), Set.copyOf(Source.ALL))) {
-            assertFalse(PreviewSample.resolve(sites, DEFAULTS, false).isEmpty(), sites.toString());
-            assertFalse(PreviewSample.resolve(sites, Map.of(), true).isEmpty(), sites.toString());
+            assertFalse(PreviewSample.resolve(sites, DEFAULTS, false, false).isEmpty(), sites.toString());
+            assertFalse(PreviewSample.resolve(sites, Map.of(), false, true).isEmpty(), sites.toString());
         }
     }
 
@@ -136,7 +135,7 @@ class PreviewSampleTest {
         // just the sites and gamemode ones.
         NametagStyle stripped = new NametagStyle(BadgePosition.AFTER, false, false);
         String shown = Badge.of(PreviewSample.resolve(Set.of(Source.PVPTIERS),
-                Map.of(Source.PVPTIERS, "axe"), false), stripped).plainText();
+                Map.of(Source.PVPTIERS, "axe"), false, false), stripped).plainText();
 
         assertEquals(" HT1", shown);
         assertEquals("[" + entry(gamemode(Source.PVPTIERS, "axe"), false) + "] ",
@@ -147,10 +146,9 @@ class PreviewSampleTest {
     void theStyleSurvivesTheClockToo() {
         NametagStyle stripped = new NametagStyle(BadgePosition.AFTER, false, false);
         assertEquals(
-                Badge.of(PreviewSample.resolve(Set.copyOf(Source.ALL), DEFAULTS, true), stripped)
+                Badge.of(PreviewSample.resolve(Set.copyOf(Source.ALL), DEFAULTS, false, true), stripped)
                         .plainText(),
-                Badge.preview(Set.copyOf(Source.ALL), DEFAULTS, true,
-                        PreviewSample.RETIRED_CYCLE_MILLIS, stripped).plainText());
+                new NametagSettings(true, Set.copyOf(Source.ALL), DEFAULTS, true, stripped, false).previewBadge(PreviewSample.RETIRED_CYCLE_MILLIS).plainText());
     }
 
     @Test

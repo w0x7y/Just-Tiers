@@ -14,7 +14,7 @@ class ControlAvailabilityTest {
 
     @Test
     void everythingIsLiveInASingleSiteModeForThatSite() {
-        var state = ControlAvailability.of(true, Set.of(Source.PVPTIERS), Palette.DEFAULT);
+        var state = ControlAvailability.of(true, Set.of(Source.PVPTIERS), false, Palette.DEFAULT);
         assertTrue(state.sites());
         assertTrue(state.showRetired());
         assertTrue(state.appearance());
@@ -25,7 +25,7 @@ class ControlAvailabilityTest {
 
     @Test
     void noGamemodeIsSelectableInAllMode() {
-        var state = ControlAvailability.of(true, Set.copyOf(Source.ALL), Palette.DEFAULT);
+        var state = ControlAvailability.of(true, Set.copyOf(Source.ALL), false, Palette.DEFAULT);
         assertTrue(state.sites());
         for (Source source : Source.values()) {
             assertFalse(state.gamemode(source));
@@ -35,7 +35,7 @@ class ControlAvailabilityTest {
 
     @Test
     void disablingTheModGreysEverythingButTheMasterSwitch() {
-        var state = ControlAvailability.of(false, Set.of(Source.PVPTIERS), Palette.DEFAULT);
+        var state = ControlAvailability.of(false, Set.of(Source.PVPTIERS), false, Palette.DEFAULT);
         assertFalse(state.sites());
         assertFalse(state.showRetired());
         assertFalse(state.appearance());
@@ -47,10 +47,12 @@ class ControlAvailabilityTest {
 
     @Test
     void reasonDistinguishesTheOtherSitesFromAllMode() {
-        var state = ControlAvailability.of(true, Set.of(Source.SUBTIERS), Palette.DEFAULT);
+        var state = ControlAvailability.of(true, Set.of(Source.SUBTIERS), false, Palette.DEFAULT);
         assertEquals(ControlAvailability.Reason.AVAILABLE, state.reasonFor(Source.SUBTIERS));
-        assertEquals(ControlAvailability.Reason.SITE_DISABLED, state.reasonFor(Source.PVPTIERS));
-        assertEquals(ControlAvailability.Reason.SITE_DISABLED, state.reasonFor(Source.NOVATIERS));
+        // Without preferring selections a disabled site's pick is used only once it is the
+        // only enabled site, which is a different explanation from "enable it".
+        assertEquals(ControlAvailability.Reason.ONLY_SITE_NEEDED, state.reasonFor(Source.PVPTIERS));
+        assertEquals(ControlAvailability.Reason.ONLY_SITE_NEEDED, state.reasonFor(Source.NOVATIERS));
     }
 
     @Test
@@ -58,8 +60,8 @@ class ControlAvailabilityTest {
         // Where the badge sits and what chrome it carries means the same thing whichever
         // sites are being shown, so only the master switch may grey those rows.
         for (Set<Source> sites : java.util.List.of(Set.of(Source.PVPTIERS), Set.of(Source.PVPHQ), Set.of(Source.SUBTIERS), Set.of(Source.NOVATIERS), Set.copyOf(Source.ALL))) {
-            assertTrue(ControlAvailability.of(true, sites, Palette.DEFAULT).appearance(), sites.toString());
-            assertFalse(ControlAvailability.of(false, sites, Palette.DEFAULT).appearance(), sites.toString());
+            assertTrue(ControlAvailability.of(true, sites, false, Palette.DEFAULT).appearance(), sites.toString());
+            assertFalse(ControlAvailability.of(false, sites, false, Palette.DEFAULT).appearance(), sites.toString());
         }
     }
 
@@ -67,7 +69,7 @@ class ControlAvailabilityTest {
     void everyModeAndToggleCombinationIsCovered() {
         for (Set<Source> sites : java.util.List.of(Set.of(Source.PVPTIERS), Set.of(Source.PVPHQ), Set.of(Source.SUBTIERS), Set.of(Source.NOVATIERS), Set.copyOf(Source.ALL))) {
             for (boolean enabled : new boolean[]{true, false}) {
-                var state = ControlAvailability.of(enabled, sites, Palette.DEFAULT);
+                var state = ControlAvailability.of(enabled, sites, false, Palette.DEFAULT);
                 for (Source source : Source.values()) {
                     assertEquals(state.gamemode(source),
                             state.reasonFor(source) == ControlAvailability.Reason.AVAILABLE);
@@ -78,22 +80,22 @@ class ControlAvailabilityTest {
 
     @Test
     void theColorPickersAreLiveOnlyForTheCustomPalette() {
-        assertTrue(ControlAvailability.of(true, Set.copyOf(Source.ALL), Palette.CUSTOM).customColors());
-        assertFalse(ControlAvailability.of(true, Set.copyOf(Source.ALL), Palette.DEFAULT).customColors());
-        assertFalse(ControlAvailability.of(true, Set.copyOf(Source.ALL), Palette.COLORBLIND).customColors());
+        assertTrue(ControlAvailability.of(true, Set.copyOf(Source.ALL), false, Palette.CUSTOM).customColors());
+        assertFalse(ControlAvailability.of(true, Set.copyOf(Source.ALL), false, Palette.DEFAULT).customColors());
+        assertFalse(ControlAvailability.of(true, Set.copyOf(Source.ALL), false, Palette.COLORBLIND).customColors());
     }
 
     @Test
     void theColorPickersAreDeadWhileTheModIsOff() {
-        assertFalse(ControlAvailability.of(false, Set.copyOf(Source.ALL), Palette.CUSTOM).customColors());
+        assertFalse(ControlAvailability.of(false, Set.copyOf(Source.ALL), false, Palette.CUSTOM).customColors());
     }
 
     @Test
     void thePaletteDoesNotDisturbTheOtherControls() {
         ControlAvailability withCustom =
-                ControlAvailability.of(true, Set.copyOf(Source.ALL), Palette.CUSTOM);
+                ControlAvailability.of(true, Set.copyOf(Source.ALL), false, Palette.CUSTOM);
         ControlAvailability withDefault =
-                ControlAvailability.of(true, Set.copyOf(Source.ALL), Palette.DEFAULT);
+                ControlAvailability.of(true, Set.copyOf(Source.ALL), false, Palette.DEFAULT);
 
         assertEquals(withDefault.sites(), withCustom.sites());
         assertEquals(withDefault.showRetired(), withCustom.showRetired());

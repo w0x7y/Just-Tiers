@@ -27,4 +27,22 @@ class SourceTest {
         assertEquals("https://subtiers.net", Source.SUBTIERS.homeUrl());
         assertEquals("https://novatiers.com", Source.NOVATIERS.homeUrl());
     }
+
+    @Test
+    void siteIdsAreTheSpellingsPlayersAndOtherModsUse() {
+        assertEquals(java.util.List.of("pvptiers", "pvphq", "subtiers", "novatiers"),
+                Source.ALL.stream().map(Source::id).toList());
+    }
+
+    @Test
+    void anIdIsReadIgnoringCaseAndSurroundingWhitespace() {
+        for (Source source : Source.ALL) {
+            assertEquals(java.util.Optional.of(source), Source.fromId(source.id()));
+        }
+        assertEquals(java.util.Optional.of(Source.PVPHQ), Source.fromId(" PvPHQ "));
+        assertTrue(Source.fromId("mctiers").isEmpty());
+        assertTrue(Source.fromId("PVPHQ_").isEmpty());
+        assertTrue(Source.fromId("").isEmpty());
+        assertTrue(Source.fromId(null).isEmpty());
+    }
 }

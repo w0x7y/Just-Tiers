@@ -1,12 +1,12 @@
 package com.w0x7y.justtiers.resolve;
 
-import com.w0x7y.justtiers.tier.DiscoveredGamemodes;
 import com.w0x7y.justtiers.tier.Gamemode;
 import com.w0x7y.justtiers.tier.Gamemodes;
 import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -25,18 +25,10 @@ public final class TierResolver {
      * runs, in every mode. A player whose best tier is retired therefore falls back to
      * their best active tier rather than disappearing, and one who is only ever retired
      * shows nothing for that site.
-     */
-    public static List<ResolvedTier> resolve(Set<Source> sites,
-                                             Map<Source, Map<String, Tier>> tiersBySource,
-                                             Map<Source, String> selectedGamemodes,
-                                             boolean showRetired) {
-        return resolve(sites, tiersBySource, selectedGamemodes, showRetired, false);
-    }
-
-    /**
-     * As {@link #resolve(Set, Map, Map, boolean)}. With {@code preferSelected}, several
-     * enabled sites each prefer their selected gamemode the way a single site always
-     * does, falling back to that site's best tier; without it they show their best.
+     *
+     * <p>Where {@link GamemodeSelection#applies} says selections are used, each enabled site
+     * prefers its selected gamemode and falls back to that site's best tier; otherwise each
+     * shows its best.
      */
     public static List<ResolvedTier> resolve(Set<Source> sites,
                                              Map<Source, Map<String, Tier>> tiersBySource,
@@ -45,7 +37,7 @@ public final class TierResolver {
                                              boolean preferSelected) {
         Map<Source, Map<String, Tier>> effective =
                 showRetired ? tiersBySource : withoutRetired(tiersBySource);
-        boolean selecting = sites.size() == 1 || preferSelected;
+        boolean selecting = GamemodeSelection.applies(sites, preferSelected);
         List<ResolvedTier> result = new ArrayList<>(Source.ALL.size());
         for (Source source : Source.ALL) {
             if (!sites.contains(source)) continue;
@@ -155,26 +147,39 @@ public final class TierResolver {
             }
         }
         if (registered < tiers.size()) {
-            // Only a strictly better discovered placement displaces the registered best.
-            String bestDiscovered = null;
-            for (Map.Entry<String, Tier> entry : tiers.entrySet()) {
-                String slug = entry.getKey();
-                Tier tier = entry.getValue();
-                if (Gamemodes.find(source, slug).isPresent()
-                        || !DiscoveredGamemodes.isAcceptable(slug)) continue;
-                int order = bestTier == null ? -1 : tier.compareTo(bestTier);
-                if (order < 0 || (order == 0 && bestDiscovered != null
-                        && slug.compareTo(bestDiscovered) < 0)) {
-                    bestDiscovered = slug;
+            // Discovered gamemodes follow the registry in the order every listing uses,
+            // so only a strictly better one displaces the best so far.
+            for (Gamemode gamemode : Gamemodes.discovered(source, tiers.keySet())) {
+                Tier tier = tiers.get(gamemode.slug());
+                if (bestTier == null || tier.compareTo(bestTier) < 0) {
+                    bestMode = gamemode;
                     bestTier = tier;
                 }
-            }
-            if (bestDiscovered != null) {
-                bestMode = Gamemodes.forSlug(source, bestDiscovered).orElseThrow();
             }
         }
         return bestMode == null ? Optional.empty()
                 : Optional.of(new ResolvedTier(bestMode, bestTier));
+    }
+
+    /**
+     * Every placement on one site, best first by {@link Tier}'s order. Equal tiers keep the
+     * site's order: registered gamemodes as declared, then {@link Gamemodes#discovered}
+     * ones by slug. The first element is therefore {@link #highestOn}'s answer.
+     */
+    public static List<ResolvedTier> ranked(Source source, Map<String, Tier> tiers) {
+        if (tiers == null || tiers.isEmpty()) {
+            return List.of();
+        }
+        List<ResolvedTier> placements = new ArrayList<>(tiers.size());
+        for (Gamemode gamemode : Gamemodes.of(source)) {
+            Tier tier = tiers.get(gamemode.slug());
+            if (tier != null) placements.add(new ResolvedTier(gamemode, tier));
+        }
+        for (Gamemode gamemode : Gamemodes.discovered(source, tiers.keySet())) {
+            placements.add(new ResolvedTier(gamemode, tiers.get(gamemode.slug())));
+        }
+        placements.sort(Comparator.comparing(ResolvedTier::tier));
+        return List.copyOf(placements);
     }
 
     private TierResolver() {

@@ -34,7 +34,9 @@ public sealed interface SiteAnswer {
     /**
      * No answer is known and none is currently being fetched: the site failed, is paused or
      * cooling down, the player is backing off after a failure, or the request was deferred.
-     * A later peek may retry once those delays allow it.
+     * A later peek may retry once those delays allow it. A UUID that is not an online-mode
+     * account, such as an offline-mode player or an NPC, is always unavailable and is never
+     * sent to a site.
      */
     record Unavailable(String siteId) implements SiteAnswer {
         public Unavailable { Objects.requireNonNull(siteId, "siteId"); }

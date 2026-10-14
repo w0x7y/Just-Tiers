@@ -32,7 +32,7 @@ class PlayerBadgeTest {
                 if ((mask & (1 << index)) != 0) enabled.add(order.get(index));
             }
             FakeTierView view = new FakeTierView(new NametagSettings(true, enabled, Map.of(), true,
-                    NametagStyle.DEFAULT));
+                    NametagStyle.DEFAULT, false));
             for (Source source : order) {
                 view.answering(source, Map.of(com.w0x7y.justtiers.config.JustTiersConfig.defaultGamemode(source),
                         new Tier(2, true, false)));
@@ -56,7 +56,7 @@ class PlayerBadgeTest {
             Source.NOVATIERS, "spleef");
 
     private static NametagSettings settings(boolean enabled, Set<Source> sites) {
-        return new NametagSettings(enabled, sites, SELECTED, true, NametagStyle.DEFAULT);
+        return new NametagSettings(enabled, sites, SELECTED, true, NametagStyle.DEFAULT, false);
     }
 
     private static FakeTierView view(boolean enabled, Set<Source> sites) {
@@ -164,7 +164,7 @@ class PlayerBadgeTest {
     void theStyleInTheSettingsReachesTheBadge() {
         NametagStyle after = new NametagStyle(BadgePosition.AFTER, false, true);
         FakeTierView view = view(true, Set.of(Source.PVPTIERS));
-        view.settings(new NametagSettings(true, Set.of(Source.PVPTIERS), SELECTED, true, after));
+        view.settings(new NametagSettings(true, Set.of(Source.PVPTIERS), SELECTED, true, after, false));
 
         Badge badge = Badge.forPlayer(view, ACCOUNT);
         assertEquals(BadgePosition.AFTER, badge.position());
@@ -179,7 +179,7 @@ class PlayerBadgeTest {
         assertFalse(Badge.forPlayer(view, ACCOUNT).isEmpty());
 
         view.settings(new NametagSettings(true, Set.of(Source.PVPTIERS), SELECTED, false,
-                NametagStyle.DEFAULT));
+                NametagStyle.DEFAULT, false));
         assertTrue(Badge.forPlayer(view, ACCOUNT).isEmpty());
     }
 
@@ -192,5 +192,24 @@ class PlayerBadgeTest {
         view.settings(settings(true, Set.of(Source.PVPTIERS)).withGamemode(Source.PVPTIERS, "axe"));
         assertEquals("[" + gamemode(Source.PVPTIERS, "axe").icon().orElseThrow() + "HT4] ",
                 Badge.forPlayer(view, ACCOUNT).plainText());
+    }
+
+    @Test
+    void preferringSelectionsReachesTheBadgeThroughTheSettings() {
+        Set<Source> sites = Set.of(Source.PVPTIERS, Source.SUBTIERS);
+        FakeTierView view = new FakeTierView(settings(true, sites))
+                .answering(Source.PVPTIERS,
+                        Map.of("crystal", new Tier(4, true, false), "axe", new Tier(1, true, false)))
+                .answering(Source.SUBTIERS, Map.of("bow", new Tier(3, false, false)));
+        String bestTiers = Badge.forPlayer(view, ACCOUNT).plainText();
+        assertTrue(bestTiers.contains(gamemode(Source.PVPTIERS, "axe").icon().orElseThrow() + "HT1"),
+                bestTiers);
+
+        view.settings(new NametagSettings(true, sites, SELECTED, true, NametagStyle.DEFAULT, true));
+        String selections = Badge.forPlayer(view, ACCOUNT).plainText();
+        assertTrue(selections.contains(gamemode(Source.PVPTIERS, "crystal").icon().orElseThrow() + "HT4"),
+                selections);
+        assertTrue(selections.contains(gamemode(Source.SUBTIERS, "bow").icon().orElseThrow() + "LT3"),
+                selections);
     }
 }

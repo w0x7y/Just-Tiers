@@ -1,5 +1,7 @@
 package com.w0x7y.justtiers.tier;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -124,6 +126,32 @@ public final class Gamemodes {
     public static Optional<Gamemode> forSlug(Source source, String slug) {
         Optional<Gamemode> registered = find(source, slug);
         return registered.isPresent() ? registered : DiscoveredGamemodes.of(source, slug);
+    }
+
+    /**
+     * The discovered gamemodes a site's placements name: slugs this build does not register
+     * but would have admitted, ordered by slug and capped at
+     * {@link DiscoveredGamemodes#MAX_PER_ANSWER}. Every caller that lists a site's
+     * gamemodes puts these after {@link #of} in this order, so they agree on which ones
+     * exist and how ties among them break.
+     */
+    public static List<Gamemode> discovered(Source source, Collection<String> slugs) {
+        List<String> unregistered = new ArrayList<>();
+        for (String slug : slugs) {
+            if (find(source, slug).isEmpty() && DiscoveredGamemodes.isAcceptable(slug)) {
+                unregistered.add(slug);
+            }
+        }
+        if (unregistered.isEmpty()) {
+            return List.of();
+        }
+        unregistered.sort(null);
+        List<Gamemode> gamemodes = new ArrayList<>();
+        for (String slug : unregistered) {
+            if (gamemodes.size() == DiscoveredGamemodes.MAX_PER_ANSWER) break;
+            DiscoveredGamemodes.of(source, slug).ifPresent(gamemodes::add);
+        }
+        return List.copyOf(gamemodes);
     }
 
     /** True when this exact gamemode is in the registry rather than discovered. */
