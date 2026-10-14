@@ -199,6 +199,8 @@ Disabling nametag tiers stops automatic per-player nametag lookups. Each site to
 also stops nametag lookups for that site. Explicit lookup screens
 still work, and NovaTiers' startup, scheduled and requested downloads remain independent of
 that switch. Hiding the progress bar changes only the indicator, not the downloads.
+Another installed mod that uses the [tier-query API](docs/api.md) can also cause
+lookups, with the same requests, limits and retry rules, regardless of those toggles.
 
 PvPTiers, PvPHQ and SubTiers answers, including valid unranked answers, expire after an hour by default.
 Repeated requests for one player share the pending result. Expired successful answers stay
@@ -232,6 +234,14 @@ work is retained until completion; idle entries have a 24-hour retention limit.
 The first NovaTiers download in a session shows a moving bar and bytes received. Later downloads
 estimate progress from the last completed payload size. That size can change, so the percentage
 is an estimate and stops below 100% until completion. A failure shows a brief unavailable message.
+
+## For mod developers
+
+Other Fabric client mods can read Just-Tiers' answers through `JustTiersQuery` in the
+`com.w0x7y.justtiers.query` package. Each site's answer is pending, unavailable, unranked
+or ranked, and placements carry the displayed label and a sortable rank. Reads never block,
+but a read can start the same lookup a nametag would. See [the API guide](docs/api.md) for
+dependency setup, threading and network consequences.
 
 ## Reporting a bug
 

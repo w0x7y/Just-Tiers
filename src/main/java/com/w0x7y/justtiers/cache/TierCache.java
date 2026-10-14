@@ -26,6 +26,15 @@ public final class TierCache {
         public CachedAnswer { tiers = Map.copyOf(tiers); }
     }
 
+    /**
+     * One player's entry as a nonblocking reader sees it. A visible answer can be retained
+     * while its replacement is in flight. Without one, {@code inFlight} separates a request
+     * that may still answer from a lookup that failed, was deferred or never started.
+     */
+    public record Observation(Optional<CachedAnswer> answer, boolean inFlight) {
+        public static final Observation NONE = new Observation(Optional.empty(), false);
+    }
+
     public TierCache(List<TierSource> sources) { this(sources, CachePolicy.DEFAULT); }
     public TierCache(List<TierSource> sources, CachePolicy policy) {
         this(sources, policy, System::nanoTime, () -> ThreadLocalRandom.current().nextDouble());
@@ -52,6 +61,9 @@ public final class TierCache {
 
     /** Observation does not start a request or consume a recovery probe. */
     public Optional<CachedAnswer> cachedAnswer(Source source, UUID uuid) { return sites.get(source).cachedAnswer(uuid); }
+
+    /** Reads settlement and answer from one entry, without starting a request or consuming a probe. */
+    public Observation observe(Source source, UUID uuid) { return sites.get(source).observe(uuid); }
 
     public void forgetFailed(Source source, UUID uuid) { sites.get(source).forgetFailed(uuid); }
 

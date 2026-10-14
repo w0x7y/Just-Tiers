@@ -237,6 +237,14 @@ final class SiteRequests {
         return visibleAnswer(entry).map(tiers -> snapshot(entry, !entry.future.isDone()));
     }
 
+    TierCache.Observation observe(UUID uuid) {
+        Entry entry = entries.get(uuid);
+        if (entry == null) return TierCache.Observation.NONE;
+        // Read settlement first: a request publishes its answer before completing its future.
+        boolean inFlight = !entry.future.isDone();
+        return new TierCache.Observation(visibleAnswer(entry).map(tiers -> snapshot(entry, inFlight)), inFlight);
+    }
+
     private TierCache.CachedAnswer snapshot(Entry entry, boolean pending) {
         TierSource.RefreshState state = source == null ? TierSource.RefreshState.IDLE : source.refreshState();
         return snapshot(entry.answer, entry.forceRefresh, entry.refreshFailed, pending || state.pending(), state.failed());

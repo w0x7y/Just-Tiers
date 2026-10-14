@@ -23,7 +23,8 @@ public class JustTiersClient implements ClientModInitializer {
 
     private static SettingsApplication settings;
     private static RefreshLifecycle refresh;
-    private static TierCache cache;
+    // Volatile: JustTiersQuery lets other mods read it from any thread, null until initialized.
+    private static volatile TierCache cache;
     private static NovaTiersSource novaSource;
     private static MojangNameSource nameSource;
     private static DownloadProgress downloadProgress;
