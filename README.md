@@ -15,7 +15,9 @@ through 26.3. See the [release notes](docs/releases/v1.1.7.md).
 Toggle each leaderboard individually. All four sites are enabled by default. With
 several enabled, each site's best tier appears side by side. With just one enabled,
 the mod prefers your selected gamemode and falls back to that player's best tier
-on the same site. Icons identify the gamemode; colors identify the leaderboard.
+on the same site. Turn on Prefer selected gamemodes to apply that rule to every
+enabled site, so each shows its selected gamemode or falls back to its best tier.
+Icons identify the gamemode; colors identify the leaderboard.
 A gamemode the mod does not recognize yet shows its tier without an icon.
 
 Tiers run from LT5 through HT5, LT4, HT4, LT3, HT3, LT2, HT2 and LT1 to HT1. Retired
@@ -62,6 +64,8 @@ All commands are client-side. `/justtiers lookup` completes names from the serve
 | `/justtiers retired` | Toggle retired tiers in nametags |
 | `/justtiers site <site> [true\|false]` | Toggle a site or explicitly enable/disable it; sites are `pvptiers`, `pvphq`, `subtiers`, `novatiers` |
 | `/justtiers gamemode <slug>` | Choose a gamemode for the only enabled site |
+| `/justtiers gamemode <site> <slug>` | Choose a gamemode for a named site |
+| `/justtiers preferselected` | Toggle preferring each enabled site's selected gamemode |
 | `/justtiers badge <before\|after>` | Move the badge before or after the name |
 | `/justtiers icons` | Toggle gamemode icons in nametags |
 | `/justtiers brackets` | Toggle badge brackets |
@@ -100,7 +104,9 @@ Unavailable controls stay visible and explain why they cannot currently be chang
 
 The live preview uses invented HT1 tiers and makes no leaderboard request. It alternates
 with RHT1 every five seconds while retired tiers are enabled. With several sites enabled,
-it uses fixed example gamemodes for those sites. It previews pending changes, including
+it uses fixed example gamemodes for those sites, or your selections while Prefer selected
+gamemodes is on. Gamemode pickers are available for every enabled site when that option
+is on, and for the only enabled site otherwise. It previews pending changes, including
 badge position, icons, brackets, colors and hiding your own badge.
 
 A gamemode picker opens with a click or keyboard activation. Arrow keys move between tiles;
@@ -144,6 +150,7 @@ Settings are stored in `config/justtiers.json` inside the Minecraft instance. De
     "SUBTIERS": "elytra",
     "NOVATIERS": "vanilla"
   },
+  "preferSelectedGamemodes": false,
   "novaRefreshMinutes": 30,
   "tierCacheMinutes": 60,
   "showDownloadProgress": true,

@@ -101,4 +101,33 @@ class ControlAvailabilityTest {
         assertEquals(withDefault.reasons(), withCustom.reasons());
     }
 
+    @Test
+    void preferringSelectionsMakesEveryEnabledSitesPickerLive() {
+        var state = ControlAvailability.of(true, Set.of(Source.PVPTIERS, Source.SUBTIERS),
+                true, Palette.DEFAULT);
+        assertTrue(state.gamemode(Source.PVPTIERS));
+        assertTrue(state.gamemode(Source.SUBTIERS));
+        assertEquals(ControlAvailability.Reason.SITE_DISABLED, state.reasonFor(Source.PVPHQ));
+        assertFalse(state.gamemode(Source.NOVATIERS));
+    }
+
+    @Test
+    void preferringSelectionsOnlyMattersWithSeveralSites() {
+        assertTrue(ControlAvailability.of(true, Set.copyOf(Source.ALL), false, Palette.DEFAULT)
+                .preferSelected());
+        assertFalse(ControlAvailability.of(true, Set.of(Source.PVPHQ), false, Palette.DEFAULT)
+                .preferSelected());
+        assertFalse(ControlAvailability.of(true, Set.of(), true, Palette.DEFAULT)
+                .preferSelected());
+        assertFalse(ControlAvailability.of(false, Set.copyOf(Source.ALL), true, Palette.DEFAULT)
+                .preferSelected());
+    }
+
+    @Test
+    void theModSwitchStillGreysPickersWhenSelectionsArePreferred() {
+        var state = ControlAvailability.of(false, Set.copyOf(Source.ALL), true, Palette.DEFAULT);
+        for (Source source : Source.values()) {
+            assertEquals(ControlAvailability.Reason.MOD_DISABLED, state.reasonFor(source));
+        }
+    }
 }

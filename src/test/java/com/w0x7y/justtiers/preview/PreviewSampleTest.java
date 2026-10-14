@@ -160,4 +160,23 @@ class PreviewSampleTest {
                         source + "/" + slug + " is not a real gamemode"));
         assertEquals(Source.values().length, PreviewSample.MULTI_SITE_GAMEMODES.size());
     }
+
+    @Test
+    void preferringSelectionsPreviewsEachSitesSelection() {
+        Map<Source, String> selected = Map.of(
+                Source.PVPTIERS, "axe",
+                Source.SUBTIERS, "bow",
+                Source.NOVATIERS, "spleef");
+        Set<Source> sites = Set.of(Source.PVPTIERS, Source.SUBTIERS, Source.NOVATIERS);
+
+        String shown = Badge.of(PreviewSample.resolve(sites, selected, true, false),
+                NametagStyle.DEFAULT).plainText();
+
+        assertTrue(shown.contains(entry(gamemode(Source.PVPTIERS, "axe"), false)), shown);
+        assertTrue(shown.contains(entry(gamemode(Source.SUBTIERS, "bow"), false)), shown);
+        assertTrue(shown.contains(entry(gamemode(Source.NOVATIERS, "spleef"), false)), shown);
+        assertEquals(text(sites, selected, false),
+                Badge.of(PreviewSample.resolve(sites, selected, false, false),
+                        NametagStyle.DEFAULT).plainText());
+    }
 }

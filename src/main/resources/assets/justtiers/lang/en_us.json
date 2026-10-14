@@ -15,7 +15,7 @@
   "justtiers.option.showBrackets.desc": "The [ ] around the badge. With brackets off the tiers sit against the name with only a space between them.",
   "justtiers.option.gamemode": "%s gamemode",
   "justtiers.option.gamemode.desc": "The gamemode to show for %s. If the player is not ranked in it, their highest tier on that site is shown instead.",
-  "justtiers.option.gamemode.inactive": "Several sites are enabled, so each shows its highest tier. Enable just one site to choose a gamemode.",
+  "justtiers.option.gamemode.inactive": "Several sites are enabled, so each shows its highest tier. Turn on Prefer selected gamemodes, or enable just one site, to choose a gamemode.",
   "justtiers.option.gamemode.disabled": "Turn Just-Tiers on to change this.",
   "justtiers.option.novaRefresh": "NovaTiers refresh interval",
   "justtiers.option.novaRefresh.desc": "NovaTiers has no per-player endpoint, so the full ranked list (~1.7 MB) is downloaded on this interval.",
@@ -113,5 +113,14 @@
   "justtiers.group.sites": "Tier sites",
   "justtiers.command.status.site": "%s tiers: %s",
   "justtiers.command.siteSet": "%s tiers turned %s",
-  "justtiers.command.gamemode.requiresSingleSite": "Enable exactly one tier site to choose a gamemode."
+  "justtiers.command.gamemode.requiresSingleSite": "Enable exactly one tier site, or name the site: /justtiers gamemode <site> <gamemode>",
+  "justtiers.option.preferSelected": "Prefer selected gamemodes",
+  "justtiers.option.preferSelected.desc": "With several sites enabled, each site shows the player's tier in the gamemode selected below, or their highest tier on that site if they are not ranked in it. Turn this off to show each site's highest tier.",
+  "justtiers.option.preferSelected.singleSite": "Enable more than one site to use this. A single enabled site always prefers its selected gamemode.",
+  "justtiers.option.gamemode.siteDisabled": "Enable %s to use this gamemode.",
+  "justtiers.command.preferSelected.on": "Each enabled site now prefers its selected gamemode",
+  "justtiers.command.preferSelected.off": "Each enabled site now shows its highest tier",
+  "justtiers.command.status.preferSelected": "Prefer selected gamemodes: %s",
+  "justtiers.command.gamemode.siteDisabled": "%s is disabled, so nametags do not use this gamemode yet.",
+  "justtiers.command.gamemode.showingBest": "Several sites show their highest tier. Run /justtiers preferselected to use selected gamemodes."
 }

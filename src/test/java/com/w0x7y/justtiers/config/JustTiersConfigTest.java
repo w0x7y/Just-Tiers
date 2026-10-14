@@ -568,4 +568,18 @@ class JustTiersConfigTest {
                 """);
         assertEquals(60, JustTiersConfig.load(file).getTierCacheMinutes());
     }
+
+    @Test
+    void preferringSelectedGamemodesDefaultsOffAndSurvivesSaveAndLoad(@TempDir Path dir) {
+        JustTiersConfig config = new JustTiersConfig();
+        assertFalse(config.isPreferSelectedGamemodes());
+        assertFalse(config.nametagSettings().preferSelected());
+
+        config.setPreferSelectedGamemodes(true);
+        assertTrue(config.nametagSettings().preferSelected());
+
+        Path file = dir.resolve("prefer.json");
+        config.save(file);
+        assertTrue(JustTiersConfig.load(file).isPreferSelectedGamemodes());
+    }
 }
