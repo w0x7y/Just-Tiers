@@ -35,6 +35,8 @@ The lookup screen shows the skin and fills in each site as it answers. A dash me
 was reported, not that the player was never tested. Unavailable sites have a separate message. Cached placements remain visible while refreshing;
 cell tooltips show their age and whether the latest refresh was unavailable.
 You can change the name, retry, scroll results in smaller windows and navigate with the keyboard.
+Recent lookups appear as buttons for a quick recheck and in tab completion. They are kept only
+for the current game session and never saved.
 Tab list and chat names are unchanged.
 
 ## Install and configure

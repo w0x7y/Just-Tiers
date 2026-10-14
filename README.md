@@ -53,7 +53,8 @@ server. Each JAR declares its exact Minecraft target. Dependency pins are in
 
 ## Commands
 
-All commands are client-side. `/justtiers lookup` completes names from the server's tab list.
+All commands are client-side. `/justtiers lookup` completes names from the server's tab list
+and from this session's recent lookups.
 
 | Command | Action |
 |---|---|
@@ -90,6 +91,14 @@ the answer age and distinguish checking for updates from an unavailable refresh.
 it and type the command again. Smaller windows scroll the results while the search and
 Done controls remain available. Cells and leaderboard links can receive keyboard focus.
 Hover or focus a cell for its gamemode name. Links use Minecraft's browser confirmation.
+
+Recent lookups appear as buttons under the search field, most recent first. Click one, or
+focus it and press Enter or Space, to look that player up again on the same screen. The
+history keeps up to eight names that resolved to a player; a name that could not be found
+is not added. Smaller windows show fewer of the names, and very short windows leave the row
+out so the results keep room to scroll. The same names are offered by
+`/justtiers lookup` tab completion. History is kept in memory for the current game session
+only. It is never saved to disk and is empty after restarting Minecraft.
 
 Online players with account UUIDs resolve locally. Other names, including offline-mode
 server identities, are checked through Mojang. A successful name lookup is remembered
