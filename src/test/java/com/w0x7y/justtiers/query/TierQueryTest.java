@@ -5,6 +5,7 @@ import com.w0x7y.justtiers.api.TierLookupException;
 import com.w0x7y.justtiers.api.TierSource;
 import com.w0x7y.justtiers.cache.CachePolicy;
 import com.w0x7y.justtiers.cache.TierCache;
+import com.w0x7y.justtiers.config.JustTiersConfig;
 import com.w0x7y.justtiers.resolve.TierResolver;
 import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
@@ -54,6 +55,8 @@ class TierQueryTest {
         final AtomicLong clock = new AtomicLong();
         final Map<Source, Site> sites = new EnumMap<>(Source.class);
         final TierCache cache;
+        /** Default settings: nametag tiers and every site enabled. */
+        final JustTiersConfig config = new JustTiersConfig();
         final TierQuery query;
 
         Fixture(Source... registered) {
@@ -64,7 +67,7 @@ class TierQueryTest {
                 sources.add(site);
             }
             cache = new TierCache(sources, CachePolicy.DEFAULT, clock::get, () -> 0.5);
-            query = new TierQuery(() -> cache);
+            query = new TierQuery(() -> cache, () -> TierQuery.lookupSites(config.nametagSettings()));
         }
 
         Site site(Source source) { return sites.get(source); }
@@ -244,12 +247,82 @@ class TierQueryTest {
     }
 
     @Test
+    void aDisabledSiteIsDisabledAndNeverRequested() {
+        Fixture it = new Fixture(Source.PVPTIERS, Source.PVPHQ);
+        it.config.setSiteEnabled(Source.PVPHQ, false);
+
+        assertEquals(new SiteAnswer.Disabled("pvphq"), it.query.peek(PLAYER, "pvphq"));
+        assertEquals(Optional.empty(), it.query.best(PLAYER, "pvphq"));
+        Map<String, SiteAnswer> answers = it.query.peekAll(PLAYER);
+        assertEquals(new SiteAnswer.Disabled("pvphq"), answers.get("pvphq"));
+        assertEquals(new SiteAnswer.Pending("pvptiers"), answers.get("pvptiers"));
+        assertEquals(0, it.site(Source.PVPHQ).calls, "a disabled site must not be asked");
+        assertEquals(1, it.site(Source.PVPTIERS).calls, "other sites keep working");
+    }
+
+    @Test
+    void turningNametagTiersOffDisablesEverySiteEvenWithAKnownAnswer() {
+        Fixture it = new Fixture(Source.PVPTIERS, Source.PVPHQ, Source.SUBTIERS, Source.NOVATIERS);
+        it.query.peek(PLAYER, "pvptiers");
+        it.site(Source.PVPTIERS).answer(Map.of("axe", tier("HT1")));
+        it.config.setEnabled(false);
+
+        it.query.peekAll(PLAYER).forEach((site, answer) -> assertEquals(new SiteAnswer.Disabled(site), answer));
+        assertEquals(Optional.empty(), it.query.best(PLAYER, "pvptiers"), "a cached answer is not reported either");
+        it.advance(CachePolicy.DEFAULT_TTL);
+        it.query.peekAll(PLAYER);
+        assertEquals(1, it.site(Source.PVPTIERS).calls, "an expired answer is not refreshed while disabled");
+        for (Source source : List.of(Source.PVPHQ, Source.SUBTIERS, Source.NOVATIERS)) {
+            assertEquals(0, it.site(source).calls, source + " must not be asked");
+        }
+    }
+
+    @Test
+    void reEnablingRestoresNormalAnswersAndRequests() {
+        Fixture it = new Fixture(Source.PVPTIERS, Source.SUBTIERS);
+        it.config.setEnabled(false);
+        it.config.setSiteEnabled(Source.SUBTIERS, false);
+        it.query.peekAll(PLAYER);
+
+        it.config.setEnabled(true);
+        assertEquals(new SiteAnswer.Pending("pvptiers"), it.query.peek(PLAYER, "pvptiers"));
+        assertEquals(new SiteAnswer.Disabled("subtiers"), it.query.peek(PLAYER, "subtiers"),
+                "the site toggle still applies once the master switch is back on");
+        it.site(Source.PVPTIERS).answer(Map.of("pot", tier("LT2")));
+        assertEquals("LT2", it.query.best(PLAYER, "pvptiers").orElseThrow().label());
+
+        it.config.setSiteEnabled(Source.SUBTIERS, true);
+        assertEquals(new SiteAnswer.Pending("subtiers"), it.query.peek(PLAYER, "subtiers"));
+        assertEquals(1, it.site(Source.PVPTIERS).calls);
+        assertEquals(1, it.site(Source.SUBTIERS).calls);
+    }
+
+    @Test
+    void lookupSitesFollowTheMasterSwitchAndSiteToggles() {
+        JustTiersConfig config = new JustTiersConfig();
+        assertEquals(java.util.Set.copyOf(Source.ALL), TierQuery.lookupSites(config.nametagSettings()));
+        config.setSiteEnabled(Source.NOVATIERS, false);
+        assertEquals(java.util.Set.of(Source.PVPTIERS, Source.PVPHQ, Source.SUBTIERS),
+                TierQuery.lookupSites(config.nametagSettings()));
+        config.setEnabled(false);
+        assertEquals(java.util.Set.of(), TierQuery.lookupSites(config.nametagSettings()));
+    }
+
+    @Test
     void beforeInitializationEverySiteIsPendingAndNothingStarts() {
-        TierQuery query = new TierQuery(() -> null);
+        TierQuery query = new TierQuery(() -> null, () -> null);
         assertFalse(query.ready());
         assertEquals(new SiteAnswer.Pending("pvphq"), query.peek(PLAYER, "pvphq"));
         assertEquals(Optional.empty(), query.best(PLAYER, "pvphq"));
         query.peekAll(PLAYER).forEach((site, answer) -> assertEquals(new SiteAnswer.Pending(site), answer));
+
+        // The cache is created before the settings during initialization; that window is still pending.
+        Site site = new Site(Source.PVPTIERS);
+        TierCache cache = new TierCache(List.of(site));
+        TierQuery halfway = new TierQuery(() -> cache, () -> null);
+        assertFalse(halfway.ready());
+        assertEquals(new SiteAnswer.Pending("pvptiers"), halfway.peek(PLAYER, "pvptiers"));
+        assertEquals(0, site.calls);
 
         // In unit tests the client initializer never runs, so the public entry point is uninitialized.
         assertFalse(JustTiersQuery.isReady());
@@ -264,6 +337,6 @@ class TierQueryTest {
         assertEquals(1, JustTiersQuery.API_VERSION);
         assertEquals(Source.PVPHQ, TierQuery.source(" PvPHQ "));
         assertThrows(IllegalArgumentException.class, () -> TierQuery.source("mctiers"));
-        assertThrows(NullPointerException.class, () -> new TierQuery(() -> null).peek(null, "pvptiers"));
+        assertThrows(NullPointerException.class, () -> new TierQuery(() -> null, () -> null).peek(null, "pvptiers"));
     }
 }

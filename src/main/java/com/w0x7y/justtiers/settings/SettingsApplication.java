@@ -12,7 +12,8 @@ public final class SettingsApplication {
     private final Path path;
     private final TierCache cache;
     private final RefreshLifecycle refresh;
-    private JustTiersConfig active;
+    // Volatile publication of a finished copy lets other threads read it; it is never edited after.
+    private volatile JustTiersConfig active;
 
     public SettingsApplication(JustTiersConfig initial, Path path, TierCache cache,
                                RefreshLifecycle refresh) {

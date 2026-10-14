@@ -1,6 +1,7 @@
 package com.w0x7y.justtiers.query;
 
 import com.w0x7y.justtiers.cache.TierCache;
+import com.w0x7y.justtiers.render.model.NametagSettings;
 import com.w0x7y.justtiers.tier.Gamemode;
 import com.w0x7y.justtiers.tier.Gamemodes;
 import com.w0x7y.justtiers.tier.Source;
@@ -15,12 +16,17 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
 
 /**
- * Adapts a TierCache to the public answer types. The cache supplier returns null until the
- * mod has initialized, and every site then reads as pending without starting a request.
+ * Adapts a TierCache to the public answer types. Both suppliers return null until the mod
+ * has initialized, and every site then reads as pending without starting a request.
+ *
+ * <p>Another mod's query is an automatic lookup, not one the player asked for, so it follows
+ * the same switches as nametag lookups. {@code lookupSites} supplies the sites those switches
+ * currently allow: none while nametag tiers are off. A disabled site is never peeked.
  */
 final class TierQuery {
     static final List<String> SITE_IDS = Source.ALL.stream().map(TierQuery::siteId).toList();
@@ -30,25 +36,35 @@ final class TierQuery {
             Comparator.comparingInt(Placement::rank).thenComparing(Placement::retired);
 
     private final Supplier<TierCache> cache;
+    private final Supplier<Set<Source>> lookupSites;
 
-    TierQuery(Supplier<TierCache> cache) {
+    TierQuery(Supplier<TierCache> cache, Supplier<Set<Source>> lookupSites) {
         this.cache = cache;
+        this.lookupSites = lookupSites;
+    }
+
+    /** The sites automatic lookups may use: none while nametag tiers are off, else the toggled ones. */
+    static Set<Source> lookupSites(NametagSettings settings) {
+        return settings.enabled() ? settings.enabledSources() : Set.of();
     }
 
     boolean ready() {
-        return cache.get() != null;
+        return cache.get() != null && lookupSites.get() != null;
     }
 
     SiteAnswer peek(UUID player, String siteId) {
         Objects.requireNonNull(player, "player");
-        return peek(cache.get(), player, source(siteId));
+        Source source = source(siteId);
+        return peek(cache.get(), lookupSites.get(), player, source);
     }
 
     Map<String, SiteAnswer> peekAll(UUID player) {
         Objects.requireNonNull(player, "player");
+        // One reading of each supplier keeps every site's answer on the same settings.
         TierCache live = cache.get();
+        Set<Source> allowed = lookupSites.get();
         Map<String, SiteAnswer> answers = new LinkedHashMap<>();
-        for (Source source : Source.ALL) answers.put(siteId(source), peek(live, player, source));
+        for (Source source : Source.ALL) answers.put(siteId(source), peek(live, allowed, player, source));
         return Collections.unmodifiableMap(answers);
     }
 
@@ -56,8 +72,9 @@ final class TierQuery {
         return peek(player, siteId) instanceof SiteAnswer.Ranked ranked ? Optional.of(ranked.best()) : Optional.empty();
     }
 
-    private static SiteAnswer peek(TierCache live, UUID player, Source source) {
-        if (live == null) return new SiteAnswer.Pending(siteId(source));
+    private static SiteAnswer peek(TierCache live, Set<Source> allowed, UUID player, Source source) {
+        if (live == null || allowed == null) return new SiteAnswer.Pending(siteId(source));
+        if (!allowed.contains(source)) return new SiteAnswer.Disabled(siteId(source));
         // peek admits a request on a miss; observe then reads that one entry without side effects.
         live.peek(source, player);
         return answer(source, live.observe(source, player));

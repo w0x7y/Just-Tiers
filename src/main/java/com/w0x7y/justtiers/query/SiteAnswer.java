@@ -5,14 +5,23 @@ import java.util.Objects;
 
 /**
  * One site's current answer about one player. Only {@link Unranked} and {@link Ranked}
- * are evidence about the player's standing on that site. A pending or unavailable site
- * says nothing about whether the player is ranked, and must not be shown as unranked.
+ * are evidence about the player's standing on that site. A disabled, pending or unavailable
+ * site says nothing about whether the player is ranked, and must not be shown as unranked.
  * One site's answer says nothing about another site.
  */
 public sealed interface SiteAnswer {
 
     /** The site's stable lowercase id, one of {@link JustTiersQuery#SITE_IDS}. */
     String siteId();
+
+    /**
+     * The player has turned off nametag tiers or this site's toggle, so Just-Tiers makes no
+     * automatic lookup for it and reports nothing it may already know. Show no tier for the
+     * site; this is the player's choice, not a failure. It lasts until they turn it back on.
+     */
+    record Disabled(String siteId) implements SiteAnswer {
+        public Disabled { Objects.requireNonNull(siteId, "siteId"); }
+    }
 
     /**
      * No answer is known yet, and a request is queued or in flight. Also returned for every
@@ -42,7 +51,7 @@ public sealed interface SiteAnswer {
     /**
      * The site answered successfully with at least one placement. Placements are sorted best
      * first: by rank, then active before retired, then in the site's gamemode order. Retired
-     * placements are included regardless of the user's nametag settings.
+     * placements are included even when the player hides retired tiers in nametags.
      */
     record Ranked(String siteId, List<Placement> placements, Freshness freshness) implements SiteAnswer {
         public Ranked {

@@ -49,6 +49,7 @@ import com.w0x7y.justtiers.query.SiteAnswer;
 
 String describe(UUID player) {
     return switch (JustTiersQuery.peek(player, "pvptiers")) {
+        case SiteAnswer.Disabled disabled -> "";
         case SiteAnswer.Pending pending -> "checking";
         case SiteAnswer.Unavailable unavailable -> "PvPTiers unavailable";
         case SiteAnswer.Unranked unranked -> "unranked";
@@ -74,18 +75,34 @@ matters.
 
 ## Answer cases
 
-`SiteAnswer` is a sealed interface with exactly four cases. Only `Unranked` and `Ranked`
+`SiteAnswer` is a sealed interface with exactly five cases. Only `Unranked` and `Ranked`
 are evidence about the player's standing on that site.
 
 | Case | Meaning |
 |---|---|
+| `Disabled` | The player has turned off nametag tiers or this site's toggle. Just-Tiers makes no request and reports nothing it already knows. |
 | `Pending` | No answer yet; a request is queued or in flight. Also every site before Just-Tiers initializes. |
 | `Unavailable` | No answer, and none is being fetched. The site failed or is paused, a server cooldown applies, the player is backing off after a failure, or the request was deferred. A later peek can retry. |
 | `Unranked` | The site answered successfully with no placement this build recognizes. HTTP 404 from PvPTiers, PvPHQ and SubTiers counts as unranked. |
 | `Ranked` | The site answered successfully with at least one placement. |
 
-Do not present `Pending` or `Unavailable` as unranked. One site's answer says nothing
-about another site; they are independent competitions.
+Do not present `Disabled`, `Pending` or `Unavailable` as unranked. One site's answer says
+nothing about another site; they are independent competitions.
+
+### Respecting the player's settings
+
+Just-Tiers promises players that turning off nametag tiers, or one site's toggle, stops
+automatic lookups. A query from your mod is automatic: the player did not ask for it. It
+therefore follows the same switches. While nametag tiers are off, every site is
+`Disabled`. While only a site's toggle is off, that site is `Disabled` and the others
+answer normally. A disabled site starts no request, even when an answer is cached or has
+expired. Answers return to normal on the next peek after the player turns the setting
+back on.
+
+Show nothing for a `Disabled` site, as a nametag does. It is the player's choice, not an
+error, so do not show a failure, retry or present it as unranked. If your mod has a
+settings or status screen, you may explain that Just-Tiers' site is turned off there.
+Do not change Just-Tiers' settings on the player's behalf.
 
 A previous answer stays `Ranked` or `Unranked` while it is being refreshed, and after a
 refresh fails, for up to six hours beyond the user's cache interval. Its `Freshness`
@@ -117,14 +134,16 @@ nametag shows for that site when retired tiers are shown and no selected gamemod
 for low. HT1 is 0, MT1 is 1, LT1 is 2, HT2 is 3, and LT5 is 14. Only PvPHQ reports middle
 divisions, so MT3 ranks between HT3 and LT3. Retirement does not change the rank.
 
-Answers include every recognized placement regardless of the user's nametag settings,
-site toggles, selected gamemodes or retired-tier setting. Placements in a gamemode this
+An enabled site's answer includes every recognized placement regardless of the player's
+selected gamemodes, retired-tier setting or badge appearance. Placements in a gamemode this
 Just-Tiers build does not recognize are omitted, as they are on the lookup screen.
 
 ## Threads and timing
 
-Every method is thread-safe, may be called from any thread and never blocks. Just-Tiers
-itself reads tiers on the client thread, which is the expected caller. Each answer is a
+Every method is thread-safe, may be called from any thread and never blocks. The cache and
+the active settings are read through volatile references, and published settings are not
+modified afterwards. Just-Tiers itself reads tiers on the client thread, which is the
+expected caller. A settings change applies from the next peek. Each answer is a
 snapshot that can become outdated as soon as it is returned. There is no listener or
 future: peek again on a later frame or tick.
 
@@ -134,13 +153,14 @@ unspecified order, so do not treat a pending answer during startup as final.
 
 ## Network consequences
 
-A peek behaves like a nametag reading the cache. On a missing or expired answer, it can
-start an asynchronous request:
+A peek behaves like a nametag reading the cache. For an enabled site, on a missing or
+expired answer, it can start an asynchronous request:
 
 - PvPTiers, PvPHQ and SubTiers receive the player's account UUID.
 - NovaTiers is read from its bulk index. A peek can start that download if no index is
   loaded; the request has no per-player identifier.
-- Requests happen even when the user has disabled nametag tiers or that site's toggle.
+- No request is made for a `Disabled` site. NovaTiers' startup, scheduled and requested
+  bulk downloads continue independently of these switches, as they do without the API.
 
 Repeated peeks for one player share a pending request, and fresh answers are not requested
 again. API requests share each site's limits, retry delays, pauses and Retry-After
