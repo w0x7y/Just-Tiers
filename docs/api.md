@@ -1,8 +1,8 @@
 # Tier-query API for other mods
 
 Other Fabric client mods can read the tiers Just-Tiers knows about a player through
-`com.w0x7y.justtiers.query.JustTiersQuery`. This page describes API version 1, added after
-Just-Tiers 1.1.7.
+`com.w0x7y.justtiers.query.JustTiersQuery`. This page describes API version 1, added in
+Just-Tiers 1.2.0.
 
 The `query` package is the only supported surface. Its types hold standard Java values
 and UUIDs, with no Minecraft types. Every other Just-Tiers package, including
