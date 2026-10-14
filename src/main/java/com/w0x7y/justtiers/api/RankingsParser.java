@@ -9,7 +9,6 @@ import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
 
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * Parses the shared PvPTiers/SubTiers rankings map:
@@ -40,7 +39,6 @@ public final class RankingsParser {
             throw new TierLookupException("Malformed rankings response", e);
         }
 
-        int refusedKeys = 0;
         for (Map.Entry<String, JsonElement> entry : root.entrySet()) {
             if (!entry.getValue().isJsonObject()) {
                 continue;
@@ -55,19 +53,14 @@ public final class RankingsParser {
                 if (tier < 1 || tier > 5 || (pos != 0 && pos != 1)) {
                     continue;
                 }
-                Optional<String> slug = DiscoveredGamemodes.profileSlug(entry.getKey());
-                if (slug.isEmpty()) {
-                    refusedKeys++;
-                    continue;
-                }
-                result.offer(slug.get(), Tier.fromRanking(tier, pos, retired));
+                result.offerKey(entry.getKey(), Tier.fromRanking(tier, pos, retired));
             } catch (RuntimeException e) {
                 // A single bad gamemode entry must never sink the whole profile.
                 JustTiers.LOGGER.warn("Skipping unparseable ranking '{}'", entry.getKey(), e);
             }
         }
         Map<String, Tier> tiers = result.tiers();
-        int refused = refusedKeys + result.refused();
+        int refused = result.refused();
         if (refused > 0) {
             JustTiers.LOGGER.warn("{} rankings refused {} placements with unacceptable or excess gamemode keys",
                     source, refused);

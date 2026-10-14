@@ -67,16 +67,21 @@ public final class Gamemodes {
             Stream.of(PVPTIERS, PVPHQ, SUBTIERS, NOVATIERS).flatMap(List::stream).toList();
 
     /**
-     * Maps a squashed NovaTiers key to our slug. Every slug maps to itself; listed here
-     * are only the historical spellings that do not, mirroring the alias table in
-     * novatiers.com/js/script.js so old key spellings keep resolving.
+     * Payload keys a source still sends for a registered gamemode it names differently.
+     * Each key is in the form the source's slug policy produces before aliasing: PvPHQ's
+     * lowercased gametype and NovaTiers' squashed display name. Every slug maps to itself;
+     * listed here are only the spellings that do not.
      */
-    private static final Map<String, String> NOVA_ALIASES = Map.of(
-            "spear", "elytraspear",
-            "elytrasword", "elytraspear",
-            "mace", "spearmace",
-            "spearmacekit", "spearmace",
-            "modern", "modernsmp");
+    private static final Map<Source, Map<String, String>> ALIASES = Map.of(
+            // Profile responses still use ht_cart while metadata calls it cart.
+            Source.PVPHQ, Map.of("ht_cart", "cart"),
+            // Mirrors the alias table in novatiers.com/js/script.js so old key spellings keep resolving.
+            Source.NOVATIERS, Map.of(
+                    "spear", "elytraspear",
+                    "elytrasword", "elytraspear",
+                    "mace", "spearmace",
+                    "spearmacekit", "spearmace",
+                    "modern", "modernsmp"));
 
     private static final Set<String> NOVA_SLUGS =
             NOVATIERS.stream().map(Gamemode::slug).collect(Collectors.toUnmodifiableSet());
@@ -131,6 +136,11 @@ public final class Gamemodes {
         return find(gamemode.source(), gamemode.slug()).filter(gamemode::equals).isPresent();
     }
 
+    /** The slug a source's historical key now names, or the key itself when it has no alias. */
+    public static String alias(Source source, String key) {
+        return ALIASES.getOrDefault(source, Map.of()).getOrDefault(key, key);
+    }
+
     /** "Spear Mace" / "spear_mace" / "SPEARMACE" all collapse to "spearmace". */
     public static Optional<String> normaliseNovaKey(String apiKey) {
         if (apiKey == null || apiKey.isBlank()) {
@@ -140,7 +150,7 @@ public final class Gamemodes {
         if (NOVA_SLUGS.contains(squashed)) {
             return Optional.of(squashed);
         }
-        return Optional.ofNullable(NOVA_ALIASES.get(squashed));
+        return Optional.ofNullable(ALIASES.get(Source.NOVATIERS).get(squashed));
     }
 
     private Gamemodes() {

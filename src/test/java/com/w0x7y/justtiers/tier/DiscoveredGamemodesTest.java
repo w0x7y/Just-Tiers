@@ -107,4 +107,57 @@ class DiscoveredGamemodesTest {
         assertEquals(2, collector.refused());
         assertThrows(UnsupportedOperationException.class, () -> tiers.put("x", HT1));
     }
+
+    @Test
+    void eachSourceAppliesItsOwnSlugPolicyAndAliases() {
+        assertEquals(Optional.of("cart"), DiscoveredGamemodes.slug(Source.PVPHQ, " HT_Cart "));
+        assertEquals(Optional.of("ht_cart"), DiscoveredGamemodes.slug(Source.PVPTIERS, "ht_cart"),
+                "PvPHQ's alias belongs to PvPHQ alone");
+        assertEquals(Optional.of("spearmace"), DiscoveredGamemodes.slug(Source.NOVATIERS, "Spear Mace Kit"));
+        assertEquals(Optional.of("quake_pro"), DiscoveredGamemodes.slug(Source.NOVATIERS, "Quake Pro"));
+        assertEquals(Optional.empty(), DiscoveredGamemodes.slug(Source.SUBTIERS, "Quake Pro"),
+                "profile keys are not spaced display names");
+        assertEquals("cart", Gamemodes.alias(Source.PVPHQ, "ht_cart"));
+        assertEquals("elytraspear", Gamemodes.alias(Source.NOVATIERS, "spear"));
+        assertEquals("spear", Gamemodes.alias(Source.PVPHQ, "spear"));
+    }
+
+    @Test
+    void offeringARawKeyReturnsTheAdmittedAliasedSlug() {
+        DiscoveredGamemodes.Collector pvphq = new DiscoveredGamemodes.Collector(Source.PVPHQ);
+        assertEquals(Optional.of("cart"), pvphq.offerKey("ht_cart", HT1));
+        assertEquals(Optional.of("cart"), pvphq.offerKey("Cart", new Tier(5, false, false)),
+                "an aliased and a direct key name the same gamemode; the first placement wins");
+        assertEquals(Optional.of("bed_wars"), pvphq.offerKey(" Bed_Wars ", HT1));
+        assertEquals(Map.of("cart", HT1, "bed_wars", HT1), pvphq.tiers());
+        assertEquals(1, pvphq.discovered());
+        assertEquals(0, pvphq.refused());
+
+        DiscoveredGamemodes.Collector nova = new DiscoveredGamemodes.Collector(Source.NOVATIERS);
+        assertEquals(Optional.of("modernsmp"), nova.offerKey("Modern", HT1));
+        assertEquals(Map.of("modernsmp", HT1), nova.tiers());
+    }
+
+    @Test
+    void theCollectorCountsEveryRefusalOnce() {
+        DiscoveredGamemodes.Collector collector = new DiscoveredGamemodes.Collector(Source.SUBTIERS);
+        assertEquals(Optional.empty(), collector.offerKey("bed wars", HT1), "an unacceptable key");
+        assertEquals(1, collector.refused());
+        assertEquals(Optional.empty(), collector.acceptKey(null));
+        assertEquals(2, collector.refused());
+
+        assertEquals(Optional.of("quake"), collector.acceptKey("Quake"));
+        assertEquals(2, collector.refused(), "an acceptable key is not a refusal");
+        assertTrue(collector.tiers().isEmpty(), "accepting a key places nothing");
+        assertEquals(0, collector.discovered());
+
+        for (int i = 0; i < DiscoveredGamemodes.MAX_PER_ANSWER; i++) {
+            assertEquals(Optional.of("mode" + i), collector.offerKey("Mode" + i, HT1));
+        }
+        assertEquals(Optional.empty(), collector.offerKey("one_too_many", HT1), "over the cap");
+        assertEquals(3, collector.refused());
+        assertEquals(Optional.of("bow"), collector.offerKey("BOW", HT1), "registered gamemodes pass the cap");
+        assertEquals(3, collector.refused());
+        assertEquals(DiscoveredGamemodes.MAX_PER_ANSWER + 1, collector.tiers().size());
+    }
 }
