@@ -90,12 +90,76 @@ class NovaParserTest {
     }
 
     @Test
-    void unknownGamemodeKeysAreDropped() {
+    void unknownGamemodeKeysBecomeDiscoveredSlugsThatKeepTheirWords() {
         String json = """
                 [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504",
-                  "tiers":{"Axe":"HT2","Quake Pro":"HT1"},"retiredTiers":{}}]
+                  "tiers":{"Axe":"HT2","Quake Pro":"HT1"},"retiredTiers":{"Quake Pro":true}}]
                 """;
-        assertEquals(java.util.Set.of("axe"), NovaParser.parseUsers(json).get(X_SUS).keySet());
+        Map<String, Tier> tiers = NovaParser.parseUsers(json).get(X_SUS);
+        assertEquals(java.util.Set.of("axe", "quake_pro"), tiers.keySet());
+        assertEquals("RHT1", tiers.get("quake_pro").label());
+    }
+
+    @Test
+    void unacceptableGamemodeKeysAreDroppedWithoutRejectingTheRestOfThePlayer() {
+        String json = """
+                [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504",
+                  "tiers":{"Axe":"HT2","<b>Bold</b>":"HT1","%s":"HT1"}}]
+                """.formatted("x".repeat(33));
+        NovaParser.ParsedIndex parsed = NovaParser.parseUsersDetailed(json);
+        assertEquals(java.util.Set.of("axe"), parsed.users().get(X_SUS).keySet());
+        assertTrue(parsed.rejectedPlayers().isEmpty());
+        assertEquals(2, parsed.unknownGamemodes());
+        assertEquals(0, parsed.malformedPlacements());
+    }
+
+    /**
+     * Placements under refused keys are no evidence about the player, so a record made
+     * only of them is unavailable rather than unranked. A payload made only of such
+     * records is not a valid leaderboard at all.
+     */
+    @Test
+    void aPlayerListedOnlyUnderRefusedKeysIsRejectedNotUnranked() {
+        String json = """
+                [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504","tiers":{"<b>Bold</b>":"HT1"}},
+                 {"minecraftUuid":"dadd05d5-e1a2-41bc-be3e-de5f7d9fffee","tiers":{"Axe":"LT2"}}]
+                """;
+        NovaParser.ParsedIndex parsed = NovaParser.parseUsersDetailed(json);
+        assertEquals(java.util.Set.of(X_SUS), parsed.rejectedPlayers());
+        assertFalse(parsed.users().containsKey(X_SUS));
+        assertThrows(TierLookupException.class, () -> NovaParser.parseUsers("""
+                [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504","tiers":{"<b>Bold</b>":"HT1"}}]
+                """));
+    }
+
+    @Test
+    void aPlayerListedOnlyInDiscoveredGamemodesIsRanked() {
+        String json = """
+                [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504","tiers":{"Future Mode":"LT2"}}]
+                """;
+        NovaParser.ParsedIndex parsed = NovaParser.parseUsersDetailed(json);
+        assertEquals(Map.of("future_mode", new Tier(2, false, false)), parsed.users().get(X_SUS));
+        assertTrue(parsed.rejectedPlayers().isEmpty());
+    }
+
+    @Test
+    void discoveredGamemodesAreCappedPerPlayerWhileRegisteredOnesAreKept() {
+        StringBuilder modes = new StringBuilder();
+        for (int i = 0; i < 20; i++) {
+            modes.append("\"Mode ").append((char) ('a' + i)).append("\":\"HT3\",");
+        }
+        String json = """
+                [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504","tiers":{%s"Axe":"LT1"}}]
+                """.formatted(modes);
+        NovaParser.ParsedIndex parsed = NovaParser.parseUsersDetailed(json);
+        Map<String, Tier> tiers = parsed.users().get(X_SUS);
+        assertEquals(17, tiers.size());
+        assertTrue(tiers.containsKey("axe"));
+        assertTrue(tiers.containsKey("mode_a"));
+        assertTrue(tiers.containsKey("mode_p"), "the sixteenth in payload order");
+        assertFalse(tiers.containsKey("mode_q"));
+        assertEquals(4, parsed.unknownGamemodes());
+        assertTrue(parsed.rejectedPlayers().isEmpty());
     }
 
     @Test
@@ -165,8 +229,9 @@ class NovaParserTest {
         assertEquals(java.util.Set.of(SIGEON), parsed.rejectedPlayers());
         assertEquals(3, parsed.malformedUsers());
         assertEquals(1, parsed.malformedPlacements());
-        assertEquals(1, parsed.unknownGamemodes());
+        assertEquals(0, parsed.unknownGamemodes());
         assertEquals("HT2", parsed.users().get(X_SUS).get("axe").label());
+        assertEquals("HT1", parsed.users().get(X_SUS).get("new_mode").label());
         // The compatibility map still preserves understood placements for existing callers.
         assertEquals("LT3", NovaParser.parseUsers(body).get(SIGEON).get("axe").label());
     }
@@ -180,17 +245,17 @@ class NovaParserTest {
     }
 
     @Test
-    void validUnknownModesAndEmptyTierMapsDoNotRejectPlayers() {
+    void discoveredModesAndEmptyTierMapsDoNotRejectPlayers() {
         String body = """
                 [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504","tiers":{"Future Mode":"HT1"}},
                  {"minecraftUuid":"dadd05d5-e1a2-41bc-be3e-de5f7d9fffee","tiers":{}}]
                 """;
         NovaParser.ParsedIndex parsed = NovaParser.parseUsersDetailed(body);
-        assertTrue(parsed.users().isEmpty());
+        assertEquals(java.util.Set.of(X_SUS), parsed.users().keySet());
         assertTrue(parsed.rejectedPlayers().isEmpty());
         assertEquals(0, parsed.malformedUsers());
         assertEquals(0, parsed.malformedPlacements());
-        assertEquals(1, parsed.unknownGamemodes());
+        assertEquals(0, parsed.unknownGamemodes());
     }
 
     @Test

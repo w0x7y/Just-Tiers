@@ -88,7 +88,10 @@ Preserve these distinctions when changing API or cache code:
 
 - PvPTiers/PvPHQ/SubTiers HTTP 404 and valid empty payloads mean unranked and may be cached.
 - Unexpected statuses, transport failures and malformed or wholly unrecognized payloads
-  fail the lookup. A malformed HTTP 200 is not a successful empty answer.
+  fail the lookup. A malformed HTTP 200 is not a successful empty answer. Placements in
+  unregistered gamemodes with acceptable slugs are recognized; a payload whose only
+  placements use refused keys is wholly unrecognized. A NovaTiers player listed only
+  under refused keys is rejected, not unranked.
 - The per-player Backoff and per-site SiteGate limit retries independently.
 - Publish a completed result after its bookkeeping is settled. Never infer that joining
   a future is safe merely because an earlier exceptional-state check returned false.
@@ -140,7 +143,15 @@ only place that names this font, and applies it only to the single glyph. Put th
 and its text label under separate children of Component.empty so labels retain a text font.
 Preserve Segment.icon when recoloring with Segment.withColor or Badge.recolor.
 
+Gamemodes a site reports that are not registered become discovered gamemodes through
+`tier/DiscoveredGamemodes`: sanitized slug, derived display name, empty `Gamemode.icon`
+and a per-answer cap. Parsers admit them; `TierResolver.highestOn` and `LookupReport`
+include them after registered gamemodes. Settings, pickers and `/justtiers gamemode`
+stay registry-only through `Gamemodes.find`. Use `Icons.of(Gamemode)` so an absent glyph
+never reaches the icon font, and do not invent a placeholder codepoint.
+
 Adding a gamemode updates the Java registry, tools/gen_font_provider.py and its texture.
+Registering a previously discovered slug needs no data migration.
 Run the generator, then `./gradlew check`; the resource contract checks glyph identities,
 provider counts and readable packaged textures. The generator binds existing artwork.
 The old NovaTiers artwork generator was removed because it overwrote the current artwork.

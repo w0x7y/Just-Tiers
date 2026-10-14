@@ -20,12 +20,22 @@ public record NametagSettings(boolean enabled,
                               Set<Source> enabledSources,
                               Map<Source, String> selectedGamemodes,
                               boolean showRetired,
-                              NametagStyle style) {
+                              NametagStyle style,
+                              boolean preferSelected) {
 
     public NametagSettings {
         enabledSources = Set.copyOf(enabledSources);
         selectedGamemodes = Map.copyOf(selectedGamemodes);
         style = style == null ? NametagStyle.DEFAULT : style;
+    }
+
+    /** Settings where several enabled sites each show their best tier. */
+    public NametagSettings(boolean enabled,
+                           Set<Source> enabledSources,
+                           Map<Source, String> selectedGamemodes,
+                           boolean showRetired,
+                           NametagStyle style) {
+        this(enabled, enabledSources, selectedGamemodes, showRetired, style, false);
     }
 
     /**
@@ -36,7 +46,8 @@ public record NametagSettings(boolean enabled,
         Map<Source, String> swapped = new EnumMap<>(Source.class);
         swapped.putAll(selectedGamemodes);
         swapped.put(source, slug);
-        return new NametagSettings(enabled, enabledSources, swapped, showRetired, style);
+        return new NametagSettings(enabled, enabledSources, swapped, showRetired, style,
+                preferSelected);
     }
 
     /**
@@ -45,6 +56,7 @@ public record NametagSettings(boolean enabled,
      * animated tag out of a record that holds no clock of its own.
      */
     public Badge previewBadge(long timeMillis) {
-        return Badge.preview(enabledSources, selectedGamemodes, showRetired, timeMillis, style);
+        return Badge.preview(enabledSources, selectedGamemodes, showRetired, preferSelected,
+                timeMillis, style);
     }
 }

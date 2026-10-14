@@ -1,6 +1,7 @@
 package com.w0x7y.justtiers.api;
 
 import com.google.gson.JsonParser;
+import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
 
 import java.util.Map;
@@ -14,7 +15,7 @@ public final class PvpTiersParser {
             if (rankings == null || !rankings.isJsonObject()) {
                 throw new TierLookupException("PvPTiers profile must contain a rankings object");
             }
-            return RankingsParser.parseRankings(rankings.toString());
+            return RankingsParser.parseRankings(Source.PVPTIERS, rankings.toString());
         } catch (RuntimeException error) {
             throw new TierLookupException("Malformed PvPTiers profile", error);
         }

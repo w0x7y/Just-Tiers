@@ -46,6 +46,7 @@ public class JustTiersConfig {
     private boolean showRetired = true;
     private Map<String, Boolean> enabledSites = new HashMap<>();
     private Map<String, String> selectedGamemodes = new HashMap<>();
+    private boolean preferSelectedGamemodes = false;
     private int novaRefreshMinutes = 30;
     private boolean showDownloadProgress = true;
     private int tierCacheMinutes = 60;
@@ -101,6 +102,19 @@ public class JustTiersConfig {
         if (enabledSites == null) enabledSites = new HashMap<>();
         enabledSites.put(source.name(), enabled);
         resolvedEnabledSources = null;
+        resolvedNametagSettings = null;
+    }
+
+    /**
+     * Whether several enabled sites each prefer their selected gamemode, falling back to
+     * that site's best tier. A single enabled site always prefers its selection.
+     */
+    public boolean isPreferSelectedGamemodes() {
+        return preferSelectedGamemodes;
+    }
+
+    public void setPreferSelectedGamemodes(boolean preferSelectedGamemodes) {
+        this.preferSelectedGamemodes = preferSelectedGamemodes;
         resolvedNametagSettings = null;
     }
 
@@ -253,7 +267,7 @@ public class JustTiersConfig {
         NametagSettings cached = resolvedNametagSettings;
         if (cached != null) return cached;
         cached = new NametagSettings(enabled, enabledSources(), selectedGamemodesBySource(),
-                showRetired, nametagStyle());
+                showRetired, nametagStyle(), preferSelectedGamemodes);
         resolvedNametagSettings = cached;
         return cached;
     }

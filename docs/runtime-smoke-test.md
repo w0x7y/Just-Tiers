@@ -156,6 +156,11 @@ on PATH or through JAVA_HOME.
   and custom colors under a preset. They must explain the current restriction.
 - Toggle each site individually, then try PvPTiers + PvPHQ and all sites disabled.
   Check the preview and saved nametags. The old mode selector must be absent.
+- With several sites enabled, turn on Prefer selected gamemodes. Every enabled site's picker
+  must become available before Save, and the preview must show the selections. Check a
+  ranked selection and fallback from an unranked one on world nametags. With one site
+  enabled, the option must be greyed with an explanation. Run `/justtiers preferselected`
+  and `/justtiers gamemode <site> <slug>` and confirm chat feedback and nametags.
 - Change position, palette, own-badge and icons. Preview must reflect pending values. Cancel
   must preserve live settings and the file; Undo restores pending changes. Save must persist
   and survive reopening and restart.
@@ -186,6 +191,11 @@ on PATH or through JAVA_HOME.
   with fewer recent names shown if needed. `/justtiers lookup` tab completion must offer
   recent names alongside online names without duplicates. After restarting Minecraft the
   history must be empty, and `config/` must contain no saved names.
+- With a real or controlled answer containing a gamemode this build does not register,
+  confirm its cell follows the fixed cells and shows a letter in ordinary text, never a
+  missing-glyph box. Its tooltip and narration name it and say it is not recognized yet.
+  The row's extra cells must keep the focused control when they appear and scroll into view
+  at 320×240. A nametag whose best tier is in that gamemode shows the tier without an icon.
 - With a real or controlled site failure, confirm unavailable rows are distinct from empty
   placements. After recovery, retry should update them. Skin/profile failure should leave
   tiers usable with a default skin, and a later retry should attempt the skin again.

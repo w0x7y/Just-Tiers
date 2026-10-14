@@ -297,6 +297,110 @@ class LookupLayoutTest {
         assertTrue(Math.abs(above - below) <= 1, above + " above, " + below + " below");
     }
 
+    // --- discovered gamemodes add cells after the registered ones ---
+
+    /** Registry counts plus the most discovered cells one answer can add, on every site. */
+    private static LookupMetrics withDiscovered(int screenWidth, int screenHeight) {
+        return new LookupMetrics(screenWidth, screenHeight, 9, 14, 48, 44, 14,
+                com.w0x7y.justtiers.tier.Source.ALL.stream()
+                        .map(source -> com.w0x7y.justtiers.tier.Gamemodes.of(source).size()
+                                + com.w0x7y.justtiers.tier.DiscoveredGamemodes.MAX_PER_ANSWER)
+                        .toList());
+    }
+
+    @Test
+    void theMostDiscoveredCellsStillFitAndScrollAtTheSmallestGui() {
+        for (int[] size : new int[][]{{320, 240}, {427, 240}, {854, 480}}) {
+            LookupLayout layout = LookupLayout.of(withDiscovered(size[0], size[1]));
+            String screen = size[0] + "x" + size[1];
+
+            assertTrue(layout.panelX() >= LookupLayout.SCREEN_MARGIN, screen);
+            assertTrue(layout.panelRight() <= size[0] - LookupLayout.SCREEN_MARGIN, screen);
+            assertTrue(layout.panelY() >= LookupLayout.SEARCH_BOTTOM, screen);
+            assertTrue(layout.doneButtonY() + LookupLayout.BUTTON_HEIGHT <= size[1] - LookupLayout.SCREEN_MARGIN,
+                    screen);
+            assertEquals(layout.footerY() + 9 + LookupLayout.PANEL_PADDING, layout.panelBottom(), screen);
+
+            for (LookupLayout.Row row : layout.rows()) {
+                for (int i = 0; i < row.grid().itemCount(); i++) {
+                    assertTrue(row.cellX(i) >= row.x() && row.cellX(i) + 44 <= row.x() + row.width(),
+                            screen + " cell " + i);
+                    assertTrue(row.cellY(i) >= row.y() && row.cellY(i) + 14 <= row.y() + row.height(),
+                            screen + " cell " + i);
+                }
+            }
+            for (int i = 1; i < layout.rows().size(); i++) {
+                LookupLayout.Row above = layout.rows().get(i - 1);
+                assertTrue(above.y() + above.height() <= layout.rows().get(i).y(), screen + " row " + i);
+            }
+        }
+    }
+
+    @Test
+    void scrollingRevealsTheLastDiscoveredCellAndTheFooterAt320x240() {
+        LookupLayout layout = LookupLayout.of(withDiscovered(320, 240));
+        assertTrue(layout.maxScroll() > 0);
+
+        for (LookupLayout.Row row : layout.rows()) {
+            int last = row.grid().itemCount() - 1;
+            int scroll = layout.scrollTo(row.cellY(last), 14, 0);
+            assertTrue(row.cellY(last) - scroll >= layout.panelY());
+            assertTrue(row.cellY(last) - scroll + 14 <= layout.viewportBottom());
+        }
+        int footerScroll = layout.scrollTo(layout.footerY(), 9, 0);
+        assertTrue(layout.footerY() - footerScroll + 9 <= layout.viewportBottom());
+    }
+
+    /**
+     * The history strip and the most discovered cells together: the strip keeps its line,
+     * search and Done stay on screen, and every cell can still be scrolled into view.
+     */
+    @Test
+    void theHistoryStripAndTheMostDiscoveredCellsTogetherKeepSearchAndDoneReachable() {
+        List<Integer> widestNames = Collections.nCopies(8, WIDEST_NAME);
+        for (int[] size : new int[][]{{320, 240}, {427, 240}, {480, 270}}) {
+            String screen = size[0] + "x" + size[1];
+            LookupLayout layout = LookupLayout.of(withDiscovered(size[0], size[1]));
+
+            assertTrue(layout.showsHistory(), screen);
+            assertTrue(layout.historyY() >= layout.searchY() + LookupLayout.BUTTON_HEIGHT, screen);
+            assertTrue(layout.historyY() + LookupLayout.HISTORY_HEIGHT < layout.panelY(), screen);
+            assertTrue(layout.panelY() >= LookupLayout.HISTORY_BOTTOM, screen);
+            assertTrue(layout.viewportHeight() >= LookupLayout.MIN_VIEWPORT, screen);
+            assertTrue(layout.doneButtonY() >= layout.viewportBottom(), screen);
+            assertTrue(layout.doneButtonY() + LookupLayout.BUTTON_HEIGHT <= size[1] - LookupLayout.SCREEN_MARGIN,
+                    screen);
+            assertTrue(layout.maxScroll() > 0, screen);
+
+            HistoryStrip strip = layout.history(RECENT_LABEL, widestNames);
+            assertFalse(strip.entries().isEmpty(), screen);
+            HistoryStrip.Entry last = strip.entries().getLast();
+            assertTrue(last.x() + last.width() <= size[0] - LookupLayout.SCREEN_MARGIN, screen);
+
+            for (LookupLayout.Row row : layout.rows()) {
+                int lastCell = row.grid().itemCount() - 1;
+                int scroll = layout.scrollTo(row.cellY(lastCell), 14, 0);
+                assertTrue(row.cellY(lastCell) - scroll >= layout.panelY(), screen);
+                assertTrue(row.cellY(lastCell) - scroll + 14 <= layout.viewportBottom(), screen);
+            }
+            int footerScroll = layout.scrollTo(layout.footerY(), 9, 0);
+            assertTrue(layout.footerY() - footerScroll + 9 <= layout.viewportBottom(), screen);
+        }
+    }
+
+    @Test
+    void extraCellsWrapIntoMoreGridRowsRatherThanWideningThePanel() {
+        LookupLayout registered = layout(320, 240);
+        LookupLayout discovered = LookupLayout.of(withDiscovered(320, 240));
+
+        assertEquals(registered.panelWidth(), discovered.panelWidth());
+        for (int i = 0; i < registered.rows().size(); i++) {
+            assertTrue(discovered.rows().get(i).grid().rows() > registered.rows().get(i).grid().rows(),
+                    "row " + i);
+        }
+        assertTrue(discovered.panelHeight() > registered.panelHeight());
+    }
+
     // --- the same measurements always give the same panel ---
 
     @Test

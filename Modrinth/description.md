@@ -23,6 +23,7 @@ settings migrate automatically. Minecraft 1.21.10 joins the supported versions.
 
 - Show one site's selected gamemode, falling back to the player's best placement on that site.
 - Toggle each site independently, showing the best placement from every enabled site together.
+- Prefer each enabled site's selected gamemode instead, falling back to its best placement.
 - Use yellow for PvPTiers and gray `#D2D2D2` for PvPHQ in the default palette.
 - Display PvPHQ middle tiers such as MT3 between high and low divisions.
 - Move badges before or after names, hide icons or brackets, and hide your own badge.
@@ -56,7 +57,8 @@ A settings command that cannot save warns that its change applies only to the cu
 | `/justtiers lookup <player>` | Open a player lookup |
 | `/justtiers toggle` | Toggle nametag tiers |
 | `/justtiers site <site> [true\|false]` | Toggle or set `pvptiers`, `pvphq`, `subtiers` or `novatiers` |
-| `/justtiers gamemode <slug>` | Set the only enabled site's gamemode; tab-completion lists choices |
+| `/justtiers gamemode [site] <slug>` | Set a site's gamemode; the site is optional with one site enabled |
+| `/justtiers preferselected` | Toggle preferring every enabled site's selected gamemode |
 | `/justtiers retired` | Toggle retired tiers in nametags |
 | `/justtiers badge <before\|after>` | Move the badge |
 | `/justtiers icons` or `/justtiers brackets` | Toggle those badge decorations |
@@ -110,7 +112,9 @@ screenshots in a [GitHub issue](https://github.com/w0x7y/Just-Tiers/issues). `PA
 mod is waiting before probing a site that repeatedly failed. Diagnostics remain in English.
 
 The [README](https://github.com/w0x7y/Just-Tiers#readme) lists all 43 supported gamemodes,
-configuration fields and contributor instructions.
+configuration fields and contributor instructions. A gamemode a site adds later still shows
+its placements, with a name taken from the site and no icon, but it cannot be selected for
+nametags until a mod update adds it.
 
 ## Credits and licensing
 

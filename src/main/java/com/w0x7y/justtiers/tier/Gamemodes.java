@@ -115,6 +115,22 @@ public final class Gamemodes {
         return Optional.ofNullable(BY_SLUG.get(source).get(slug));
     }
 
+    /**
+     * The gamemode a stored slug names: the registered one when this build knows it,
+     * otherwise a discovered gamemode with a derived name and no icon. Empty when the
+     * slug could not have come through {@link DiscoveredGamemodes}' sanitizing.
+     * Settings must use {@link #find}, which only answers registered gamemodes.
+     */
+    public static Optional<Gamemode> forSlug(Source source, String slug) {
+        Optional<Gamemode> registered = find(source, slug);
+        return registered.isPresent() ? registered : DiscoveredGamemodes.of(source, slug);
+    }
+
+    /** True when this exact gamemode is in the registry rather than discovered. */
+    public static boolean isRegistered(Gamemode gamemode) {
+        return find(gamemode.source(), gamemode.slug()).filter(gamemode::equals).isPresent();
+    }
+
     /** "Spear Mace" / "spear_mace" / "SPEARMACE" all collapse to "spearmace". */
     public static Optional<String> normaliseNovaKey(String apiKey) {
         if (apiKey == null || apiKey.isBlank()) {

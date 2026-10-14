@@ -123,8 +123,8 @@ class NametagModelTest {
 
     /** PAIR's entries, spelled the way the badge spells them, with icons or without. */
     private static String entries(boolean icons) {
-        String axe = icons ? String.valueOf(mode(Source.PVPTIERS, "axe").icon()) : "";
-        String bow = icons ? String.valueOf(mode(Source.SUBTIERS, "bow").icon()) : "";
+        String axe = icons ? String.valueOf(mode(Source.PVPTIERS, "axe").icon().orElseThrow()) : "";
+        String bow = icons ? String.valueOf(mode(Source.SUBTIERS, "bow").icon().orElseThrow()) : "";
         return axe + "HT2 " + bow + "LT3";
     }
 
@@ -279,8 +279,8 @@ class NametagModelTest {
         List<Segment> segments = NametagModel.build(PAIR, NametagStyle.DEFAULT);
 
         for (Segment segment : segments) {
-            assertEquals(segment.text().equals(String.valueOf(mode(Source.PVPTIERS, "axe").icon()))
-                            || segment.text().equals(String.valueOf(mode(Source.SUBTIERS, "bow").icon())),
+            assertEquals(segment.text().equals(String.valueOf(mode(Source.PVPTIERS, "axe").icon().orElseThrow()))
+                            || segment.text().equals(String.valueOf(mode(Source.SUBTIERS, "bow").icon().orElseThrow())),
                     segment.icon(), segment.text());
         }
     }
@@ -302,6 +302,32 @@ class NametagModelTest {
         assertTrue(segments.stream()
                 .filter(segment -> segment.text().equals("HT2"))
                 .noneMatch(Segment::icon));
+    }
+
+    // --- discovered gamemodes have no glyph ---
+
+    @Test
+    void aDiscoveredGamemodeShowsItsTierWithoutAnIcon() {
+        Gamemode discovered = Gamemodes.forSlug(Source.PVPTIERS, "bed_wars").orElseThrow();
+        List<Segment> segments = NametagModel.build(List.of(
+                new ResolvedTier(discovered, new Tier(1, true, false)),
+                resolved(Source.SUBTIERS, "bow", new Tier(2, true, false))), NametagStyle.DEFAULT);
+
+        String bow = String.valueOf(mode(Source.SUBTIERS, "bow").icon().orElseThrow());
+        assertEquals("[HT1 " + bow + "HT2] ", NametagModel.plainText(segments));
+        assertEquals(List.of(bow), segments.stream().filter(Segment::icon).map(Segment::text).toList(),
+                "only the registered glyph is drawn in the icon font");
+    }
+
+    @Test
+    void aDiscoveredGamemodeKeepsItsSiteColor() {
+        Gamemode discovered = Gamemodes.forSlug(Source.NOVATIERS, "quake_pro").orElseThrow();
+        List<Segment> segments = NametagModel.build(List.of(
+                new ResolvedTier(discovered, new Tier(3, false, true))), NametagStyle.DEFAULT);
+
+        Segment label = segments.stream().filter(s -> s.text().equals("RLT3")).findFirst().orElseThrow();
+        assertEquals(NametagStyle.DEFAULT.colorOf(Source.NOVATIERS), label.color());
+        assertTrue(segments.stream().noneMatch(Segment::icon));
     }
 
     @Test
