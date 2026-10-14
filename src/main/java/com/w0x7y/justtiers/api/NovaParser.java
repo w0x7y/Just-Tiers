@@ -5,7 +5,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.w0x7y.justtiers.JustTiers;
-import com.w0x7y.justtiers.tier.Gamemodes;
+import com.w0x7y.justtiers.tier.DiscoveredGamemodes;
+import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
 
 import java.util.HashMap;
@@ -21,6 +22,13 @@ import java.util.UUID;
  * display names ("Spear Mace"), which we normalise to slugs. Retirement comes from
  * the sibling {@code retiredTiers} boolean map, with an {@code R} string prefix
  * accepted as a fallback. Peak tiers are deliberately ignored.
+ *
+ * <p>A key this build does not register becomes a discovered gamemode when its slug
+ * passes {@link DiscoveredGamemodes}' sanitizing, up to its per-player cap. Placements in
+ * discovered gamemodes are understood data, so a player listed only in them is ranked.
+ * A placement whose key is refused is dropped and counted in {@code unknownGamemodes}; a
+ * player whose every placement was refused is rejected rather than shown as unranked,
+ * because the record says nothing this build can trust about their standing.
  */
 public final class NovaParser {
 
@@ -30,6 +38,8 @@ public final class NovaParser {
      * Immutable placements and diagnostics from one bulk response. The compatibility
      * map preserves understood placements, but callers must check rejectedPlayers
      * before treating an identifiable player's answer as complete.
+     * {@code unknownGamemodes} counts placements dropped for an unacceptable gamemode key
+     * or over the discovered-gamemode cap.
      */
     public record ParsedIndex(Map<UUID, Map<String, Tier>> users, Set<UUID> rejectedPlayers,
                               int malformedUsers, int malformedPlacements, int unknownGamemodes) {
@@ -90,9 +100,10 @@ public final class NovaParser {
             JsonObject retiredMap = rawRetired != null && rawRetired.isJsonObject()
                     ? rawRetired.getAsJsonObject() : new JsonObject();
             JsonObject placements = rawPlacements.getAsJsonObject();
-            Map<String, Tier> tiers = new LinkedHashMap<>();
+            DiscoveredGamemodes.Collector tiers = new DiscoveredGamemodes.Collector(Source.NOVATIERS);
             Map<String, Tier> allPlacements = new LinkedHashMap<>();
             boolean understood = placements.isEmpty();
+            boolean anyRefused = false;
             for (Map.Entry<String, JsonElement> entry : placements.entrySet()) {
                 Optional<Tier> parsed = isString(entry.getValue())
                         ? Tier.parse(entry.getValue().getAsString()) : Optional.empty();
@@ -104,17 +115,17 @@ public final class NovaParser {
                     malformed = true;
                     continue;
                 }
-                understood = true;
                 Tier tier = parsed.get();
                 if (retirement != null && !retirement.isJsonNull()) {
                     tier = new Tier(tier.level(), tier.division(), retirement.getAsBoolean());
                 }
-                Optional<String> slug = Gamemodes.normaliseNovaKey(entry.getKey());
-                // Unknown valid gamemodes are understood wire data, even without an icon.
-                if (slug.isEmpty()) {
-                    unknownGamemodes++;
+                Optional<String> slug = DiscoveredGamemodes.novaSlug(entry.getKey());
+                if (slug.isPresent() && tiers.offer(slug.get(), tier)) {
+                    understood = true;
                 } else {
-                    tiers.putIfAbsent(slug.get(), tier);
+                    // Refused keys and placements over the cap are dropped, not malformed.
+                    unknownGamemodes++;
+                    anyRefused = true;
                 }
                 String key = slug.orElse(entry.getKey());
                 Tier previous = allPlacements.putIfAbsent(key, tier);
@@ -125,6 +136,9 @@ public final class NovaParser {
             }
             if (understood) {
                 understoodUsers++;
+            } else if (anyRefused) {
+                // Only refused placements: neither ranked nor known to be unranked.
+                rejected.add(uuid.get());
             }
             Map<String, Tier> previous = seenPlacements.putIfAbsent(uuid.get(), allPlacements);
             if (previous != null && !previous.equals(allPlacements)) {
@@ -134,8 +148,9 @@ public final class NovaParser {
                 malformedUsers++;
                 rejected.add(uuid.get());
             }
-            if (!tiers.isEmpty()) {
-                index.putIfAbsent(uuid.get(), tiers);
+            Map<String, Tier> admitted = tiers.tiers();
+            if (!admitted.isEmpty()) {
+                index.putIfAbsent(uuid.get(), admitted);
             }
         }
         if (!array.isEmpty() && understoodUsers == 0) {

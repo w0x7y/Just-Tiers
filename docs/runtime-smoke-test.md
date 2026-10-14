@@ -177,6 +177,11 @@ on PATH or through JAVA_HOME.
 - Navigate cells and leaderboard links using Tab and Shift+Tab. Focused content should scroll
   into view, show its tooltip and have useful narration. Enter opens the intended link using
   Minecraft's confirmation prompt. Escape and Done close the lookup.
+- With a real or controlled answer containing a gamemode this build does not register,
+  confirm its cell follows the fixed cells and shows a letter in ordinary text, never a
+  missing-glyph box. Its tooltip and narration name it and say it is not recognized yet.
+  The row's extra cells must keep the focused control when they appear and scroll into view
+  at 320×240. A nametag whose best tier is in that gamemode shows the tier without an icon.
 - With a real or controlled site failure, confirm unavailable rows are distinct from empty
   placements. After recovery, retry should update them. Skin/profile failure should leave
   tiers usable with a default skin, and a later retry should attempt the skin again.

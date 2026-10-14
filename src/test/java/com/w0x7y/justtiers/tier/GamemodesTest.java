@@ -23,7 +23,7 @@ class GamemodesTest {
     void everyIconCodepointIsUnique() {
         Set<Character> icons = new HashSet<>();
         for (Gamemode mode : Gamemodes.ALL) {
-            assertTrue(icons.add(mode.icon()),
+            assertTrue(icons.add(mode.icon().orElseThrow()),
                     "duplicate icon for " + mode.source() + "/" + mode.slug());
         }
     }
@@ -31,8 +31,17 @@ class GamemodesTest {
     @Test
     void iconsLiveInThePrivateUseArea() {
         for (Gamemode mode : Gamemodes.ALL) {
-            assertTrue(mode.icon() >= '\uE000' && mode.icon() <= '\uF8FF',
+            assertTrue(mode.icon().orElseThrow() >= '\uE000' && mode.icon().orElseThrow() <= '\uF8FF',
                     "icon out of PUA for " + mode.slug());
+        }
+    }
+
+    /** Discovered gamemodes are the only ones without a glyph. */
+    @Test
+    void everyRegisteredGamemodeHasAGlyphAndASanitizedSlug() {
+        for (Gamemode mode : Gamemodes.ALL) {
+            assertTrue(mode.icon().isPresent(), mode.slug());
+            assertTrue(DiscoveredGamemodes.isAcceptable(mode.slug()), mode.slug());
         }
     }
 

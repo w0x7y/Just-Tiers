@@ -33,7 +33,7 @@ class PreviewSampleTest {
     }
 
     private static String entry(Gamemode gamemode, boolean retired) {
-        return gamemode.icon() + (retired ? "RHT1" : "HT1");
+        return gamemode.icon().orElseThrow() + (retired ? "RHT1" : "HT1");
     }
 
     @Test

@@ -34,6 +34,7 @@
   "justtiers.lookup.pending": "Looking up...",
   "justtiers.lookup.unavailable": "Site unavailable. Try again.",
   "justtiers.lookup.cellUntested": "%s: no listed tier",
+  "justtiers.lookup.unrecognizedGamemode": "This version of Just-Tiers does not recognize this gamemode yet.",
   "justtiers.lookup.credit": "Tier data from",
   "justtiers.lookup.none": "No tiers listed on reachable sites.",
   "justtiers.lookup.unknown": "No Minecraft account is named '%s'.",

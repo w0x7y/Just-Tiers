@@ -1,10 +1,13 @@
 package com.w0x7y.justtiers.render;
 
 import com.w0x7y.justtiers.JustTiers;
+import com.w0x7y.justtiers.tier.Gamemode;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FontDescription;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.Identifier;
+
+import java.util.Optional;
 
 /**
  * The gamemode glyphs, and the font they live in.
@@ -33,6 +36,15 @@ public final class Icons {
     public static MutableComponent of(char icon) {
         return Component.literal(String.valueOf(icon))
                 .withStyle(style -> style.withFont(FONT));
+    }
+
+    /**
+     * A gamemode's glyph, or empty for a discovered gamemode, which has none. Nothing is
+     * built in the icon font for an absent glyph, so a caller cannot end up drawing a
+     * label or placeholder as missing-glyph boxes.
+     */
+    public static Optional<MutableComponent> of(Gamemode gamemode) {
+        return gamemode.icon().map(glyph -> of(glyph.charValue()));
     }
 
     private Icons() {

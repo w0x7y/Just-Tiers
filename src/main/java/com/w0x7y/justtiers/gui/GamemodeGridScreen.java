@@ -206,7 +206,7 @@ public final class GamemodeGridScreen extends Screen {
             graphics.outline(x, y, TILE, TILE, Colors.opaque(SiteColors.of(source)));
         }
 
-        Component icon = Icons.of(gamemode.icon());
+        Component icon = Icons.of(gamemode).orElseGet(Component::empty);
         int iconWidth = Math.round(font.width(icon) * ICON_SCALE);
         graphics.pose().pushMatrix();
         graphics.pose().translate(x + (TILE - iconWidth) / 2f, y + 16f);
