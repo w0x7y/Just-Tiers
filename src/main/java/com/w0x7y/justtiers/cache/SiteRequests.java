@@ -44,7 +44,6 @@ final class SiteRequests {
 
     private static final class Entry {
         final CompletableFuture<TierCache.CachedAnswer> future = new CompletableFuture<>();
-        final CompletableFuture<Map<String, Tier>> tiers = future.thenApply(TierCache.CachedAnswer::tiers);
         final long generation;
         volatile Answer answer;
         volatile long accessedAt;
@@ -87,8 +86,6 @@ final class SiteRequests {
         if (attempt == null || clock.getAsLong() - attempt.retryAtNanos() >= 0) request(uuid, false);
         return visibleAnswer(entries.get(uuid));
     }
-
-    CompletableFuture<Map<String, Tier>> load(UUID uuid) { return request(uuid, true).entry().tiers; }
 
     CompletableFuture<TierCache.CachedAnswer> loadAnswer(UUID uuid) {
         Request request = request(uuid, true);
@@ -230,11 +227,6 @@ final class SiteRequests {
             return Optional.empty();
         }
         return Optional.of(answer.tiers());
-    }
-
-    Optional<TierCache.CachedAnswer> cachedAnswer(UUID uuid) {
-        Entry entry = entries.get(uuid);
-        return visibleAnswer(entry).map(tiers -> snapshot(entry, !entry.future.isDone()));
     }
 
     TierCache.Observation observe(UUID uuid) {

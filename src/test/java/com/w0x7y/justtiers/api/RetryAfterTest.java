@@ -33,7 +33,7 @@ class RetryAfterTest {
             var source = new ProfileTierSource(com.w0x7y.justtiers.tier.Source.SUBTIERS,
                     java.net.http.HttpClient.newHttpClient(), "http://127.0.0.1:" + server.getAddress().getPort());
             var error = assertThrows(java.util.concurrent.ExecutionException.class,
-                    () -> source.fetch(java.util.UUID.randomUUID()).get(5, java.util.concurrent.TimeUnit.SECONDS));
+                    () -> source.fetchAnswer(java.util.UUID.randomUUID()).get(5, java.util.concurrent.TimeUnit.SECONDS));
             var cooldown = assertInstanceOf(RetryAfterException.class, error.getCause());
             assertEquals(Duration.ofSeconds(120), cooldown.delay());
         } finally { server.stop(0); }

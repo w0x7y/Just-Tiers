@@ -32,7 +32,7 @@ public final class ProfileTierSource implements TierSource {
     }
 
     @Override
-    public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) {
+    public CompletableFuture<Answer> fetchAnswer(UUID uuid) {
         HttpRequest request = JustTiers.jsonRequest(
                 baseUrl + profilePath(uuid), Duration.ofSeconds(10));
 
@@ -65,7 +65,9 @@ public final class ProfileTierSource implements TierSource {
                         JustTiers.LOGGER.warn("{} lookup failed for {}: {}",
                                 source, uuid, throwable.toString());
                     }
-                });
+                })
+                // A per-player lookup reads live data, so its placements have no earlier age.
+                .thenApply(tiers -> new Answer(tiers, Duration.ZERO, false));
     }
 
     private String profilePath(UUID uuid) {

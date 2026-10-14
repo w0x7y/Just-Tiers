@@ -1,5 +1,6 @@
 package com.w0x7y.justtiers.settings;
 
+import com.w0x7y.justtiers.api.TestSources;
 import com.w0x7y.justtiers.api.TierSource;
 import com.w0x7y.justtiers.cache.CachePolicy;
 import com.w0x7y.justtiers.cache.TierCache;
@@ -204,13 +205,10 @@ class SettingsApplicationTest {
     }
 
     private TierSource source(Source source) {
-        return new TierSource() {
-            public Source source() { return source; }
-            public CompletableFuture<Map<String, Tier>> fetch(UUID player) {
-                fetches.merge(source, 1, Integer::sum);
-                return CompletableFuture.completedFuture(Map.of());
-            }
-        };
+        return TestSources.of(source, player -> {
+            fetches.merge(source, 1, Integer::sum);
+            return CompletableFuture.completedFuture(Map.of());
+        });
     }
 
     private static final class ManualTimer implements RefreshLifecycle.Timer {

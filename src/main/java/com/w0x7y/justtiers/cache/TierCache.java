@@ -53,16 +53,16 @@ public final class TierCache {
     /** Last known placements remain visible during refresh, for a finite stale grace period. */
     public Optional<Map<String, Tier>> peek(Source source, UUID uuid) { return sites.get(source).peek(uuid); }
 
-    /** Explicit lookups share pending work and overtake queued nametag work. */
-    public CompletableFuture<Map<String, Tier>> load(Source source, UUID uuid) { return sites.get(source).load(uuid); }
-
-    /** The completed lookup carries its own response's age and revision, even after invalidation. */
+    /**
+     * Explicit lookups share pending work and overtake queued nametag work. The completed
+     * lookup carries its own response's age and revision, even after invalidation.
+     */
     public CompletableFuture<CachedAnswer> loadAnswer(Source source, UUID uuid) { return sites.get(source).loadAnswer(uuid); }
 
-    /** Observation does not start a request or consume a recovery probe. */
-    public Optional<CachedAnswer> cachedAnswer(Source source, UUID uuid) { return sites.get(source).cachedAnswer(uuid); }
-
-    /** Reads settlement and answer from one entry, without starting a request or consuming a probe. */
+    /**
+     * Reads settlement and answer from one entry, without starting a request or consuming a
+     * probe. The retained answer alone is {@code observe(source, uuid).answer()}.
+     */
     public Observation observe(Source source, UUID uuid) { return sites.get(source).observe(uuid); }
 
     public void forgetFailed(Source source, UUID uuid) { sites.get(source).forgetFailed(uuid); }

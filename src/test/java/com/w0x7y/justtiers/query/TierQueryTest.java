@@ -39,7 +39,6 @@ class TierQueryTest {
         Site(Source source) { this.source = source; }
 
         @Override public Source source() { return source; }
-        @Override public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) { throw new UnsupportedOperationException(); }
         @Override public CompletableFuture<Answer> fetchAnswer(UUID uuid) {
             calls++;
             pending = new CompletableFuture<>();

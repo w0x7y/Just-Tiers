@@ -1,5 +1,6 @@
 package com.w0x7y.justtiers.cache;
 
+import com.w0x7y.justtiers.api.TestSources;
 import com.w0x7y.justtiers.api.TierSource;
 import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
@@ -36,10 +37,10 @@ class TierCacheTest {
 
         @Override public Source source() { return source; }
 
-        @Override public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) {
+        @Override public CompletableFuture<Answer> fetchAnswer(UUID uuid) {
             calls.incrementAndGet();
             pending = new CompletableFuture<>();
-            return pending;
+            return TestSources.fresh(pending);
         }
 
         void complete() { pending.complete(result); }
@@ -170,9 +171,9 @@ class TierCacheTest {
         FakeSource fake = new FakeSource(Source.PVPTIERS, Map.of("axe", new Tier(4, false, false)));
         TierCache cache = new TierCache(List.of(fake));
 
-        CompletableFuture<Map<String, Tier>> future = cache.load(Source.PVPTIERS, PLAYER);
+        CompletableFuture<TierCache.CachedAnswer> future = cache.loadAnswer(Source.PVPTIERS, PLAYER);
         fake.complete();
-        assertEquals("LT4", future.get().get("axe").label());
+        assertEquals("LT4", future.get().tiers().get("axe").label());
     }
 
     @Test
@@ -240,10 +241,10 @@ class TierCacheTest {
         FakeSource fake = new FakeSource(Source.PVPTIERS, Map.of());
         TierCache cache = new TierCache(List.of(fake));
 
-        cache.load(Source.PVPTIERS, PLAYER);
+        cache.loadAnswer(Source.PVPTIERS, PLAYER);
         fake.pending.completeExceptionally(new RuntimeException("site down"));
 
-        assertTrue(cache.load(Source.PVPTIERS, PLAYER).isCompletedExceptionally());
+        assertTrue(cache.loadAnswer(Source.PVPTIERS, PLAYER).isCompletedExceptionally());
         assertEquals(1, fake.calls.get());
     }
 
@@ -252,11 +253,11 @@ class TierCacheTest {
         FakeSource fake = new FakeSource(Source.PVPTIERS, Map.of("axe", new Tier(1, true, false)));
         TierCache cache = new TierCache(List.of(fake));
 
-        cache.load(Source.PVPTIERS, PLAYER);
+        cache.loadAnswer(Source.PVPTIERS, PLAYER);
         fake.pending.completeExceptionally(new RuntimeException("site down"));
         cache.forgetFailed(Source.PVPTIERS, PLAYER);
 
-        cache.load(Source.PVPTIERS, PLAYER);
+        cache.loadAnswer(Source.PVPTIERS, PLAYER);
         assertEquals(2, fake.calls.get());
     }
 
@@ -265,13 +266,13 @@ class TierCacheTest {
         FakeSource fake = new FakeSource(Source.PVPTIERS, Map.of("axe", new Tier(1, true, false)));
         TierCache cache = new TierCache(List.of(fake));
 
-        CompletableFuture<Map<String, Tier>> loaded = cache.load(Source.PVPTIERS, PLAYER);
+        CompletableFuture<TierCache.CachedAnswer> loaded = cache.loadAnswer(Source.PVPTIERS, PLAYER);
         fake.complete();
         cache.forgetFailed(Source.PVPTIERS, PLAYER);
 
-        assertSame(loaded, cache.load(Source.PVPTIERS, PLAYER));
+        assertEquals(loaded.get().revision(), cache.loadAnswer(Source.PVPTIERS, PLAYER).get().revision());
         assertEquals(1, fake.calls.get());
-        assertEquals("HT1", loaded.get().get("axe").label());
+        assertEquals("HT1", loaded.get().tiers().get("axe").label());
     }
 
     @Test
@@ -279,10 +280,10 @@ class TierCacheTest {
         FakeSource fake = new FakeSource(Source.PVPTIERS, Map.of());
         TierCache cache = new TierCache(List.of(fake));
 
-        CompletableFuture<Map<String, Tier>> inFlight = cache.load(Source.PVPTIERS, PLAYER);
+        CompletableFuture<TierCache.CachedAnswer> inFlight = cache.loadAnswer(Source.PVPTIERS, PLAYER);
         cache.forgetFailed(Source.PVPTIERS, PLAYER);
 
-        assertSame(inFlight, cache.load(Source.PVPTIERS, PLAYER));
+        assertSame(inFlight, cache.loadAnswer(Source.PVPTIERS, PLAYER));
         assertEquals(1, fake.calls.get());
     }
 
@@ -298,7 +299,7 @@ class TierCacheTest {
         fake.pending.completeExceptionally(new RuntimeException("site down"));
         assertEquals(Optional.empty(), cache.peek(Source.PVPTIERS, PLAYER));
 
-        cache.load(Source.PVPTIERS, PLAYER);
+        cache.loadAnswer(Source.PVPTIERS, PLAYER);
         fake.complete();
 
         Optional<Map<String, Tier>> loaded = cache.peek(Source.PVPTIERS, PLAYER);
@@ -317,7 +318,7 @@ class TierCacheTest {
         fake.pending.completeExceptionally(new RuntimeException("site down"));
         cache.peek(Source.PVPTIERS, PLAYER);
 
-        cache.load(Source.PVPTIERS, PLAYER);
+        cache.loadAnswer(Source.PVPTIERS, PLAYER);
         fake.pending.completeExceptionally(new RuntimeException("still down"));
         cache.forgetFailed(Source.PVPTIERS, PLAYER);
 
@@ -412,11 +413,11 @@ class TierCacheTest {
     void loadAlsoRefusesToServeAStaleAnswer() {
         Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
 
-        it.cache.load(Source.PVPTIERS, PLAYER);
+        it.cache.loadAnswer(Source.PVPTIERS, PLAYER);
         it.fake.complete();
         it.advance(Duration.ofMinutes(60));
 
-        it.cache.load(Source.PVPTIERS, PLAYER);
+        it.cache.loadAnswer(Source.PVPTIERS, PLAYER);
         assertEquals(2, it.fake.calls.get());
     }
 
@@ -504,7 +505,7 @@ class TierCacheTest {
         }
 
         // A lobby of two hundred players must not wave them all past the gate.
-        CompletableFuture<Map<String, Tier>> future = it.cache.load(Source.PVPTIERS, UUID.randomUUID());
+        CompletableFuture<TierCache.CachedAnswer> future = it.cache.loadAnswer(Source.PVPTIERS, UUID.randomUUID());
         assertTrue(future.isCompletedExceptionally());
         assertEquals(8, it.fake.calls.get());
     }
@@ -624,11 +625,11 @@ class TierCacheTest {
         UUID[] players = java.util.stream.IntStream.range(0, 8).mapToObj(i -> UUID.randomUUID()).toArray(UUID[]::new);
         for (UUID player : players) cache.peek(Source.PVPTIERS, player);
         assertEquals(4, source.started.size(), "only four requests may be active per site");
-        var explicit = cache.load(Source.PVPTIERS, players[7]);
+        var explicit = cache.loadAnswer(Source.PVPTIERS, players[7]);
         source.pending.get(players[0]).complete(Map.of());
         assertEquals(players[7], source.started.get(4), "an explicit lookup overtakes background work");
         source.pending.get(players[7]).complete(Map.of("axe", new Tier(2, true, false)));
-        assertEquals("HT2", explicit.join().get("axe").label());
+        assertEquals("HT2", explicit.join().tiers().get("axe").label());
         assertEquals(1, source.started.stream().filter(players[7]::equals).count(), "promotion shares one request");
     }
 
@@ -640,8 +641,8 @@ class TierCacheTest {
                 .mapToObj(i -> UUID.randomUUID()).toArray(UUID[]::new);
         for (UUID player : players) cache.peek(Source.PVPTIERS, player);
 
-        var first = cache.load(Source.PVPTIERS, players[7]);
-        var repeated = cache.load(Source.PVPTIERS, players[7]);
+        var first = cache.loadAnswer(Source.PVPTIERS, players[7]);
+        var repeated = cache.loadAnswer(Source.PVPTIERS, players[7]);
         cache.peek(Source.PVPTIERS, players[7]);
 
         assertFalse(first.isDone());
@@ -650,49 +651,46 @@ class TierCacheTest {
         source.pending.get(players[0]).complete(Map.of());
         assertEquals(players[7], source.started.get(4));
         source.pending.get(players[7]).complete(Map.of("axe", new Tier(2, true, false)));
-        assertEquals("HT2", repeated.join().get("axe").label());
+        assertEquals("HT2", repeated.join().tiers().get("axe").label());
         assertEquals(1, source.started.stream().filter(players[7]::equals).count());
     }
 
     @Test
     void sourceInvocationAllowsAnotherThreadToShareTheClaim() {
         var cacheReference = new java.util.concurrent.atomic.AtomicReference<TierCache>();
-        var shared = new java.util.concurrent.atomic.AtomicReference<CompletableFuture<Map<String, Tier>>>();
+        var shared = new java.util.concurrent.atomic.AtomicReference<CompletableFuture<TierCache.CachedAnswer>>();
         var response = new CompletableFuture<Map<String, Tier>>();
-        TierSource source = new TierSource() {
-            public Source source() { return Source.PVPTIERS; }
-            public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) {
-                try {
-                    shared.set(CompletableFuture.supplyAsync(() -> cacheReference.get().load(source(), uuid),
-                            action -> Thread.ofVirtual().start(action)).get(5, java.util.concurrent.TimeUnit.SECONDS));
-                } catch (Exception error) {
-                    throw new AssertionError("source invocation must release the admission lock", error);
-                }
-                return response;
+        TierSource source = TestSources.of(Source.PVPTIERS, uuid -> {
+            try {
+                shared.set(CompletableFuture.supplyAsync(() -> cacheReference.get().loadAnswer(Source.PVPTIERS, uuid),
+                        action -> Thread.ofVirtual().start(action)).get(5, java.util.concurrent.TimeUnit.SECONDS));
+            } catch (Exception error) {
+                throw new AssertionError("source invocation must release the admission lock", error);
             }
-        };
+            return response;
+        });
         TierCache cache = new TierCache(List.of(source));
         cacheReference.set(cache);
-        var requested = cache.load(Source.PVPTIERS, PLAYER);
+        var requested = cache.loadAnswer(Source.PVPTIERS, PLAYER);
         assertNotNull(shared.get());
         assertFalse(shared.get().isDone());
         response.complete(Map.of());
-        assertEquals(Map.of(), requested.join());
-        assertEquals(Map.of(), shared.get().join());
+        assertEquals(Map.of(), requested.join().tiers());
+        assertEquals(Map.of(), shared.get().join().tiers());
     }
 
     @Test
     void completedLookupCallbacksObserveTheReleasedActiveSlot() {
         MultiSource source = new MultiSource();
         TierCache cache = new TierCache(List.of(source));
-        var first = cache.load(Source.PVPTIERS, PLAYER);
-        for (int i = 0; i < 3; i++) cache.load(Source.PVPTIERS, UUID.randomUUID());
+        var first = cache.loadAnswer(Source.PVPTIERS, PLAYER);
+        for (int i = 0; i < 3; i++) cache.loadAnswer(Source.PVPTIERS, UUID.randomUUID());
         UUID replacement = UUID.randomUUID();
         AtomicInteger observedActive = new AtomicInteger(-1);
         var startedDuringCallback = new java.util.concurrent.atomic.AtomicBoolean();
         first.whenComplete((answer, error) -> {
             observedActive.set(cache.activeRequests(Source.PVPTIERS));
-            cache.load(Source.PVPTIERS, replacement);
+            cache.loadAnswer(Source.PVPTIERS, replacement);
             startedDuringCallback.set(source.started.contains(replacement));
         });
 
@@ -708,9 +706,9 @@ class TierCacheTest {
         MultiSource source = new MultiSource();
         TierCache cache = new TierCache(List.of(source));
         for (int i = 0; i < 4; i++) cache.peek(Source.PVPTIERS, UUID.randomUUID());
-        var obsolete = cache.load(Source.PVPTIERS, UUID.randomUUID());
-        var replacement = new java.util.concurrent.atomic.AtomicReference<CompletableFuture<Map<String, Tier>>>();
-        obsolete.whenComplete((answer, error) -> replacement.set(cache.load(Source.PVPTIERS, PLAYER)));
+        var obsolete = cache.loadAnswer(Source.PVPTIERS, UUID.randomUUID());
+        var replacement = new java.util.concurrent.atomic.AtomicReference<CompletableFuture<TierCache.CachedAnswer>>();
+        obsolete.whenComplete((answer, error) -> replacement.set(cache.loadAnswer(Source.PVPTIERS, PLAYER)));
 
         cache.invalidate(Source.PVPTIERS);
 
@@ -721,7 +719,7 @@ class TierCacheTest {
         source.pending.get(source.started.getFirst()).complete(Map.of());
         assertEquals(PLAYER, source.started.getLast());
         source.pending.get(PLAYER).complete(Map.of());
-        assertEquals(Map.of(), replacement.get().join());
+        assertEquals(Map.of(), replacement.get().join().tiers());
     }
 
     @Test
@@ -730,13 +728,13 @@ class TierCacheTest {
         var observeAdmission = new java.util.concurrent.atomic.AtomicBoolean();
         TierSource source = new TierSource() {
             public Source source() { return Source.PVPTIERS; }
-            public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) {
-                return CompletableFuture.completedFuture(Map.of("axe", new Tier(1, true, false)));
+            public CompletableFuture<Answer> fetchAnswer(UUID uuid) {
+                return TestSources.fresh(CompletableFuture.completedFuture(Map.of("axe", new Tier(1, true, false))));
             }
             public RefreshState refreshState() {
                 if (observeAdmission.getAndSet(false)) {
                     try {
-                        CompletableFuture.runAsync(() -> cacheReference.get().load(source(), UUID.randomUUID()),
+                        CompletableFuture.runAsync(() -> cacheReference.get().loadAnswer(source(), UUID.randomUUID()),
                                 action -> Thread.ofVirtual().start(action)).get(5, java.util.concurrent.TimeUnit.SECONDS);
                     } catch (Exception error) {
                         throw new AssertionError("source observation must not hold the admission lock", error);
@@ -747,11 +745,11 @@ class TierCacheTest {
         };
         TierCache cache = new TierCache(List.of(source));
         cacheReference.set(cache);
-        cache.load(Source.PVPTIERS, PLAYER).join();
+        cache.loadAnswer(Source.PVPTIERS, PLAYER).join();
         observeAdmission.set(true);
 
         assertDoesNotThrow(cache::refreshAll);
-        assertTrue(cache.cachedAnswer(Source.PVPTIERS, PLAYER).orElseThrow().stale());
+        assertTrue(cache.observe(Source.PVPTIERS, PLAYER).answer().orElseThrow().stale());
     }
 
     @Test
@@ -762,14 +760,14 @@ class TierCacheTest {
         TierCache.CachedAnswer captured = oldRequest.join();
         it.advance(Duration.ofMinutes(10));
         it.cache.invalidate(Source.PVPTIERS);
-        it.cache.load(Source.PVPTIERS, PLAYER);
+        it.cache.loadAnswer(Source.PVPTIERS, PLAYER);
         it.fake.complete();
 
         assertEquals(Duration.ZERO, captured.age());
         assertEquals(Optional.of(Duration.ofMinutes(60)), captured.freshFor());
         assertFalse(captured.stale());
         assertEquals(captured, oldRequest.join(), "the completed request remains its own immutable answer");
-        assertEquals(Duration.ZERO, it.cache.cachedAnswer(Source.PVPTIERS, PLAYER).orElseThrow().age());
+        assertEquals(Duration.ZERO, it.cache.observe(Source.PVPTIERS, PLAYER).answer().orElseThrow().age());
     }
 
     @Test
@@ -789,30 +787,25 @@ class TierCacheTest {
     @Test
     void identicalAnswersAtTheSameTimeStillHaveDifferentRevisions() {
         Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
-        it.cache.load(Source.PVPTIERS, PLAYER);
+        it.cache.loadAnswer(Source.PVPTIERS, PLAYER);
         it.fake.complete();
-        long first = it.cache.cachedAnswer(Source.PVPTIERS, PLAYER).orElseThrow().revision();
+        long first = it.cache.observe(Source.PVPTIERS, PLAYER).answer().orElseThrow().revision();
 
         it.cache.refreshAll();
-        assertEquals(first, it.cache.cachedAnswer(Source.PVPTIERS, PLAYER).orElseThrow().revision(),
+        assertEquals(first, it.cache.observe(Source.PVPTIERS, PLAYER).answer().orElseThrow().revision(),
                 "retained placements keep the original response's revision");
-        it.cache.load(Source.PVPTIERS, PLAYER);
+        it.cache.loadAnswer(Source.PVPTIERS, PLAYER);
         it.fake.complete();
 
-        assertNotEquals(first, it.cache.cachedAnswer(Source.PVPTIERS, PLAYER).orElseThrow().revision(),
+        assertNotEquals(first, it.cache.observe(Source.PVPTIERS, PLAYER).answer().orElseThrow().revision(),
                 "another response has a new revision even if its placements and timestamp match");
     }
 
     @Test
     void completedEntriesCannotAccumulateAcrossThousandsOfDepartedPlayers() {
-        TierSource immediate = new TierSource() {
-            public Source source() { return Source.PVPTIERS; }
-            public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) {
-                return CompletableFuture.completedFuture(Map.of());
-            }
-        };
+        TierSource immediate = TestSources.of(Source.PVPTIERS, uuid -> CompletableFuture.completedFuture(Map.of()));
         TierCache cache = new TierCache(List.of(immediate));
-        for (int i = 0; i < 4200; i++) cache.load(Source.PVPTIERS, UUID.randomUUID()).join();
+        for (int i = 0; i < 4200; i++) cache.loadAnswer(Source.PVPTIERS, UUID.randomUUID()).join();
         assertTrue(cache.cachedPlayers(Source.PVPTIERS) <= 4096, "retention is bounded even without another peek");
     }
 
@@ -820,18 +813,18 @@ class TierCacheTest {
         final java.util.List<UUID> started = new java.util.ArrayList<>();
         final java.util.Map<UUID, CompletableFuture<Map<String, Tier>>> pending = new java.util.HashMap<>();
         public Source source() { return Source.PVPTIERS; }
-        public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) {
+        public CompletableFuture<Answer> fetchAnswer(UUID uuid) {
             started.add(uuid);
             var result = new CompletableFuture<Map<String, Tier>>();
             pending.put(uuid, result);
-            return result;
+            return TestSources.fresh(result);
         }
     }
 
     @Test
     void refreshPreservesAnswersWhileDiscardingObsoleteCompletions() {
         Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
-        it.cache.load(Source.PVPTIERS, PLAYER);
+        it.cache.loadAnswer(Source.PVPTIERS, PLAYER);
         it.fake.complete();
         it.advance(Duration.ofMinutes(60));
         it.cache.peek(Source.PVPTIERS, PLAYER);
@@ -847,7 +840,7 @@ class TierCacheTest {
     @Test
     void maintenanceReclaimsExpiredPlayersWithoutAnotherLookup() {
         Controlled it = new Controlled(Map.of("axe", new Tier(1, true, false)), policy());
-        it.cache.load(Source.PVPTIERS, PLAYER);
+        it.cache.loadAnswer(Source.PVPTIERS, PLAYER);
         it.fake.complete();
         it.advance(Duration.ofHours(8));
         it.cache.maintain();
@@ -860,25 +853,23 @@ class TierCacheTest {
         AtomicInteger fetches = new AtomicInteger();
         TierSource source = new TierSource() {
             public Source source() { return Source.NOVATIERS; }
-            public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) {
-                return CompletableFuture.completedFuture(Map.of("vanilla", new Tier(1, true, false)));
-            }
             public CompletableFuture<TierSource.Answer> fetchAnswer(UUID uuid) {
                 fetches.incrementAndGet();
-                return fetch(uuid).thenApply(tiers -> new TierSource.Answer(tiers, Duration.ofNanos(time.get()), time.get() > 0));
+                return CompletableFuture.completedFuture(Map.of("vanilla", new Tier(1, true, false)))
+                        .thenApply(tiers -> new TierSource.Answer(tiers, Duration.ofNanos(time.get()), time.get() > 0));
             }
         };
         TierCache cache = new TierCache(List.of(source), policy(), time::get, () -> 0.5);
-        cache.load(Source.NOVATIERS, PLAYER).join();
+        cache.loadAnswer(Source.NOVATIERS, PLAYER).join();
         time.set(Duration.ofMinutes(61).toNanos());
         for (int i = 0; i < 20; i++) assertTrue(cache.peek(Source.NOVATIERS, PLAYER).isPresent());
-        assertEquals(Duration.ofMinutes(61), cache.cachedAnswer(Source.NOVATIERS, PLAYER).orElseThrow().age());
-        assertTrue(cache.cachedAnswer(Source.NOVATIERS, PLAYER).orElseThrow().refreshFailed());
+        assertEquals(Duration.ofMinutes(61), cache.observe(Source.NOVATIERS, PLAYER).answer().orElseThrow().age());
+        assertTrue(cache.observe(Source.NOVATIERS, PLAYER).answer().orElseThrow().refreshFailed());
         assertEquals(2, fetches.get(), "checking an old snapshot is not repeated on every frame");
         time.set(Duration.ofHours(7).plusSeconds(1).toNanos());
         assertTrue(cache.peek(Source.NOVATIERS, PLAYER).isEmpty());
         cache.forgetFailed(Source.NOVATIERS, PLAYER);
-        assertTrue(cache.load(Source.NOVATIERS, PLAYER).isCompletedExceptionally(), "explicit lookup cannot present expired bulk data as fresh");
+        assertTrue(cache.loadAnswer(Source.NOVATIERS, PLAYER).isCompletedExceptionally(), "explicit lookup cannot present expired bulk data as fresh");
     }
 
     @Test
@@ -887,14 +878,14 @@ class TierCacheTest {
         AtomicLong time = new AtomicLong();
         TierCache cache = new TierCache(List.of(source), policy(), time::get, () -> 0.5);
         UUID limited = UUID.randomUUID();
-        cache.load(Source.PVPTIERS, limited);
+        cache.loadAnswer(Source.PVPTIERS, limited);
         source.pending.get(limited).completeExceptionally(new com.w0x7y.justtiers.api.RetryAfterException(
                 "rate limited", Duration.ofMinutes(2)));
         cache.refreshAll();
-        assertTrue(cache.load(Source.PVPTIERS, UUID.randomUUID()).isCompletedExceptionally());
+        assertTrue(cache.loadAnswer(Source.PVPTIERS, UUID.randomUUID()).isCompletedExceptionally());
         assertEquals(1, source.started.size());
         time.set(Duration.ofMinutes(2).toNanos());
-        cache.load(Source.PVPTIERS, UUID.randomUUID());
+        cache.loadAnswer(Source.PVPTIERS, UUID.randomUUID());
         assertEquals(2, source.started.size());
     }
 
@@ -906,7 +897,7 @@ class TierCacheTest {
         assertEquals(4, source.started.size());
         assertEquals(128, cache.queuedRequests(Source.PVPTIERS));
         UUID requested = UUID.randomUUID();
-        var explicit = cache.load(Source.PVPTIERS, requested);
+        var explicit = cache.loadAnswer(Source.PVPTIERS, requested);
         assertFalse(explicit.isDone());
         source.pending.get(source.started.getFirst()).complete(Map.of());
         assertEquals(requested, source.started.getLast());
@@ -921,7 +912,7 @@ class TierCacheTest {
         for (int i = 0; i < 8; i++) cache.peek(Source.PVPTIERS, UUID.randomUUID());
         UUID oldActive = source.started.getFirst();
         cache.invalidate(Source.PVPTIERS);
-        cache.load(Source.PVPTIERS, PLAYER);
+        cache.loadAnswer(Source.PVPTIERS, PLAYER);
         assertEquals(4, source.started.size(), "old active HTTP requests still occupy slots");
         source.pending.get(oldActive).complete(Map.of());
         assertEquals(PLAYER, source.started.getLast());
@@ -1044,12 +1035,9 @@ class TierCacheTest {
             }
         }
         RacingFuture response = new RacingFuture();
-        TierSource source = new TierSource() {
-            public Source source() { return Source.PVPTIERS; }
-            public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) { return response; }
-        };
+        TierSource source = TestSources.of(Source.PVPTIERS, uuid -> response);
         TierCache cache = new TierCache(List.of(source));
-        cache.load(Source.PVPTIERS, PLAYER);
+        cache.loadAnswer(Source.PVPTIERS, PLAYER);
         response.armed = true;
         assertTrue(assertDoesNotThrow(() -> cache.peek(Source.PVPTIERS, PLAYER)).isEmpty());
     }
@@ -1060,7 +1048,7 @@ class TierCacheTest {
         TierCache cache = new TierCache(List.of(fake));
         var discarded = new java.util.ArrayList<CompletableFuture<Map<String, Tier>>>();
         for (int i = 0; i < 4; i++) {
-            cache.load(Source.PVPTIERS, UUID.randomUUID());
+            cache.loadAnswer(Source.PVPTIERS, UUID.randomUUID());
             discarded.add(fake.pending);
         }
         cache.invalidateAll();
@@ -1074,10 +1062,10 @@ class TierCacheTest {
     void aDiscardedSuccessCannotEraseTheNewRequestsBackoff() {
         FakeSource fake = new FakeSource(Source.PVPTIERS, Map.of());
         TierCache cache = new TierCache(List.of(fake));
-        cache.load(Source.PVPTIERS, PLAYER);
+        cache.loadAnswer(Source.PVPTIERS, PLAYER);
         var discarded = fake.pending;
         cache.invalidate(Source.PVPTIERS);
-        cache.load(Source.PVPTIERS, PLAYER);
+        cache.loadAnswer(Source.PVPTIERS, PLAYER);
         fake.pending.completeExceptionally(new RuntimeException("new failure"));
         discarded.complete(Map.of());
         assertEquals(1, cache.playersAwaitingRetry(Source.PVPTIERS));

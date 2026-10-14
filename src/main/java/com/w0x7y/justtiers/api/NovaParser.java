@@ -35,7 +35,7 @@ public final class NovaParser {
     private static final Gson GSON = new Gson();
 
     /**
-     * Immutable placements and diagnostics from one bulk response. The compatibility
+     * Immutable placements and diagnostics from one bulk response. The users
      * map preserves understood placements, but callers must check rejectedPlayers
      * before treating an identifiable player's answer as complete.
      * {@code unknownGamemodes} counts placements dropped for an unacceptable gamemode key
@@ -49,11 +49,6 @@ public final class NovaParser {
             users = Map.copyOf(copy);
             rejectedPlayers = Set.copyOf(rejectedPlayers);
         }
-    }
-
-    /** Compatibility view; sources should use {@link #parseUsersDetailed(String)}. */
-    public static Map<UUID, Map<String, Tier>> parseUsers(String json) {
-        return parseUsersDetailed(json).users();
     }
 
     public static ParsedIndex parseUsersDetailed(String json) {
