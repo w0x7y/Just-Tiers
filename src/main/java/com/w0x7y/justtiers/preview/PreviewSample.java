@@ -35,8 +35,8 @@ public final class PreviewSample {
     public static final long RETIRED_CYCLE_MILLIS = 5_000L;
 
     /**
-     * What multiple enabled sites preview, whatever the gamemode pickers say. Those pickers are
-     * greyed with multiple sites enabled, so the preview shows one fixed headline gamemode per site
+     * What multiple enabled sites preview while they show their best tiers. The gamemode
+     * pickers are greyed then, so the preview shows one fixed headline gamemode per site
      * instead of pretending the greyed selections still matter.
      */
     public static final Map<Source, String> MULTI_SITE_GAMEMODES = Map.of(
@@ -60,23 +60,37 @@ public final class PreviewSample {
     public static List<ResolvedTier> resolve(Set<Source> sites,
                                              Map<Source, String> selectedGamemodes,
                                              boolean retired) {
+        return resolve(sites, selectedGamemodes, false, retired);
+    }
+
+    /**
+     * As {@link #resolve(Set, Map, boolean)}. With {@code preferSelected}, several enabled
+     * sites preview their selections rather than the fixed samples, because those
+     * selections are what the nametag would then prefer.
+     */
+    public static List<ResolvedTier> resolve(Set<Source> sites,
+                                             Map<Source, String> selectedGamemodes,
+                                             boolean preferSelected,
+                                             boolean retired) {
         Tier tier = retired ? RETIRED : ACTIVE;
-        return gamemodes(sites, selectedGamemodes).stream()
+        return gamemodes(sites, selectedGamemodes, preferSelected).stream()
                 .map(gamemode -> new ResolvedTier(gamemode, tier))
                 .toList();
     }
 
-    /** The gamemodes the tag shows: the selection on one site, or fixed samples for the enabled sites. */
+    /**
+     * The gamemodes the tag shows: the selections on one site or when selections are
+     * preferred, otherwise fixed samples for the enabled sites.
+     */
     private static List<Gamemode> gamemodes(Set<Source> sites,
-                                            Map<Source, String> selectedGamemodes) {
-        if (sites.size() == 1) {
-            return List.of(gamemodeOf(sites.iterator().next(), selectedGamemodes));
-        }
-
+                                            Map<Source, String> selectedGamemodes,
+                                            boolean preferSelected) {
+        Map<Source, String> shown = sites.size() == 1 || preferSelected
+                ? selectedGamemodes : MULTI_SITE_GAMEMODES;
         List<Gamemode> all = new ArrayList<>(Source.ALL.size());
         for (Source source : Source.ALL) {
             if (!sites.contains(source)) continue;
-            all.add(gamemodeOf(source, MULTI_SITE_GAMEMODES));
+            all.add(gamemodeOf(source, shown));
         }
         return List.copyOf(all);
     }

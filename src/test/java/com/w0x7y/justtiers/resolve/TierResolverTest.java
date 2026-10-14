@@ -191,14 +191,15 @@ class TierResolverTest {
     }
 
     @Test
-    void unknownGamemodeSlugsFromTheApiAreIgnored() {
+    void unknownGamemodeSlugsFromTheApiCompeteAsDiscoveredGamemodes() {
         List<ResolvedTier> result = TierResolver.resolve(
                 Set.of(Source.PVPTIERS),
                 Map.of(Source.PVPTIERS, Map.of("brand_new_mode", ht(1), "axe", ht(4))),
                 Map.of(Source.PVPTIERS, "crystal"), true);
 
         assertEquals(1, result.size());
-        assertEquals("axe", result.get(0).gamemode().slug());
+        assertEquals("brand_new_mode", result.get(0).gamemode().slug());
+        assertEquals("Brand New Mode", result.get(0).gamemode().displayName());
     }
 
     @Test
@@ -271,12 +272,92 @@ class TierResolverTest {
     }
 
     @Test
-    void highestOnSkipsUnknownGamemodesAndHandlesMissingPlacements() {
+    void highestOnSkipsUnacceptableSlugsAndHandlesMissingPlacements() {
         assertEquals("axe", TierResolver.highestOn(Source.PVPTIERS,
-                Map.of("axe", ht(2), "not_a_real_gamemode", ht(1)))
+                Map.of("axe", ht(2), "Not A Slug!", ht(1), "", ht(1)))
                 .orElseThrow().gamemode().slug());
+        assertTrue(TierResolver.highestOn(Source.PVPTIERS, Map.of("<b>", ht(1))).isEmpty());
         assertTrue(TierResolver.highestOn(Source.PVPTIERS, Map.of()).isEmpty());
         assertTrue(TierResolver.highestOn(Source.PVPTIERS, null).isEmpty());
+    }
+
+    // --- discovered gamemodes ---
+
+    @Test
+    void aStrictlyBetterDiscoveredPlacementIsTheSitesBest() {
+        ResolvedTier best = TierResolver.highestOn(Source.PVPTIERS,
+                Map.of("axe", ht(2), "bed_wars", ht(1))).orElseThrow();
+        assertEquals("bed_wars", best.gamemode().slug());
+        assertEquals("Bed Wars", best.gamemode().displayName());
+        assertTrue(best.gamemode().icon().isEmpty());
+        assertEquals("HT1", best.tier().label());
+    }
+
+    @Test
+    void registeredGamemodesWinTiesAgainstDiscoveredOnes() {
+        Map<String, Tier> tiers = new LinkedHashMap<>();
+        tiers.put("aaa_first_alphabetically", ht(2));
+        tiers.put("uhc", ht(2));
+        assertEquals("uhc", TierResolver.highestOn(Source.PVPTIERS, tiers)
+                .orElseThrow().gamemode().slug());
+    }
+
+    @Test
+    void discoveredGamemodesBreakTiesBySlugWhateverThePayloadOrder() {
+        Map<String, Tier> tiers = new LinkedHashMap<>();
+        tiers.put("zebra", ht(3));
+        tiers.put("mango", ht(3));
+        tiers.put("apple", ht(3));
+        tiers.put("pot", lt(3));
+        assertEquals("apple", TierResolver.highestOn(Source.PVPTIERS, tiers)
+                .orElseThrow().gamemode().slug());
+    }
+
+    @Test
+    void anActiveDiscoveredPlacementBeatsATiedRetiredRegisteredOne() {
+        assertEquals("future", TierResolver.highestOn(Source.SUBTIERS,
+                Map.of("bow", retiredHt(1), "future", ht(1))).orElseThrow().gamemode().slug());
+    }
+
+    @Test
+    void aPlayerPlacedOnlyInDiscoveredGamemodesStillGetsABadge() {
+        var result = TierResolver.resolve(Set.of(Source.PVPTIERS, Source.SUBTIERS),
+                Map.of(Source.PVPTIERS, Map.of("new_mode", lt(2)),
+                       Source.SUBTIERS, Map.of("bow", ht(4))),
+                SELECTED, true);
+        assertEquals(List.of("new_mode", "bow"),
+                result.stream().map(tier -> tier.gamemode().slug()).toList());
+    }
+
+    @Test
+    void theSingleSiteFallbackConsidersDiscoveredGamemodes() {
+        var selected = TierResolver.resolve(Set.of(Source.PVPTIERS),
+                Map.of(Source.PVPTIERS, Map.of("crystal", lt(4), "new_mode", ht(1))),
+                SELECTED, true);
+        assertEquals("crystal", selected.getFirst().gamemode().slug(), "the selection still wins");
+
+        var fallback = TierResolver.resolve(Set.of(Source.PVPTIERS),
+                Map.of(Source.PVPTIERS, Map.of("axe", lt(4), "new_mode", ht(1))),
+                SELECTED, true);
+        assertEquals("new_mode", fallback.getFirst().gamemode().slug());
+    }
+
+    @Test
+    void aDiscoveredSlugCannotBeSelected() {
+        // Selections are registry-only; a discovered slug in the selection map is ignored
+        // and the player's best placement on the site is shown instead.
+        var result = TierResolver.resolve(Set.of(Source.PVPTIERS),
+                Map.of(Source.PVPTIERS, Map.of("new_mode", lt(4), "axe", ht(2))),
+                Map.of(Source.PVPTIERS, "new_mode"), true);
+        assertEquals("axe", result.getFirst().gamemode().slug());
+    }
+
+    @Test
+    void hiddenRetiredDiscoveredPlacementsFallBackToActiveOnes() {
+        var result = TierResolver.resolve(Set.of(Source.PVPTIERS, Source.SUBTIERS),
+                Map.of(Source.PVPTIERS, Map.of("new_mode", retiredHt(1), "axe", lt(3))),
+                SELECTED, false);
+        assertEquals("axe", result.getFirst().gamemode().slug());
     }
 
     @Test
@@ -301,5 +382,67 @@ class TierResolverTest {
     void activeOnlyHandlesNullAndEmpty() {
         assertTrue(TierResolver.activeOnly(null).isEmpty());
         assertTrue(TierResolver.activeOnly(Map.of()).isEmpty());
+    }
+
+    // --- preferring selected gamemodes with several sites ---
+
+    @Test
+    void preferringSelectionsShowsEachSitesSelectedGamemode() {
+        List<ResolvedTier> result = TierResolver.resolve(
+                Set.of(Source.PVPTIERS, Source.SUBTIERS),
+                Map.of(Source.PVPTIERS, Map.of("crystal", lt(4), "axe", ht(1)),
+                       Source.SUBTIERS, Map.of("bow", lt(3), "elytra", ht(1))),
+                SELECTED, true, true);
+
+        assertEquals(List.of("crystal", "bow"),
+                result.stream().map(tier -> tier.gamemode().slug()).toList());
+        assertEquals(List.of("LT4", "LT3"), result.stream().map(tier -> tier.tier().label()).toList());
+    }
+
+    @Test
+    void preferringSelectionsFallsBackToTheBestTierPerSite() {
+        List<ResolvedTier> result = TierResolver.resolve(
+                Set.of(Source.PVPTIERS, Source.SUBTIERS),
+                Map.of(Source.PVPTIERS, Map.of("crystal", lt(4)),
+                       Source.SUBTIERS, Map.of("elytra", ht(2), "minecart", lt(5))),
+                SELECTED, true, true);
+
+        assertEquals(List.of("crystal", "elytra"),
+                result.stream().map(tier -> tier.gamemode().slug()).toList());
+    }
+
+    @Test
+    void withoutPreferringSelectionsSeveralSitesKeepTheirBestTier() {
+        Map<Source, Map<String, Tier>> tiers = Map.of(
+                Source.PVPTIERS, Map.of("crystal", lt(4), "axe", ht(1)));
+        Set<Source> sites = Set.of(Source.PVPTIERS, Source.SUBTIERS);
+
+        assertEquals("axe", TierResolver.resolve(sites, tiers, SELECTED, true, false)
+                .getFirst().gamemode().slug());
+        assertEquals(TierResolver.resolve(sites, tiers, SELECTED, true),
+                TierResolver.resolve(sites, tiers, SELECTED, true, false));
+    }
+
+    @Test
+    void preferringSelectionsSkipsAHiddenRetiredSelection() {
+        List<ResolvedTier> result = TierResolver.resolve(
+                Set.of(Source.PVPTIERS, Source.SUBTIERS),
+                Map.of(Source.PVPTIERS, Map.of("crystal", retiredHt(1), "axe", lt(3))),
+                SELECTED, false, true);
+
+        assertEquals(1, result.size());
+        assertEquals("axe", result.getFirst().gamemode().slug());
+        assertFalse(result.getFirst().tier().retired());
+    }
+
+    @Test
+    void preferringSelectionsLeavesAnUnansweredSiteOut() {
+        List<ResolvedTier> result = TierResolver.resolve(
+                Set.copyOf(Source.ALL),
+                Map.of(Source.NOVATIERS, Map.of("spleef", lt(2))),
+                SELECTED, true, true);
+
+        assertEquals(List.of(Source.NOVATIERS),
+                result.stream().map(tier -> tier.gamemode().source()).toList());
     }
 }

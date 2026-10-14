@@ -15,6 +15,7 @@ import java.util.Set;
  */
 public record ControlAvailability(boolean sites,
                                   boolean showRetired,
+                                  boolean preferSelected,
                                   boolean appearance,
                                   boolean customColors,
                                   Map<Source, Reason> reasons) {
@@ -26,23 +27,33 @@ public record ControlAvailability(boolean sites,
     }
 
     public static ControlAvailability of(boolean enabled, Set<Source> sites, Palette palette) {
+        return of(enabled, sites, false, palette);
+    }
+
+    /**
+     * {@code preferSelected} is the pending "prefer selected gamemodes" choice. It makes
+     * every enabled site's picker matter, and itself only matters with several sites.
+     */
+    public static ControlAvailability of(boolean enabled, Set<Source> sites,
+                                         boolean preferSelected, Palette palette) {
         Map<Source, Reason> reasons = new EnumMap<>(Source.class);
         for (Source source : Source.ALL) {
-            reasons.put(source, reasonFor(enabled, sites, source));
+            reasons.put(source, reasonFor(enabled, sites, preferSelected, source));
         }
         // The badge's shape - its side, its icons, its brackets - means the same thing in
         // every site selection, so the master switch is the only thing that can grey it.
         // The color pickers additionally need the palette to be the one they feed.
-        return new ControlAvailability(enabled, enabled, enabled,
+        return new ControlAvailability(enabled, enabled, enabled && sites.size() > 1, enabled,
                 enabled && palette != null && palette.isCustom(), reasons);
     }
 
-    private static Reason reasonFor(boolean enabled, Set<Source> sites, Source source) {
+    private static Reason reasonFor(boolean enabled, Set<Source> sites, boolean preferSelected,
+                                    Source source) {
         if (!enabled) {
             return Reason.MOD_DISABLED;
         }
         if (!sites.contains(source)) return Reason.SITE_DISABLED;
-        return sites.size() == 1 ? Reason.AVAILABLE : Reason.MULTIPLE_SITES;
+        return sites.size() == 1 || preferSelected ? Reason.AVAILABLE : Reason.MULTIPLE_SITES;
     }
 
     public boolean gamemode(Source source) {

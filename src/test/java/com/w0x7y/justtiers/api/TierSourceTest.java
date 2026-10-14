@@ -431,13 +431,13 @@ class TierSourceTest {
     }
 
     @Test
-    void novaUnknownValidGamemodesAndEmptyTierMapsRemainSuccessful() throws Exception {
+    void novaDiscoveredGamemodesAndEmptyTierMapsRemainSuccessful() throws Exception {
         respond("/users", 200, """
                 [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504","tiers":{"New Mode":"HT1"}},
                  {"minecraftUuid":"dadd05d5-e1a2-41bc-be3e-de5f7d9fffee","tiers":{}}]
                 """);
         NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
-        assertTrue(nova.fetch(PLAYER).get().isEmpty());
+        assertEquals(Map.of("new_mode", new Tier(1, true, false)), nova.fetch(PLAYER).get());
         assertTrue(nova.fetch(UUID.fromString("dadd05d5-e1a2-41bc-be3e-de5f7d9fffee")).get().isEmpty());
     }
 

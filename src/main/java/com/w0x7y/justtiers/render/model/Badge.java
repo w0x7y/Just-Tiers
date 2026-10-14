@@ -71,7 +71,7 @@ public record Badge(List<Segment> segments, BadgePosition position) {
             view.peek(source, uuid).ifPresent(tiers -> answers.put(source, tiers));
         }
         return forPlayer(settings.enabledSources(), answers, settings.selectedGamemodes(),
-                settings.showRetired(), settings.style());
+                settings.showRetired(), settings.preferSelected(), settings.style());
     }
 
     /**
@@ -84,11 +84,24 @@ public record Badge(List<Segment> segments, BadgePosition position) {
                                   Map<Source, String> selectedGamemodes,
                                   boolean showRetired,
                                   NametagStyle style) {
+        return forPlayer(sites, tiersBySource, selectedGamemodes, showRetired, false, style);
+    }
+
+    /**
+     * As {@link #forPlayer(Set, Map, Map, boolean, NametagStyle)}, where
+     * {@code preferSelected} lets several enabled sites each prefer their selected gamemode.
+     */
+    public static Badge forPlayer(Set<Source> sites,
+                                  Map<Source, Map<String, Tier>> tiersBySource,
+                                  Map<Source, String> selectedGamemodes,
+                                  boolean showRetired,
+                                  boolean preferSelected,
+                                  NametagStyle style) {
         if (tiersBySource == null || tiersBySource.isEmpty()) {
             return NONE;
         }
-        return of(TierResolver.resolve(sites, tiersBySource, selectedGamemodes, showRetired),
-                style);
+        return of(TierResolver.resolve(sites, tiersBySource, selectedGamemodes, showRetired,
+                preferSelected), style);
     }
 
     /**
@@ -101,8 +114,19 @@ public record Badge(List<Segment> segments, BadgePosition position) {
                                 boolean showRetired,
                                 long timeMillis,
                                 NametagStyle style) {
+        return preview(sites, selectedGamemodes, showRetired, false, timeMillis, style);
+    }
+
+    /** As {@link #preview(Set, Map, boolean, long, NametagStyle)}, honoring {@code preferSelected}. */
+    public static Badge preview(Set<Source> sites,
+                                Map<Source, String> selectedGamemodes,
+                                boolean showRetired,
+                                boolean preferSelected,
+                                long timeMillis,
+                                NametagStyle style) {
         boolean retired = PreviewSample.retiredPhase(showRetired, timeMillis);
-        return of(PreviewSample.resolve(sites, selectedGamemodes, retired), style);
+        return of(PreviewSample.resolve(sites, selectedGamemodes, preferSelected, retired),
+                style);
     }
 
     public boolean isEmpty() {

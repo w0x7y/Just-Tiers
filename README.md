@@ -15,7 +15,10 @@ through 26.3. See the [release notes](docs/releases/v1.1.7.md).
 Toggle each leaderboard individually. All four sites are enabled by default. With
 several enabled, each site's best tier appears side by side. With just one enabled,
 the mod prefers your selected gamemode and falls back to that player's best tier
-on the same site. Icons identify the gamemode; colors identify the leaderboard.
+on the same site. Turn on Prefer selected gamemodes to apply that rule to every
+enabled site, so each shows its selected gamemode or falls back to its best tier.
+Icons identify the gamemode; colors identify the leaderboard.
+A gamemode the mod does not recognize yet shows its tier without an icon.
 
 Tiers run from LT5 through HT5, LT4, HT4, LT3, HT3, LT2, HT2 and LT1 to HT1. Retired
 placements have an R prefix, such as RHT1. PvPHQ also reports middle divisions,
@@ -61,6 +64,8 @@ All commands are client-side. `/justtiers lookup` completes names from the serve
 | `/justtiers retired` | Toggle retired tiers in nametags |
 | `/justtiers site <site> [true\|false]` | Toggle a site or explicitly enable/disable it; sites are `pvptiers`, `pvphq`, `subtiers`, `novatiers` |
 | `/justtiers gamemode <slug>` | Choose a gamemode for the only enabled site |
+| `/justtiers gamemode <site> <slug>` | Choose a gamemode for a named site |
+| `/justtiers preferselected` | Toggle preferring each enabled site's selected gamemode |
 | `/justtiers badge <before\|after>` | Move the badge before or after the name |
 | `/justtiers icons` | Toggle gamemode icons in nametags |
 | `/justtiers brackets` | Toggle badge brackets |
@@ -73,7 +78,10 @@ All commands are client-side. `/justtiers lookup` completes names from the serve
 
 `/justtiers lookup Notch` opens a screen with the player's skin and one row per leaderboard.
 Every known gamemode has a cell. A dash means no placement was reported for that gamemode;
-it does not establish whether the player was ever tested. A waiting or unavailable site
+it does not establish whether the player was ever tested. A placement in a gamemode the mod
+does not recognize yet gets an extra cell after the known ones, marked with the first letter
+of its name. Its tooltip shows a name derived from the site's identifier and says the mod
+does not recognize that gamemode yet. A waiting or unavailable site
 has its own message and is never presented as a row of unranked placements.
 
 The lookup includes retired tiers and all sites regardless of your nametag settings.
@@ -96,7 +104,9 @@ Unavailable controls stay visible and explain why they cannot currently be chang
 
 The live preview uses invented HT1 tiers and makes no leaderboard request. It alternates
 with RHT1 every five seconds while retired tiers are enabled. With several sites enabled,
-it uses fixed example gamemodes for those sites. It previews pending changes, including
+it uses fixed example gamemodes for those sites, or your selections while Prefer selected
+gamemodes is on. Gamemode pickers are available for every enabled site when that option
+is on, and for the only enabled site otherwise. It previews pending changes, including
 badge position, icons, brackets, colors and hiding your own badge.
 
 A gamemode picker opens with a click or keyboard activation. Arrow keys move between tiles;
@@ -140,6 +150,7 @@ Settings are stored in `config/justtiers.json` inside the Minecraft instance. De
     "SUBTIERS": "elytra",
     "NOVATIERS": "vanilla"
   },
+  "preferSelectedGamemodes": false,
   "novaRefreshMinutes": 30,
   "tierCacheMinutes": 60,
   "showDownloadProgress": true,
@@ -166,7 +177,14 @@ running scheduler or cache policy without restarting Minecraft.
 ## Supported gamemodes
 
 Sites are independent competitions. The slugs below are accepted by `/justtiers gamemode`
-and stored in the config file. Unknown API gamemodes need a mod update before they can appear.
+and stored in the config file.
+
+When a site reports a gamemode that is not listed here, its placements still appear. The name
+comes from the site's identifier, so `bed_wars` becomes Bed Wars, and there is no icon. These
+placements compete for the player's best tier, but you cannot select such a gamemode for
+nametags or with `/justtiers gamemode` until a mod update adds it. An identifier must be 1 to
+32 lowercase letters, digits, `_` or `-`; placements under other identifiers are ignored. One
+site's answer for a player contributes at most 16 unrecognized gamemodes.
 
 | Leaderboard | Gamemodes |
 |---|---|
@@ -212,7 +230,8 @@ can cause requests before the usual interval, so it is not a rate-limit guarante
 NovaTiers is indexed in memory and refreshed every 30 minutes by default; its payload size varies.
 
 HTTP 404 from PvPTiers, PvPHQ or SubTiers is a valid unranked answer. Unexpected statuses, transport
-errors and malformed successful responses are failures, not unranked results. Failed requests
+errors and malformed successful responses are failures, not unranked results. So is a response
+whose only placements use identifiers the mod refuses. Failed requests
 back off per player, with jitter; eight consecutive site failures pause new requests and then
 allow a recovery probe. Each site permits four active player requests and 128 waiting
 requests. Explicit lookups
@@ -336,7 +355,8 @@ Older plans in `docs/superpowers` are archived design history, not implementatio
 
 To add a gamemode, update `tier/Gamemodes.java`, `tools/gen_font_provider.py` and the matching
 texture, then run `python3 tools/gen_font_provider.py` followed by `./gradlew check`.
-The generator binds existing artwork to glyphs; it does not generate artwork.
+The generator binds existing artwork to glyphs; it does not generate artwork. Until a gamemode
+is registered, the mod shows it with a derived name and no icon.
 
 Icons use the private `justtiers:icons` font. Apply it only to the glyph component, with labels
 as separate siblings, so text does not inherit an icon-only font. Preserve `Segment.icon`

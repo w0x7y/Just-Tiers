@@ -1,25 +1,33 @@
-Just-Tiers backlog, reviewed 2026-09-17
+Just-Tiers backlog, reviewed 2026-10-14
 
 Future work, not supported features
 
 1. Tab-list badges and chat integration. Current PlayerMixin only decorates world
-   nametags. Each additional rendering path needs its own compatibility design.
-2. Per-site toggles within All mode. Requires a config migration and a clear preview.
-3. Runtime discovery of new gamemodes with fallback artwork. Unknown slugs currently
+   nametags. Each additional rendering path needs its own compatibility design, and
+   a full tab list must fit within the per-site request queue limits.
+2. Runtime discovery of new gamemodes with fallback artwork. Unknown slugs currently
    need a registry, font and texture update in a new mod build.
-4. Additional Minecraft release lines. CI/release automation already exists; broader
-   support still needs version-specific dependencies, compilation and runtime checks.
-5. Capture current configuration and lookup screenshots after the runtime checklist.
+3. Capture current configuration and lookup screenshots after the runtime checklist.
    The Modrinth description already includes a real nametag image; old placeholder
    screenshot comments were removed from the README.
-6. Crosshair lookup keybind or a no-argument lookup command. The existing lookup screen
+4. Crosshair lookup keybind or a no-argument lookup command. The existing lookup screen
    now supports editing a name and retrying without leaving it.
-7. A public tier-query API for other mods. Specify pending, unranked and failed results
+5. A public tier-query API for other mods. Specify pending, unranked and failed results
    before exposing the cache's internal types.
-8. Revisit the deferred lobby scan proposal. Its August design is archived, not shipped.
+6. Recent names on the lookup screen. Keep them for the session only unless a privacy
+   review approves saving them.
+7. A minimum displayed tier, so busy lobbies can hide low placements from nametags.
+8. Several placements per site on one nametag, such as a player's top two gamemodes.
+9. Revisit the deferred lobby scan proposal. Its August design is archived, not shipped.
+   A new design should avoid summing tiers across sites into one score.
 
 Already implemented
 
+- Individual site toggles, replacing the single-site/all-sites display mode (1.1.7).
+- Builds for every stable Minecraft version from 1.21.10 through 26.3. New release
+  lines follow docs/minecraft-compatibility.md.
+- Prefer selected gamemodes with several sites enabled, falling back to each site's
+  best placement.
 - Per-site debug report with clipboard copy, latency, errors and retry state.
 - Pull-request/main build checks, wrapper validation, workflow lint and tagged releases
   to GitHub and Modrinth, with a separate Modrinth dry-run workflow.

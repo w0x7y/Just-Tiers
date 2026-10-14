@@ -70,6 +70,18 @@ public final class JustTiersScreens {
         Option<Boolean> showRetired = tickBox("justtiers.option.showRetired",
                 config::isShowRetired, config::setShowRetired);
 
+        // Described from the pending sites: with one site its selection is always used,
+        // so the box is greyed and says why rather than looking like it does nothing.
+        Option<Boolean> preferSelected = Option.<Boolean>createBuilder()
+                .name(Component.translatable("justtiers.option.preferSelected"))
+                .description(value -> description(pendingSites(siteToggles).size() > 1
+                        ? "justtiers.option.preferSelected.desc"
+                        : "justtiers.option.preferSelected.singleSite"))
+                .binding(false, config::isPreferSelectedGamemodes,
+                        config::setPreferSelectedGamemodes)
+                .controller(TickBoxControllerBuilder::create)
+                .build();
+
         Option<BadgePosition> badgePosition = Option.<BadgePosition>createBuilder()
                 .name(Component.translatable("justtiers.option.badgePosition"))
                 .description(description("justtiers.option.badgePosition.desc"))
@@ -111,7 +123,8 @@ public final class JustTiersScreens {
                 showRetired.pendingValue(),
                 new NametagStyle(badgePosition.pendingValue(),
                         showIcons.pendingValue(), showBrackets.pendingValue(),
-                        pendingColors(palette, colorPickers)));
+                        pendingColors(palette, colorPickers)),
+                preferSelected.pendingValue());
 
         for (Source source : Source.ALL) {
             colorPickers.put(source, Option.<Color>createBuilder()
@@ -134,8 +147,9 @@ public final class JustTiersScreens {
                     .name(Component.translatable("justtiers.option.gamemode",
                             source.displayName()))
                     .description(value -> gamemodeDescription(source, ControlAvailability.of(
-                            enabled.pendingValue(), pendingSites(siteToggles), palette.pendingValue())
-                            .reasonFor(source)))
+                            enabled.pendingValue(), pendingSites(siteToggles),
+                            preferSelected.pendingValue(), palette.pendingValue())
+                            .reasonFor(source), preferSelected.pendingValue()))
                     .binding(JustTiersConfig.defaultGamemode(source),
                             () -> config.selectedGamemode(source),
                             slug -> config.setSelectedGamemode(source, slug))
@@ -146,9 +160,11 @@ public final class JustTiersScreens {
 
         Runnable syncAvailability = () -> {
             ControlAvailability state = ControlAvailability.of(
-                    enabled.pendingValue(), pendingSites(siteToggles), palette.pendingValue());
+                    enabled.pendingValue(), pendingSites(siteToggles),
+                    preferSelected.pendingValue(), palette.pendingValue());
             siteToggles.values().forEach(option -> option.setAvailable(state.sites()));
             showRetired.setAvailable(state.showRetired());
+            preferSelected.setAvailable(state.preferSelected());
             badgePosition.setAvailable(state.appearance());
             showIcons.setAvailable(state.appearance());
             showBrackets.setAvailable(state.appearance());
@@ -160,6 +176,8 @@ public final class JustTiersScreens {
         enabled.addEventListener((option, event) -> syncAvailability.run());
         siteToggles.values().forEach(toggle ->
                 toggle.addEventListener((option, event) -> syncAvailability.run()));
+        // Preferring selections ungreys the pickers before Save, like the site toggles.
+        preferSelected.addEventListener((option, event) -> syncAvailability.run());
         // A palette change greys or ungreys the color pickers the moment it is made,
         // rather than waiting for Save.
         palette.addEventListener((option, event) -> syncAvailability.run());
@@ -170,8 +188,8 @@ public final class JustTiersScreens {
         YetAnotherConfigLib library = YetAnotherConfigLib.createBuilder()
                 .title(Component.translatable("justtiers.config.title"))
                 .category(displayCategory(preview, enabled, siteToggles, showRetired,
-                        badgePosition, showIcons, showBrackets, hideOwnBadge, palette,
-                        colorPickers, pickers))
+                        preferSelected, badgePosition, showIcons, showBrackets, hideOwnBadge,
+                        palette, colorPickers, pickers))
                 .category(dataCategory(config))
                 .category(aboutCategory())
                 .save(() -> JustTiersClient.settings().commitDraft(config))
@@ -219,6 +237,7 @@ public final class JustTiersScreens {
                                                   Option<Boolean> enabled,
                                                   Map<Source, Option<Boolean>> siteToggles,
                                                   Option<Boolean> showRetired,
+                                                  Option<Boolean> preferSelected,
                                                   Option<BadgePosition> badgePosition,
                                                   Option<Boolean> showIcons,
                                                   Option<Boolean> showBrackets,
@@ -240,7 +259,8 @@ public final class JustTiersScreens {
         colorPickers.values().forEach(appearance::option);
 
         OptionGroup.Builder gamemodes = OptionGroup.createBuilder()
-                .name(Component.translatable("justtiers.group.gamemodes"));
+                .name(Component.translatable("justtiers.group.gamemodes"))
+                .option(preferSelected);
         pickers.values().forEach(gamemodes::option);
 
         OptionGroup.Builder sites = OptionGroup.createBuilder()
@@ -332,14 +352,16 @@ public final class JustTiersScreens {
                 .build();
     }
 
-    private static OptionDescription gamemodeDescription(Source source, ControlAvailability.Reason reason) {
+    private static OptionDescription gamemodeDescription(Source source, ControlAvailability.Reason reason,
+                                                         boolean preferSelected) {
         return switch (reason) {
             case AVAILABLE -> OptionDescription.of(Component.translatable(
                     "justtiers.option.gamemode.desc", source.displayName()));
             case MOD_DISABLED -> description("justtiers.option.gamemode.disabled");
             case MULTIPLE_SITES -> description("justtiers.option.gamemode.inactive");
-            case SITE_DISABLED -> OptionDescription.of(Component.translatable(
-                    "justtiers.option.gamemode.otherSite", source.displayName()));
+            case SITE_DISABLED -> OptionDescription.of(Component.translatable(preferSelected
+                            ? "justtiers.option.gamemode.siteDisabled"
+                            : "justtiers.option.gamemode.otherSite", source.displayName()));
         };
     }
 

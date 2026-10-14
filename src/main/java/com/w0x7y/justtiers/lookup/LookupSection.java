@@ -6,7 +6,8 @@ import java.util.List;
 
 /**
  * One site's row in the lookup screen: a cell for every gamemode that site runs, in the
- * site's own order, or the reason there is no row to draw.
+ * site's own order, followed by any discovered gamemodes the player is placed in, or the
+ * reason there is no row to draw.
  */
 public record LookupSection(Source source, Status status, List<LookupCell> cells) {
 

@@ -74,7 +74,7 @@ class PlayerBadgeTest {
 
     @Test
     void aRankedAccountGetsItsBadge() {
-        assertEquals("[" + gamemode(Source.PVPTIERS, "crystal").icon() + "HT2] ",
+        assertEquals("[" + gamemode(Source.PVPTIERS, "crystal").icon().orElseThrow() + "HT2] ",
                 Badge.forPlayer(view(true, Set.of(Source.PVPTIERS)), ACCOUNT).plainText());
     }
 
@@ -120,7 +120,7 @@ class PlayerBadgeTest {
 
         assertEquals(List.of(Source.SUBTIERS), view.asked());
         // Cached answers from the other two are right there and must not reach the tag.
-        assertEquals("[" + gamemode(Source.SUBTIERS, "bow").icon() + "HT1] ", badge.plainText());
+        assertEquals("[" + gamemode(Source.SUBTIERS, "bow").icon().orElseThrow() + "HT1] ", badge.plainText());
     }
 
     @Test
@@ -129,9 +129,9 @@ class PlayerBadgeTest {
         Badge badge = Badge.forPlayer(view, ACCOUNT);
 
         assertEquals(Source.ALL, view.asked());
-        assertEquals("[" + gamemode(Source.PVPTIERS, "crystal").icon() + "HT2 "
-                        + gamemode(Source.SUBTIERS, "bow").icon() + "HT1 "
-                        + gamemode(Source.NOVATIERS, "spleef").icon() + "LT3] ",
+        assertEquals("[" + gamemode(Source.PVPTIERS, "crystal").icon().orElseThrow() + "HT2 "
+                        + gamemode(Source.SUBTIERS, "bow").icon().orElseThrow() + "HT1 "
+                        + gamemode(Source.NOVATIERS, "spleef").icon().orElseThrow() + "LT3] ",
                 badge.plainText());
     }
 
@@ -142,7 +142,7 @@ class PlayerBadgeTest {
         Badge badge = Badge.forPlayer(view, ACCOUNT);
 
         assertEquals(Source.ALL, view.asked());
-        assertEquals("[" + gamemode(Source.NOVATIERS, "spleef").icon() + "HT1] ",
+        assertEquals("[" + gamemode(Source.NOVATIERS, "spleef").icon().orElseThrow() + "HT1] ",
                 badge.plainText());
     }
 
@@ -157,7 +157,7 @@ class PlayerBadgeTest {
         String one = Badge.forPlayer(view, ACCOUNT).plainText();
 
         assertNotEquals(all, one);
-        assertEquals("[" + gamemode(Source.PVPTIERS, "crystal").icon() + "HT2] ", one);
+        assertEquals("[" + gamemode(Source.PVPTIERS, "crystal").icon().orElseThrow() + "HT2] ", one);
     }
 
     @Test
@@ -190,7 +190,7 @@ class PlayerBadgeTest {
                         Map.of("crystal", new Tier(2, true, false), "axe", new Tier(4, true, false)));
 
         view.settings(settings(true, Set.of(Source.PVPTIERS)).withGamemode(Source.PVPTIERS, "axe"));
-        assertEquals("[" + gamemode(Source.PVPTIERS, "axe").icon() + "HT4] ",
+        assertEquals("[" + gamemode(Source.PVPTIERS, "axe").icon().orElseThrow() + "HT4] ",
                 Badge.forPlayer(view, ACCOUNT).plainText());
     }
 }
