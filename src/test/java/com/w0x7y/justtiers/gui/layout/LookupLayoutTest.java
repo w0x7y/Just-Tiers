@@ -2,6 +2,7 @@ package com.w0x7y.justtiers.gui.layout;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -19,9 +20,10 @@ class LookupLayoutTest {
     }
 
 
+    /** Heights just tall enough for the whole panel at skin scale 1, under the history strip. */
     @Test
     void aSmallerSkinAvoidsScrollingWhenTheWholePanelCanFit() {
-        for (int height : List.of(320, 340)) {
+        for (int height : List.of(330, 350)) {
             LookupLayout layout = layout(854, height);
             assertEquals(0, layout.maxScroll(), "screen height " + height);
             assertTrue(layout.panelY() >= LookupLayout.SEARCH_BOTTOM);
@@ -42,6 +44,71 @@ class LookupLayoutTest {
         assertTrue(firstRowScroll < footerScroll);
         assertTrue(first.cellY(0) - firstRowScroll >= layout.panelY());
         assertTrue(first.cellY(0) - firstRowScroll + 14 <= layout.viewportBottom());
+    }
+
+    // --- recent lookups ---
+
+    /** Sixteen characters of Minecraft's font: the widest name an account can have. */
+    private static final int WIDEST_NAME = 96;
+    private static final int RECENT_LABEL = 36;
+
+    @Test
+    void theHistoryStripSitsBetweenSearchAndResultsAtSmallGuiSizes() {
+        for (int[] size : new int[][]{{320, 240}, {427, 240}, {480, 270}}) {
+            String at = size[0] + "x" + size[1];
+            LookupLayout layout = layout(size[0], size[1]);
+            assertTrue(layout.showsHistory(), at);
+            assertTrue(layout.historyY() >= layout.searchY() + LookupLayout.BUTTON_HEIGHT, at);
+            assertTrue(layout.historyY() + LookupLayout.HISTORY_HEIGHT < layout.panelY(), at);
+            assertTrue(layout.viewportHeight() >= LookupLayout.MIN_VIEWPORT, at);
+            assertTrue(layout.doneButtonY() + LookupLayout.BUTTON_HEIGHT <= size[1] - 8, at);
+            assertTrue(layout.searchX() >= 0, at);
+            assertTrue(layout.searchX() + layout.searchWidth() <= size[0], at);
+        }
+    }
+
+    @Test
+    void historyButtonsStayOnScreenWithoutOverlappingAtSmallGuiSizes() {
+        List<Integer> names = Collections.nCopies(8, WIDEST_NAME);
+        for (int[] size : new int[][]{{320, 240}, {427, 240}, {480, 270}}) {
+            String at = size[0] + "x" + size[1];
+            HistoryStrip strip = layout(size[0], size[1]).history(RECENT_LABEL, names);
+            assertFalse(strip.entries().isEmpty(), at);
+            assertTrue(strip.entries().size() < 8, at + ": eight of the widest names cannot fit");
+            assertTrue(strip.labelX() >= LookupLayout.SCREEN_MARGIN, at);
+            HistoryStrip.Entry last = strip.entries().getLast();
+            assertTrue(last.x() + last.width() <= size[0] - LookupLayout.SCREEN_MARGIN, at);
+            for (int i = 1; i < strip.entries().size(); i++) {
+                HistoryStrip.Entry previous = strip.entries().get(i - 1);
+                assertTrue(previous.x() + previous.width() < strip.entries().get(i).x(), at);
+            }
+        }
+    }
+
+    @Test
+    void aWideScreenShowsAFullHistoryOfShortNames() {
+        HistoryStrip strip = layout(854, 480).history(RECENT_LABEL, Collections.nCopies(8, 30));
+        assertEquals(8, strip.entries().size());
+    }
+
+    @Test
+    void aScreenTooShortForTheStripKeepsSearchAndDoneAndDropsTheStrip() {
+        LookupLayout layout = layout(320, 150);
+
+        assertFalse(layout.showsHistory());
+        assertEquals(LookupLayout.SEARCH_BOTTOM, layout.panelY());
+        assertTrue(layout.history(RECENT_LABEL, List.of(30, 40)).entries().isEmpty());
+        assertTrue(layout.doneButtonY() + LookupLayout.BUTTON_HEIGHT <= 150 - 8);
+        assertTrue(layout.doneButtonY() >= layout.searchY() + LookupLayout.BUTTON_HEIGHT);
+    }
+
+    @Test
+    void theStripIsShownFromTheShortestHeightThatKeepsItsMinimumViewport() {
+        int shortest = LookupLayout.HISTORY_BOTTOM + LookupLayout.MIN_VIEWPORT
+                + LookupLayout.BUTTON_GAP + LookupLayout.BUTTON_HEIGHT + LookupLayout.SCREEN_MARGIN;
+        assertTrue(layout(320, shortest).showsHistory());
+        assertFalse(layout(320, shortest - 1).showsHistory());
+        assertTrue(layout(320, shortest).viewportHeight() >= LookupLayout.MIN_VIEWPORT);
     }
 
     /** Roughly what Minecraft's own font reports at default GUI scale. */

@@ -100,14 +100,10 @@ public final class JustTiersCommands {
                         .then(literal("lookup")
                                 .then(argument("player", StringArgumentType.word())
                                         .suggests((context, builder) -> {
-                                            String prefix = builder.getRemaining()
-                                                    .toLowerCase(Locale.ROOT);
-                                            for (String name : OnlinePlayers.names()) {
-                                                if (name.toLowerCase(Locale.ROOT)
-                                                        .startsWith(prefix)) {
-                                                    builder.suggest(name);
-                                                }
-                                            }
+                                            // Online names, then this session's recent lookups.
+                                            JustTiersClient.lookupHistory()
+                                                    .suggestions(builder.getRemaining(), OnlinePlayers.names())
+                                                    .forEach(builder::suggest);
                                             return builder.buildFuture();
                                         })
                                         .executes(JustTiersCommands::lookup)))

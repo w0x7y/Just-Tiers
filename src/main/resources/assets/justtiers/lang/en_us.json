@@ -96,6 +96,8 @@
   "justtiers.lookup.name": "Minecraft username",
   "justtiers.lookup.search": "Look up",
   "justtiers.lookup.visitSite": "Open %s website",
+  "justtiers.lookup.recent": "Recent:",
+  "justtiers.lookup.again": "Look up %s again",
   "justtiers.option.gamemode.otherSite": "Enable %s and disable the other sites to change this gamemode.",
   "justtiers.config.retrySave": "Retry save",
   "justtiers.config.saveFailed": "Could not save settings. Your previous settings are unchanged. Check that the config folder is writable, then retry Save or Cancel.",

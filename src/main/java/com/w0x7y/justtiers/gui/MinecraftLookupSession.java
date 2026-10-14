@@ -28,6 +28,7 @@ final class MinecraftLookupSession {
                 return JustTiersClient.names().resolve(requestedName);
             }
         }, JustTiersClient.cache(), client::execute);
+        JustTiersClient.lookupHistory().recordWhenResolved(lookup.resolvedPlayer());
         lookup.resolvedPlayer().thenAccept(found -> found.ifPresent(player ->
                 PlayerSkins.resolve(player).thenAccept(loaded -> client.execute(() -> skin = loaded))));
     }

@@ -61,6 +61,9 @@ components, commands and events.
   only the same live revision. `gui/MinecraftLookupSession` supplies client scheduling,
   translations and skins.
   Publish session state through its owning executor and read it on that same thread.
+- `lookup/LookupHistory` owns recent lookup names: in memory only, never persisted,
+  eight names, most recent first, case-insensitive de-duplication. It records only
+  resolved identities. The lookup screen renders it; `gui/layout/HistoryStrip` places it.
 
 `PlayerMixin` decorates `Player.getDisplayName` for world nametags. Tab-list and chat
 rendering use different paths and are outside the current feature.

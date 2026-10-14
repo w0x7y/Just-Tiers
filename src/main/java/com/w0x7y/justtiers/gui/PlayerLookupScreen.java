@@ -1,12 +1,15 @@
 package com.w0x7y.justtiers.gui;
 
+import com.w0x7y.justtiers.JustTiersClient;
 import com.w0x7y.justtiers.render.Icons;
 import com.w0x7y.justtiers.render.SiteColors;
 import com.w0x7y.justtiers.gui.layout.CreditLine;
+import com.w0x7y.justtiers.gui.layout.HistoryStrip;
 import com.w0x7y.justtiers.gui.layout.LookupLayout;
 import com.w0x7y.justtiers.gui.layout.LookupMetrics;
 import com.w0x7y.justtiers.gui.layout.SkinLayout;
 import com.w0x7y.justtiers.lookup.LookupCell;
+import com.w0x7y.justtiers.lookup.LookupHistory;
 import com.w0x7y.justtiers.lookup.LookupSection;
 import com.w0x7y.justtiers.lookup.LookupResult;
 import com.w0x7y.justtiers.tier.Gamemode;
@@ -17,6 +20,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.narration.NarratedElementType;
@@ -84,6 +88,11 @@ public final class PlayerLookupScreen extends Screen {
     private final List<ContentControl> contentControls = new ArrayList<>();
     private final Map<Source, List<ContentControl>> cellControls = new EnumMap<>(Source.class);
     private final List<ContentControl> links = new ArrayList<>();
+    /** One slot per name the history can hold; slots beyond what fits stay hidden. */
+    private final List<Button> historyButtons = new ArrayList<>();
+    /** The history snapshot the slots show, or null when they need laying out again. */
+    private List<String> shownHistory;
+    private HistoryStrip historyStrip;
 
     private LookupLayout layout;
     private CreditLine credit;
@@ -109,17 +118,18 @@ public final class PlayerLookupScreen extends Screen {
         links.clear();
         scroll = Math.clamp(scroll, 0, layout.maxScroll());
         String typedName = nameField == null ? session.name() : nameField.getValue();
-        int searchWidth = Math.min(width - 16, 320);
-        int left = (width - searchWidth) / 2;
-        nameField = addRenderableWidget(new EditBox(font, left, 8, searchWidth - 86, 20,
+        int searchWidth = layout.searchWidth();
+        int left = layout.searchX();
+        nameField = addRenderableWidget(new EditBox(font, left, layout.searchY(), searchWidth - 86, 20,
                 Component.translatable("justtiers.lookup.name")));
         nameField.setMaxLength(64);
         nameField.setValue(typedName);
         nameField.setHint(Component.translatable("justtiers.lookup.name"));
         lookupButton = addRenderableWidget(Button.builder(Component.translatable("justtiers.lookup.search"),
-                button -> startLookup()).pos(left + searchWidth - 80, 8).size(80, 20).build());
+                button -> startLookup()).pos(left + searchWidth - 80, layout.searchY()).size(80, 20).build());
         nameField.setResponder(value -> lookupButton.active = !value.isBlank());
         lookupButton.active = !typedName.isBlank();
+        addHistoryButtons();
         addContentControls();
         updateContentControls();
         addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, button -> onClose())
@@ -173,6 +183,10 @@ public final class PlayerLookupScreen extends Screen {
                                    int mouseX, int mouseY, float delta) {
         super.extractRenderState(graphics, mouseX, mouseY, delta);
 
+        if (!historyStrip.entries().isEmpty()) {
+            graphics.text(font, Component.translatable("justtiers.lookup.recent"),
+                    historyStrip.labelX(), historyStrip.textTop(font.lineHeight), Colors.SECONDARY);
+        }
         updateContentControls();
         graphics.enableScissor(layout.panelX(), layout.panelY(), layout.panelRight(), layout.viewportBottom());
         graphics.pose().pushMatrix();
@@ -375,6 +389,64 @@ public final class PlayerLookupScreen extends Screen {
         updateContentControls();
     }
 
+    /**
+     * Added straight after the search controls, so Tab reaches the recent names before
+     * the results. Each runs its lookup in place, as editing the name and retrying would.
+     */
+    private void addHistoryButtons() {
+        historyButtons.clear();
+        shownHistory = null;
+        for (int i = 0; i < LookupHistory.CAPACITY; i++) {
+            int slot = i;
+            Button button = addRenderableWidget(Button.builder(Component.empty(),
+                            ignored -> lookUpRecent(slot))
+                    .pos(0, layout.historyY()).size(BUTTON_WIDTH, BUTTON_HEIGHT).build());
+            button.visible = false;
+            historyButtons.add(button);
+        }
+        updateHistory();
+    }
+
+    /** Lays the slots out again whenever the session's history has changed. */
+    private void updateHistory() {
+        List<String> names = JustTiersClient.lookupHistory().names();
+        if (names.equals(shownHistory)) return;
+
+        int focusedSlot = historyButtons.indexOf(getFocused());
+        String focusedName = shownHistory != null && focusedSlot >= 0 && focusedSlot < shownHistory.size()
+                ? shownHistory.get(focusedSlot) : null;
+
+        shownHistory = names;
+        historyStrip = layout.history(font.width(Component.translatable("justtiers.lookup.recent")),
+                names.stream().map(font::width).toList());
+        for (int i = 0; i < historyButtons.size(); i++) {
+            Button button = historyButtons.get(i);
+            button.visible = i < historyStrip.entries().size();
+            if (!button.visible) continue;
+            HistoryStrip.Entry entry = historyStrip.entries().get(i);
+            String name = names.get(i);
+            button.setX(entry.x());
+            button.setWidth(entry.width());
+            button.setMessage(Component.literal(name));
+            button.setTooltip(Tooltip.create(Component.translatable("justtiers.lookup.again", name)));
+        }
+
+        // A lookup moves its name to the front: keep focus on that name, not on its old slot.
+        if (focusedName != null) {
+            int moved = -1;
+            for (int i = 0; i < historyStrip.entries().size(); i++) {
+                if (names.get(i).equalsIgnoreCase(focusedName)) moved = i;
+            }
+            setFocused(moved >= 0 ? historyButtons.get(moved) : nameField);
+        }
+    }
+
+    private void lookUpRecent(int slot) {
+        if (shownHistory == null || slot >= shownHistory.size()) return;
+        nameField.setValue(shownHistory.get(slot));
+        startLookup();
+    }
+
     private void addContentControls() {
         for (int sourceIndex = 0; sourceIndex < Source.ALL.size(); sourceIndex++) {
             Source source = Source.ALL.get(sourceIndex);
@@ -419,6 +491,7 @@ public final class PlayerLookupScreen extends Screen {
 
     @Override
     public void tick() {
+        updateHistory();
         updateContentControls();
     }
 

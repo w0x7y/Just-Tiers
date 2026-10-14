@@ -177,6 +177,15 @@ on PATH or through JAVA_HOME.
 - Navigate cells and leaderboard links using Tab and Shift+Tab. Focused content should scroll
   into view, show its tooltip and have useful narration. Enter opens the intended link using
   Minecraft's confirmation prompt. Escape and Done close the lookup.
+- Look up several players, including one name that does not resolve. Recent-name buttons
+  must appear under the search field, most recent first, without the unresolved name.
+  Repeat a lookup with different casing: it moves to the front under that casing, with no
+  duplicate. Activate a recent name by click, and by Tab focus with Enter and Space; it must
+  look that player up in place and keep focus on the moved name. Hover or focus shows and
+  narrates "Look up <name> again". At 320×240 the search field and Done remain reachable,
+  with fewer recent names shown if needed. `/justtiers lookup` tab completion must offer
+  recent names alongside online names without duplicates. After restarting Minecraft the
+  history must be empty, and `config/` must contain no saved names.
 - With a real or controlled site failure, confirm unavailable rows are distinct from empty
   placements. After recovery, retry should update them. Skin/profile failure should leave
   tiers usable with a default skin, and a later retry should attempt the skin again.
