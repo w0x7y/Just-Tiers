@@ -110,7 +110,9 @@ screenshots in a [GitHub issue](https://github.com/w0x7y/Just-Tiers/issues). `PA
 mod is waiting before probing a site that repeatedly failed. Diagnostics remain in English.
 
 The [README](https://github.com/w0x7y/Just-Tiers#readme) lists all 43 supported gamemodes,
-configuration fields and contributor instructions.
+configuration fields and contributor instructions. A gamemode a site adds later still shows
+its placements, with a name taken from the site and no icon, but it cannot be selected for
+nametags until a mod update adds it.
 
 ## Credits and licensing
 

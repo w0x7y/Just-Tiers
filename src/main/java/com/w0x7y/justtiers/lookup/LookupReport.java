@@ -1,5 +1,6 @@
 package com.w0x7y.justtiers.lookup;
 
+import com.w0x7y.justtiers.tier.DiscoveredGamemodes;
 import com.w0x7y.justtiers.tier.Gamemode;
 import com.w0x7y.justtiers.tier.Gamemodes;
 import com.w0x7y.justtiers.tier.Source;
@@ -39,10 +40,11 @@ public final class LookupReport {
     }
 
     /**
-     * A cell per gamemode the site is known to run, in its declared order. A slug the
-     * site has started using since this build is skipped rather than guessed at — the
-     * same rule {@code TierResolver.highestOn} follows — because a column with no icon and
-     * no name would be worse than a missing one.
+     * A cell per gamemode the site is known to run, in its declared order, then a cell
+     * per discovered gamemode the player holds a placement in, ordered by slug. A
+     * discovered gamemode has no icon; its cell names it with a derived name. Only
+     * placements create discovered cells, and no more than
+     * {@link DiscoveredGamemodes#MAX_PER_ANSWER} of them, so the row stays bounded.
      */
     private static List<LookupCell> cells(Source source, Map<String, Tier> tiers) {
         List<Gamemode> gamemodes = Gamemodes.of(source);
@@ -51,6 +53,14 @@ public final class LookupReport {
             cells.add(new LookupCell(gamemode,
                     Optional.ofNullable(tiers.get(gamemode.slug()))));
         }
+        tiers.keySet().stream()
+                .filter(slug -> Gamemodes.find(source, slug).isEmpty())
+                .sorted()
+                .map(slug -> Gamemodes.forSlug(source, slug))
+                .flatMap(Optional::stream)
+                .limit(DiscoveredGamemodes.MAX_PER_ANSWER)
+                .forEach(gamemode -> cells.add(new LookupCell(gamemode,
+                        Optional.of(tiers.get(gamemode.slug())))));
         return cells;
     }
 

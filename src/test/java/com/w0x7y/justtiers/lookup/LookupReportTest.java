@@ -72,25 +72,27 @@ class LookupReportTest {
     }
 
     @Test
-    void aGamemodeTheSiteAddedAfterThisBuildIsIgnored() {
-        // Same rule TierResolver.highestOn follows: a slug we have no icon or name for is
-        // skipped rather than guessed at, so it must not become a nameless column.
+    void aGamemodeTheSiteAddedAfterThisBuildGetsItsOwnCell() {
+        // Same rule TierResolver.highestOn follows: a placement in a gamemode this build
+        // does not register still counts, named from its slug and drawn without an icon.
         var answers = answers();
         answers.put(Source.PVPTIERS, Optional.of(Map.of("trident_but_on_fire", ht(2))));
 
         LookupSection section = sectionFor(sections(answers), Source.PVPTIERS);
 
-        assertEquals(Gamemodes.of(Source.PVPTIERS).size(), section.cells().size());
-        assertFalse(slugs(section).contains("trident_but_on_fire"));
+        assertEquals(Gamemodes.of(Source.PVPTIERS).size() + 1, section.cells().size());
+        assertEquals("trident_but_on_fire", slugs(section).getLast());
+        assertEquals("Trident But On Fire", section.cells().getLast().gamemode().displayName());
     }
 
     @Test
-    void aSiteWithOnlyUnknownGamemodesIsUnranked() {
+    void aSiteWithOnlyUnacceptableSlugsIsUnrankedWithItsFixedRow() {
         var answers = answers();
-        answers.put(Source.PVPTIERS, Optional.of(Map.of("trident_but_on_fire", ht(2))));
+        answers.put(Source.PVPTIERS, Optional.of(Map.of("Trident But On Fire", ht(2))));
 
-        assertEquals(LookupSection.Status.UNRANKED,
-                sectionFor(sections(answers), Source.PVPTIERS).status());
+        LookupSection section = sectionFor(sections(answers), Source.PVPTIERS);
+        assertEquals(LookupSection.Status.UNRANKED, section.status());
+        assertEquals(Gamemodes.of(Source.PVPTIERS).size(), section.cells().size());
     }
 
     @Test
@@ -216,5 +218,56 @@ class LookupReportTest {
         LookupSection section = sectionFor(sections(answers), Source.PVPTIERS);
 
         assertThrows(UnsupportedOperationException.class, () -> section.cells().clear());
+    }
+
+    // --- gamemodes this build does not register ---
+
+    @Test
+    void discoveredGamemodesFollowTheFixedCellsOrderedBySlug() {
+        var answers = answers();
+        answers.put(Source.SUBTIERS, Optional.of(Map.of(
+                "zombie_rush", lt(2), "bow", ht(1), "arena-duel", retiredHt(3))));
+
+        LookupSection section = sectionFor(sections(answers), Source.SUBTIERS);
+        List<String> registered = Gamemodes.of(Source.SUBTIERS).stream().map(Gamemode::slug).toList();
+
+        assertEquals(registered, slugs(section).subList(0, registered.size()));
+        assertEquals(List.of("arena-duel", "zombie_rush"),
+                slugs(section).subList(registered.size(), section.cells().size()));
+        LookupCell arena = section.cells().get(registered.size());
+        assertEquals("Arena Duel", arena.gamemode().displayName());
+        assertTrue(arena.gamemode().icon().isEmpty());
+        assertFalse(Gamemodes.isRegistered(arena.gamemode()));
+        assertEquals("RHT3", arena.tier().orElseThrow().label());
+    }
+
+    @Test
+    void aSiteRankedOnlyInDiscoveredGamemodesIsRanked() {
+        var answers = answers();
+        answers.put(Source.PVPHQ, Optional.of(Map.of("new_mode", ht(4))));
+
+        LookupSection section = sectionFor(sections(answers), Source.PVPHQ);
+
+        assertEquals(LookupSection.Status.RANKED, section.status());
+        assertEquals(Gamemodes.of(Source.PVPHQ).size() + 1, section.cells().size());
+        assertTrue(section.cells().stream().filter(LookupCell::ranked)
+                .allMatch(cell -> cell.gamemode().slug().equals("new_mode")));
+    }
+
+    @Test
+    void unacceptableSlugsGetNoCellAndDiscoveredCellsAreBounded() {
+        Map<String, Tier> tiers = new java.util.HashMap<>();
+        for (int i = 0; i < 30; i++) {
+            tiers.put("mode" + (char) ('a' + i % 26) + i, ht(5));
+        }
+        tiers.put("Not A Slug", ht(1));
+        var answers = answers();
+        answers.put(Source.NOVATIERS, Optional.of(tiers));
+
+        LookupSection section = sectionFor(sections(answers), Source.NOVATIERS);
+
+        assertEquals(Gamemodes.of(Source.NOVATIERS).size()
+                + com.w0x7y.justtiers.tier.DiscoveredGamemodes.MAX_PER_ANSWER, section.cells().size());
+        assertFalse(slugs(section).contains("Not A Slug"));
     }
 }

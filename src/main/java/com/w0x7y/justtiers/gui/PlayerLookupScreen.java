@@ -9,6 +9,7 @@ import com.w0x7y.justtiers.gui.layout.SkinLayout;
 import com.w0x7y.justtiers.lookup.LookupCell;
 import com.w0x7y.justtiers.lookup.LookupSection;
 import com.w0x7y.justtiers.lookup.LookupResult;
+import com.w0x7y.justtiers.tier.DiscoveredGamemodes;
 import com.w0x7y.justtiers.tier.Gamemode;
 import com.w0x7y.justtiers.tier.Gamemodes;
 import com.w0x7y.justtiers.tier.Source;
@@ -28,6 +29,7 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.PlayerModelType;
 import net.minecraft.world.entity.player.PlayerSkin;
@@ -50,6 +52,13 @@ import java.util.OptionalInt;
  * <p>Unlike the nametag, this screen always draws the gamemode icons: on a nametag an
  * icon says which gamemode earned a tier, but here it is the only thing naming the
  * column, and a row of bare tiers would say nothing about what they were earned in.
+ * A discovered gamemode has no icon, so its cell shows the first letter of its derived
+ * name in ordinary text, and its tooltip names it and says this build does not
+ * recognize it yet.
+ *
+ * <p>Registered gamemodes have fixed cells, so their rows never move as answers arrive.
+ * Discovered cells follow them and are known only once a site answers, so a row that
+ * gains one is laid out again on the next tick, keeping the focused control.
  *
  * <p>Where everything sits is {@link LookupLayout}'s answer, worked out once in
  * {@link #init()} from what the font measures. This class keeps no coordinates of its
@@ -80,12 +89,14 @@ public final class PlayerLookupScreen extends Screen {
     private MinecraftLookupSession session;
     private EditBox nameField;
     private Button lookupButton;
+    private Button doneButton;
     private int scroll;
     private final List<ContentControl> contentControls = new ArrayList<>();
     private final Map<Source, List<ContentControl>> cellControls = new EnumMap<>(Source.class);
     private final List<ContentControl> links = new ArrayList<>();
 
     private LookupLayout layout;
+    private List<Integer> layoutCounts = List.of();
     private CreditLine credit;
     private int cellWidth;
     private int cellHeight;
@@ -99,7 +110,8 @@ public final class PlayerLookupScreen extends Screen {
     @Override
     protected void init() {
         measureCells();
-        layout = LookupLayout.of(metrics());
+        layoutCounts = rowCounts();
+        layout = LookupLayout.of(metrics(layoutCounts));
         credit = CreditLine.centeredIn(layout.panelX(), layout.panelWidth(),
                 font.width(Component.translatable("justtiers.lookup.credit")),
                 font.width(" "), font.width(SITE_SEPARATOR), siteNameWidths());
@@ -122,7 +134,7 @@ public final class PlayerLookupScreen extends Screen {
         lookupButton.active = !typedName.isBlank();
         addContentControls();
         updateContentControls();
-        addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, button -> onClose())
+        doneButton = addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, button -> onClose())
                 .pos(width / 2 - BUTTON_WIDTH / 2, layout.doneButtonY())
                 .size(BUTTON_WIDTH, BUTTON_HEIGHT).build());
     }
@@ -130,20 +142,32 @@ public final class PlayerLookupScreen extends Screen {
     // ---------------------------------------------------------------- measuring
 
     /** What only the running game can measure. Every decision from here is arithmetic. */
-    private LookupMetrics metrics() {
-        List<Integer> counts = new ArrayList<>(Source.ALL.size());
-        for (Source source : Source.ALL) {
-            counts.add(Gamemodes.of(source).size());
-        }
+    private LookupMetrics metrics(List<Integer> counts) {
         return new LookupMetrics(width, height, font.lineHeight,
                 Math.round(font.lineHeight * NAME_SCALE), widestSiteName(),
                 cellWidth, cellHeight, counts);
     }
 
+    /**
+     * Cells per row: every registered gamemode, plus the discovered ones in the current
+     * answer. A site that has not answered yet keeps just its registered cells.
+     */
+    private List<Integer> rowCounts() {
+        List<Integer> counts = new ArrayList<>(Source.ALL.size());
+        for (Source source : Source.ALL) {
+            int answered = session.result(source).section().map(section -> section.cells().size()).orElse(0);
+            counts.add(Math.max(Gamemodes.of(source).size(), answered));
+        }
+        return counts;
+    }
+
     private void measureCells() {
         iconWidth = 0;
         for (Gamemode gamemode : Gamemodes.ALL) {
-            iconWidth = Math.max(iconWidth, font.width(Icons.of(gamemode.icon())));
+            Optional<MutableComponent> icon = Icons.of(gamemode);
+            if (icon.isPresent()) {
+                iconWidth = Math.max(iconWidth, font.width(icon.get()));
+            }
         }
         cellWidth = iconWidth + CELL_TEXT_GAP + font.width(WIDEST_LABEL)
                 + 2 * CELL_SIDE_PADDING;
@@ -298,15 +322,22 @@ public final class PlayerLookupScreen extends Screen {
 
         Optional<Tier> tier = cell.tier();
         String label = tier.map(Tier::label).orElse(NOT_TESTED);
-        Component icon = Icons.of(cell.gamemode().icon());
         int contentWidth = iconWidth + CELL_TEXT_GAP + font.width(label);
         int textX = x + (cellWidth - contentWidth) / 2;
         int textY = y + (cellHeight - font.lineHeight) / 2 + 1;
 
-        // Bitmap glyphs are multiplied by the text color, so the icon has to stay white
-        // even in a row that is otherwise entirely its site's color.
-        graphics.text(font, icon, textX + (iconWidth - font.width(icon)) / 2, textY,
-                0xFFFFFFFF, false);
+        Optional<MutableComponent> glyph = Icons.of(cell.gamemode());
+        if (glyph.isPresent()) {
+            // Bitmap glyphs are multiplied by the text color, so the icon has to stay white
+            // even in a row that is otherwise entirely its site's color.
+            graphics.text(font, glyph.get(), textX + (iconWidth - font.width(glyph.get())) / 2, textY,
+                    0xFFFFFFFF, false);
+        } else {
+            // No glyph exists, so the slot holds plain text in the default font.
+            String initial = DiscoveredGamemodes.abbreviation(cell.gamemode().displayName());
+            graphics.text(font, initial, textX + (iconWidth - font.width(initial)) / 2, textY,
+                    Colors.SECONDARY, false);
+        }
         graphics.text(font, label, textX + iconWidth + CELL_TEXT_GAP, textY,
                 tier.isPresent() ? Colors.opaque(SiteColors.of(source)) : Colors.DISABLED, false);
     }
@@ -317,6 +348,9 @@ public final class PlayerLookupScreen extends Screen {
                 .map(tier -> Component.literal(gamemode + ": " + tier.label()))
                 .orElseGet(() -> Component.translatable("justtiers.lookup.cellUntested",
                         gamemode));
+        if (!Gamemodes.isRegistered(cell.gamemode())) {
+            description.append("\n").append(Component.translatable("justtiers.lookup.unrecognizedGamemode"));
+        }
         result.freshness().ifPresent(freshness -> {
             description.append("\n").append(Component.translatable("justtiers.lookup.age", freshness.age().toMinutes()));
             String key = switch (freshness.status()) {
@@ -419,7 +453,45 @@ public final class PlayerLookupScreen extends Screen {
 
     @Override
     public void tick() {
+        if (!rowCounts().equals(layoutCounts)) {
+            relayout();
+        }
         updateContentControls();
+    }
+
+    /**
+     * Rebuilds the widgets for a new number of cells. Rebuilding drops focus, so the
+     * focused control is found again by its place: the search or Done controls, a site's
+     * cell by index, or a link.
+     */
+    private void relayout() {
+        GuiEventListener focused = getFocused();
+        boolean nameFocused = focused == nameField;
+        boolean searchFocused = focused == lookupButton;
+        boolean doneFocused = focused == doneButton;
+        Source cellSource = null;
+        int cellIndex = -1;
+        int linkIndex = links.indexOf(focused);
+        for (Source source : Source.ALL) {
+            int index = cellControls.getOrDefault(source, List.of()).indexOf(focused);
+            if (index >= 0) {
+                cellSource = source;
+                cellIndex = index;
+            }
+        }
+        rebuildWidgets();
+        if (nameFocused) {
+            setFocused(nameField);
+        } else if (searchFocused) {
+            setFocused(lookupButton);
+        } else if (doneFocused) {
+            setFocused(doneButton);
+        } else if (cellSource != null) {
+            List<ContentControl> cells = cellControls.get(cellSource);
+            if (cellIndex < cells.size()) setFocused(cells.get(cellIndex));
+        } else if (linkIndex >= 0 && linkIndex < links.size()) {
+            setFocused(links.get(linkIndex));
+        }
     }
 
     @Override

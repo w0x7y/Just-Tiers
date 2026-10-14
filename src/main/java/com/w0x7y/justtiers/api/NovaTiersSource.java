@@ -151,7 +151,7 @@ public final class NovaTiersSource implements TierSource {
                     }
                     String body = response.body();
                     NovaParser.ParsedIndex parsed = NovaParser.parseUsersDetailed(body);
-                    JustTiers.LOGGER.info("Indexed {} NovaTiers players, {} rejected players and {} unknown gamemode placements",
+                    JustTiers.LOGGER.info("Indexed {} NovaTiers players, {} rejected players and {} refused gamemode placements",
                             parsed.users().size(), parsed.rejectedPlayers().size(), parsed.unknownGamemodes());
                     return parsed;
                 })

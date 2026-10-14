@@ -51,7 +51,7 @@ class BadgeTest {
         Badge badge = badge(Set.of(Source.PVPTIERS),
                 Map.of(Source.PVPTIERS, Map.of("crystal", ht(2), "axe", ht(1))), true);
 
-        assertEquals("[" + gamemode(Source.PVPTIERS, "crystal").icon() + "HT2] ",
+        assertEquals("[" + gamemode(Source.PVPTIERS, "crystal").icon().orElseThrow() + "HT2] ",
                 badge.plainText());
         assertEquals(BadgePosition.BEFORE, badge.position());
     }
@@ -62,8 +62,8 @@ class BadgeTest {
         answers.put(Source.PVPTIERS, Map.of("crystal", ht(3)));
         answers.put(Source.NOVATIERS, Map.of("spleef", ht(1)));
 
-        assertEquals("[" + gamemode(Source.PVPTIERS, "crystal").icon() + "HT3 "
-                        + gamemode(Source.NOVATIERS, "spleef").icon() + "HT1] ",
+        assertEquals("[" + gamemode(Source.PVPTIERS, "crystal").icon().orElseThrow() + "HT3 "
+                        + gamemode(Source.NOVATIERS, "spleef").icon().orElseThrow() + "HT1] ",
                 badge(Set.copyOf(Source.ALL), answers, true).plainText());
     }
 
@@ -76,17 +76,31 @@ class BadgeTest {
         Badge badge = badge(Set.copyOf(Source.ALL), Map.of(Source.SUBTIERS, Map.of("bow", ht(4))), true);
 
         assertFalse(badge.isEmpty());
-        assertEquals("[" + gamemode(Source.SUBTIERS, "bow").icon() + "HT4] ", badge.plainText());
+        assertEquals("[" + gamemode(Source.SUBTIERS, "bow").icon().orElseThrow() + "HT4] ", badge.plainText());
     }
 
     @Test
     void hidingRetiredTiersFallsBackToTheBestActiveOne() {
         Map<String, Tier> tiers = Map.of("crystal", retiredHt(1), "axe", ht(4));
 
-        assertEquals("[" + gamemode(Source.PVPTIERS, "crystal").icon() + "RHT1] ",
+        assertEquals("[" + gamemode(Source.PVPTIERS, "crystal").icon().orElseThrow() + "RHT1] ",
                 badge(Set.of(Source.PVPTIERS), Map.of(Source.PVPTIERS, tiers), true).plainText());
-        assertEquals("[" + gamemode(Source.PVPTIERS, "axe").icon() + "HT4] ",
+        assertEquals("[" + gamemode(Source.PVPTIERS, "axe").icon().orElseThrow() + "HT4] ",
                 badge(Set.of(Source.PVPTIERS), Map.of(Source.PVPTIERS, tiers), false).plainText());
+    }
+
+    @Test
+    void aBetterPlacementInADiscoveredGamemodeIsShownAsTextAloneAndSurvivesRecoloring() {
+        Map<Source, Map<String, Tier>> answers = new EnumMap<>(Source.class);
+        answers.put(Source.PVPTIERS, Map.of("future_mode", ht(1), "axe", ht(3)));
+        answers.put(Source.SUBTIERS, Map.of("bow", ht(2)));
+
+        Badge badge = badge(Set.copyOf(Source.ALL), answers, true);
+
+        assertEquals("[HT1 " + gamemode(Source.SUBTIERS, "bow").icon().orElseThrow() + "HT2] ",
+                badge.plainText());
+        assertEquals(1, badge.segments().stream().filter(Segment::icon).count());
+        assertEquals(1, badge.recolor(color -> 0x808080).segments().stream().filter(Segment::icon).count());
     }
 
     // --- when there is nothing to draw ---
@@ -198,7 +212,7 @@ class BadgeTest {
 
     @Test
     void thePreviewIsAlwaysTierOne() {
-        assertEquals("[" + gamemode(Source.PVPTIERS, "crystal").icon() + "HT1] ",
+        assertEquals("[" + gamemode(Source.PVPTIERS, "crystal").icon().orElseThrow() + "HT1] ",
                 Badge.preview(Set.of(Source.PVPTIERS), SELECTED, false, 0L,
                         NametagStyle.DEFAULT).plainText());
     }
@@ -236,7 +250,7 @@ class BadgeTest {
         answers.put(Source.PVPTIERS, Map.of("crystal", ht(2)));
         answers.put(Source.NOVATIERS, Map.of("spleef", ht(1)));
 
-        assertEquals("[" + gamemode(Source.PVPTIERS, "crystal").icon() + "HT2] ",
+        assertEquals("[" + gamemode(Source.PVPTIERS, "crystal").icon().orElseThrow() + "HT2] ",
                 badge(Set.of(Source.PVPTIERS), answers, true).plainText());
     }
 }

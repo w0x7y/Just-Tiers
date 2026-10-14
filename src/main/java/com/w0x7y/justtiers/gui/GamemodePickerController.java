@@ -54,7 +54,7 @@ public final class GamemodePickerController implements Controller<String> {
                 // child inherits its parent's style, so hanging the name off the icon
                 // would draw it in the icon font, as a row of missing-glyph boxes.
                 .map(gamemode -> Component.empty()
-                        .append(Icons.of(gamemode.icon()))
+                        .append(Icons.of(gamemode).orElseGet(Component::empty))
                         .append(Component.literal(" " + gamemode.displayName())))
                 .orElseGet(() -> Component.literal(String.valueOf(slug)));
     }

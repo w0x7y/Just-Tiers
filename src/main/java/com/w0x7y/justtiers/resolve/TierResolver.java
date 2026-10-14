@@ -1,5 +1,6 @@
 package com.w0x7y.justtiers.resolve;
 
+import com.w0x7y.justtiers.tier.DiscoveredGamemodes;
 import com.w0x7y.justtiers.tier.Gamemode;
 import com.w0x7y.justtiers.tier.Gamemodes;
 import com.w0x7y.justtiers.tier.Source;
@@ -131,7 +132,9 @@ public final class TierResolver {
 
     /**
      * The player's best tier on one site. Retired tiers compete normally; ties break
-     * toward the active tier, then toward the site's declared gamemode order.
+     * toward the active tier, then toward the site's declared gamemode order. Gamemodes
+     * this build does not register compete too, as discovered gamemodes without an icon;
+     * they lose ties to registered ones and break ties among themselves by slug.
      */
     public static Optional<ResolvedTier> highestOn(Source source, Map<String, Tier> tiers) {
         if (tiers == null || tiers.isEmpty()) {
@@ -139,13 +142,35 @@ public final class TierResolver {
         }
         Gamemode bestMode = null;
         Tier bestTier = null;
-        // Walking the registry supplies the final tie-break and ignores unknown slugs.
+        int registered = 0;
+        // Walking the registry supplies the tie-break among registered gamemodes.
         // The nametag only needs one placement, so no sorted list is built per frame.
         for (Gamemode gamemode : Gamemodes.of(source)) {
             Tier tier = tiers.get(gamemode.slug());
-            if (tier != null && (bestTier == null || tier.compareTo(bestTier) < 0)) {
+            if (tier == null) continue;
+            registered++;
+            if (bestTier == null || tier.compareTo(bestTier) < 0) {
                 bestMode = gamemode;
                 bestTier = tier;
+            }
+        }
+        if (registered < tiers.size()) {
+            // Only a strictly better discovered placement displaces the registered best.
+            String bestDiscovered = null;
+            for (Map.Entry<String, Tier> entry : tiers.entrySet()) {
+                String slug = entry.getKey();
+                Tier tier = entry.getValue();
+                if (Gamemodes.find(source, slug).isPresent()
+                        || !DiscoveredGamemodes.isAcceptable(slug)) continue;
+                int order = bestTier == null ? -1 : tier.compareTo(bestTier);
+                if (order < 0 || (order == 0 && bestDiscovered != null
+                        && slug.compareTo(bestDiscovered) < 0)) {
+                    bestDiscovered = slug;
+                    bestTier = tier;
+                }
+            }
+            if (bestDiscovered != null) {
+                bestMode = Gamemodes.forSlug(source, bestDiscovered).orElseThrow();
             }
         }
         return bestMode == null ? Optional.empty()

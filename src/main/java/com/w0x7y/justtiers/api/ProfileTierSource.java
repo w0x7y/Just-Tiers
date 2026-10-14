@@ -56,7 +56,7 @@ public final class ProfileTierSource implements TierSource {
                     return switch (source) {
                         case PVPTIERS -> PvpTiersParser.parseProfile(response.body());
                         case PVPHQ -> PvpHqParser.parseProfile(response.body());
-                        case SUBTIERS -> RankingsParser.parseRankings(response.body());
+                        case SUBTIERS -> RankingsParser.parseRankings(Source.SUBTIERS, response.body());
                         case NOVATIERS -> throw new IllegalStateException("NovaTiers uses a bulk index");
                     };
                 })

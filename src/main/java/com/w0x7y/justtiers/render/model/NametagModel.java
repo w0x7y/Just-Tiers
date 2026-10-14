@@ -67,8 +67,9 @@ final class NametagModel {
                 segments.add(new Segment(" ", BRACKET_COLOR));
             }
             ResolvedTier resolved = tiers.get(i);
-            if (style.icons()) {
-                segments.add(new Segment(String.valueOf(resolved.gamemode().icon()),
+            // A discovered gamemode has no glyph, so it shows its tier text alone.
+            if (style.icons() && resolved.gamemode().icon().isPresent()) {
+                segments.add(new Segment(String.valueOf(resolved.gamemode().icon().get()),
                         ICON_COLOR, true));
             }
             Source source = resolved.gamemode().source();

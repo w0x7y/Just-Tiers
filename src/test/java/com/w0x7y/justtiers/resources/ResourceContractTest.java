@@ -66,7 +66,7 @@ class ResourceContractTest {
         assertEquals(Gamemodes.ALL.size(), glyphs.size(), "extra or missing font providers");
         for (Gamemode mode : Gamemodes.ALL) {
             String texture = mode.source().name().toLowerCase(Locale.ROOT) + "/" + mode.slug() + ".png";
-            assertEquals("justtiers:" + texture, glyphs.get(String.valueOf(mode.icon())),
+            assertEquals("justtiers:" + texture, glyphs.get(String.valueOf(mode.icon().orElseThrow())),
                     mode.source() + "/" + mode.slug());
             try (InputStream in = resource("assets/justtiers/textures/" + texture)) {
                 var png = ImageIO.read(in);
