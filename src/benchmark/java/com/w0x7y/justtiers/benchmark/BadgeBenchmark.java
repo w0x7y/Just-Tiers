@@ -11,6 +11,7 @@ import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
 
 import java.lang.management.ManagementFactory;
+import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -30,17 +31,17 @@ public final class BadgeBenchmark {
         AtomicInteger requests = new AtomicInteger();
         List<TierSource> sources = Source.ALL.stream().<TierSource>map(source -> new TierSource() {
             public Source source() { return source; }
-            public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) {
+            public CompletableFuture<Answer> fetchAnswer(UUID uuid) {
                 requests.incrementAndGet();
-                return CompletableFuture.completedFuture(Map.of(
-                        JustTiersConfig.defaultGamemode(source), new Tier(2, true, false)));
+                return CompletableFuture.completedFuture(new Answer(Map.of(
+                        JustTiersConfig.defaultGamemode(source), new Tier(2, true, false)), Duration.ZERO, false));
             }
         }).toList();
         TierCache cache = new TierCache(sources);
         UUID[] players = new UUID[128];
         for (int i = 0; i < players.length; i++) {
             players[i] = new UUID(0x123456789abc4000L + i, 0x8123456789abcdefL);
-            for (Source source : Source.ALL) cache.load(source, players[i]).join();
+            for (Source source : Source.ALL) cache.loadAnswer(source, players[i]).join();
         }
         int warmedRequests = requests.get();
         JustTiersConfig config = new JustTiersConfig();

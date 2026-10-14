@@ -32,30 +32,30 @@ class NovaParserTest {
 
     @Test
     void undashedUuidsAreIndexed() {
-        assertTrue(NovaParser.parseUsers(USERS_JSON).containsKey(X_SUS));
+        assertTrue(NovaParser.parseUsersDetailed(USERS_JSON).users().containsKey(X_SUS));
     }
 
     @Test
     void dashedUuidsAreAlsoAccepted() {
-        assertTrue(NovaParser.parseUsers(USERS_JSON).containsKey(SIGEON));
+        assertTrue(NovaParser.parseUsersDetailed(USERS_JSON).users().containsKey(SIGEON));
     }
 
     @Test
     void displayNameKeysAreNormalisedToSlugs() {
-        Map<String, Tier> tiers = NovaParser.parseUsers(USERS_JSON).get(X_SUS);
+        Map<String, Tier> tiers = NovaParser.parseUsersDetailed(USERS_JSON).users().get(X_SUS);
         assertEquals(java.util.Set.of("elytra", "modernsmp", "spearmace"), tiers.keySet());
     }
 
     @Test
     void tierStringsAreParsed() {
-        Map<String, Tier> tiers = NovaParser.parseUsers(USERS_JSON).get(X_SUS);
+        Map<String, Tier> tiers = NovaParser.parseUsersDetailed(USERS_JSON).users().get(X_SUS);
         assertEquals("HT4", tiers.get("elytra").label());
         assertEquals("LT3", tiers.get("spearmace").label());
     }
 
     @Test
     void retiredMapMarksTiersRetired() {
-        Map<String, Tier> tiers = NovaParser.parseUsers(USERS_JSON).get(X_SUS);
+        Map<String, Tier> tiers = NovaParser.parseUsersDetailed(USERS_JSON).users().get(X_SUS);
         assertTrue(tiers.get("modernsmp").retired());
         assertEquals("RHT3", tiers.get("modernsmp").label());
         assertFalse(tiers.get("elytra").retired());
@@ -64,7 +64,7 @@ class NovaParserTest {
     @Test
     void peakTiersAreIgnored() {
         // Elytra peaks at HT1 but is currently HT4; the peak must not surface.
-        assertEquals("HT4", NovaParser.parseUsers(USERS_JSON).get(X_SUS).get("elytra").label());
+        assertEquals("HT4", NovaParser.parseUsersDetailed(USERS_JSON).users().get(X_SUS).get("elytra").label());
     }
 
     @Test
@@ -73,7 +73,7 @@ class NovaParserTest {
                 [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504",
                   "tiers":{"Axe":"RHT2"},"retiredTiers":{}}]
                 """;
-        assertEquals("RHT2", NovaParser.parseUsers(json).get(X_SUS).get("axe").label());
+        assertEquals("RHT2", NovaParser.parseUsersDetailed(json).users().get(X_SUS).get("axe").label());
     }
 
     @Test
@@ -84,7 +84,7 @@ class NovaParserTest {
                 [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504",
                   "tiers":{"Axe":"RHT2"},"retiredTiers":{"Axe":false}}]
                 """;
-        Tier tier = NovaParser.parseUsers(json).get(X_SUS).get("axe");
+        Tier tier = NovaParser.parseUsersDetailed(json).users().get(X_SUS).get("axe");
         assertFalse(tier.retired());
         assertEquals("HT2", tier.label());
     }
@@ -95,7 +95,7 @@ class NovaParserTest {
                 [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504",
                   "tiers":{"Axe":"HT2","Quake Pro":"HT1"},"retiredTiers":{"Quake Pro":true}}]
                 """;
-        Map<String, Tier> tiers = NovaParser.parseUsers(json).get(X_SUS);
+        Map<String, Tier> tiers = NovaParser.parseUsersDetailed(json).users().get(X_SUS);
         assertEquals(java.util.Set.of("axe", "quake_pro"), tiers.keySet());
         assertEquals("RHT1", tiers.get("quake_pro").label());
     }
@@ -127,7 +127,7 @@ class NovaParserTest {
         NovaParser.ParsedIndex parsed = NovaParser.parseUsersDetailed(json);
         assertEquals(java.util.Set.of(X_SUS), parsed.rejectedPlayers());
         assertFalse(parsed.users().containsKey(X_SUS));
-        assertThrows(TierLookupException.class, () -> NovaParser.parseUsers("""
+        assertThrows(TierLookupException.class, () -> NovaParser.parseUsersDetailed("""
                 [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504","tiers":{"<b>Bold</b>":"HT1"}}]
                 """));
     }
@@ -168,16 +168,16 @@ class NovaParserTest {
                 [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504",
                   "tiers":{},"retiredTiers":{}}]
                 """;
-        assertTrue(NovaParser.parseUsers(json).isEmpty());
+        assertTrue(NovaParser.parseUsersDetailed(json).users().isEmpty());
     }
 
     @Test
     void malformedBodiesAreNotAnEmptyLeaderboard() {
         for (String body : new String[]{null, "", "not json", "{\"a\":1}", "null",
                 "[{\"name\":\"Nobody\"}]"}) {
-            assertThrows(TierLookupException.class, () -> NovaParser.parseUsers(body));
+            assertThrows(TierLookupException.class, () -> NovaParser.parseUsersDetailed(body).users());
         }
-        assertTrue(NovaParser.parseUsers(" [] ").isEmpty());
+        assertTrue(NovaParser.parseUsersDetailed(" [] ").users().isEmpty());
     }
 
     @Test
@@ -186,7 +186,7 @@ class NovaParserTest {
                 [{"minecraftUuid":"zzz","tiers":{"Axe":"HT2"},"retiredTiers":{}},
                  {"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504","tiers":{"Axe":"HT3"},"retiredTiers":{}}]
                 """;
-        Map<UUID, Map<String, Tier>> users = NovaParser.parseUsers(json);
+        Map<UUID, Map<String, Tier>> users = NovaParser.parseUsersDetailed(json).users();
         assertEquals(1, users.size());
         assertEquals("HT3", users.get(X_SUS).get("axe").label());
     }
@@ -204,7 +204,7 @@ class NovaParserTest {
                 [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504",
                   "tiers":{"Axe":"unknown tier"}}]
                 """;
-        assertThrows(TierLookupException.class, () -> NovaParser.parseUsers(body));
+        assertThrows(TierLookupException.class, () -> NovaParser.parseUsersDetailed(body).users());
     }
 
     @Test
@@ -213,7 +213,7 @@ class NovaParserTest {
                 [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504",
                   "tiers":{"SMP":{"unexpected":"object"},"Axe":"HT2"}}]
                 """;
-        assertEquals("HT2", NovaParser.parseUsers(body).get(X_SUS).get("axe").label());
+        assertEquals("HT2", NovaParser.parseUsersDetailed(body).users().get(X_SUS).get("axe").label());
     }
 
     @Test
@@ -233,7 +233,7 @@ class NovaParserTest {
         assertEquals("HT2", parsed.users().get(X_SUS).get("axe").label());
         assertEquals("HT1", parsed.users().get(X_SUS).get("new_mode").label());
         // The compatibility map still preserves understood placements for existing callers.
-        assertEquals("LT3", NovaParser.parseUsers(body).get(SIGEON).get("axe").label());
+        assertEquals("LT3", NovaParser.parseUsersDetailed(body).users().get(SIGEON).get("axe").label());
     }
 
     @Test

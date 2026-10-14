@@ -17,7 +17,11 @@ public interface TierSource {
 
     Source source();
 
-    CompletableFuture<Map<String, Tier>> fetch(UUID uuid);
+    /**
+     * One player's placements with the age of the data they came from. A bulk source
+     * reports its snapshot's original age, not the time of this call.
+     */
+    CompletableFuture<Answer> fetchAnswer(UUID uuid);
 
     /** Bulk sources retain their original data age when serving a cached snapshot. */
     record Answer(Map<String, Tier> tiers, java.time.Duration age, boolean refreshFailed) {
@@ -25,10 +29,6 @@ public interface TierSource {
             tiers = Map.copyOf(tiers);
             age = age.isNegative() ? java.time.Duration.ZERO : age;
         }
-    }
-
-    default CompletableFuture<Answer> fetchAnswer(UUID uuid) {
-        return fetch(uuid).thenApply(tiers -> new Answer(tiers, java.time.Duration.ZERO, false));
     }
 
     /** A bulk source can refresh independently of its per-player cache. */

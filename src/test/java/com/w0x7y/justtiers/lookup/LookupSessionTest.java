@@ -1,6 +1,7 @@
 package com.w0x7y.justtiers.lookup;
 
 import com.w0x7y.justtiers.api.PlayerRef;
+import com.w0x7y.justtiers.api.TestSources;
 import com.w0x7y.justtiers.api.TierSource;
 import com.w0x7y.justtiers.cache.TierCache;
 import com.w0x7y.justtiers.tier.Source;
@@ -248,7 +249,7 @@ class LookupSessionTest {
         fixture.sources.get(Source.PVPTIERS).pending.complete(Map.of("axe", new Tier(2, true, false)));
         fixture.time.addAndGet(java.time.Duration.ofMinutes(2).toNanos());
         fixture.cache.invalidate(Source.PVPTIERS);
-        fixture.cache.load(Source.PVPTIERS, PLAYER.uuid());
+        fixture.cache.loadAnswer(Source.PVPTIERS, PLAYER.uuid());
         fixture.sources.get(Source.PVPTIERS).pending.complete(Map.of("axe", new Tier(1, true, false)));
         fixture.executor.drain();
         LookupResult result = session.result(Source.PVPTIERS);
@@ -338,11 +339,11 @@ class LookupSessionTest {
         ControlledSource(Source source) { this.source = source; }
         @Override public Source source() { return source; }
         @Override public RefreshState refreshState() { return refresh; }
-        @Override public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) {
+        @Override public CompletableFuture<Answer> fetchAnswer(UUID uuid) {
             assertEquals(PLAYER.uuid(), uuid);
             calls++;
             pending = new CompletableFuture<>();
-            return pending;
+            return TestSources.fresh(pending);
         }
     }
 

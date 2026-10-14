@@ -84,7 +84,7 @@ public final class LookupSession {
         player = found;
         resolvedPlayer.complete(Optional.of(found));
         for (Source site : Source.ALL) {
-            cache.cachedAnswer(site, found.uuid()).ifPresent(cached -> results.put(site,
+            cache.observe(site, found.uuid()).answer().ifPresent(cached -> results.put(site,
                     answered(site, cached, clock.getAsLong(), false)));
             cache.loadAnswer(site, found.uuid()).whenComplete((answer, failure) -> {
                 long capturedAt = clock.getAsLong();
@@ -137,7 +137,7 @@ public final class LookupSession {
             boolean refreshing = false;
             boolean failed = answer.refreshFailed();
             if (player != null) {
-                var current = cache.cachedAnswer(source, player.uuid());
+                var current = cache.observe(source, player.uuid()).answer();
                 // A shared retained answer can expose live bulk-refresh progress. Identical
                 // placements from a later download are a different revision and a different age.
                 if (current.isPresent() && current.get().revision() == answer.revision()) {

@@ -35,7 +35,7 @@ public final class NovaParser {
     private static final Gson GSON = new Gson();
 
     /**
-     * Immutable placements and diagnostics from one bulk response. The compatibility
+     * Immutable placements and diagnostics from one bulk response. The users
      * map preserves understood placements, but callers must check rejectedPlayers
      * before treating an identifiable player's answer as complete.
      * {@code unknownGamemodes} counts placements dropped for an unacceptable gamemode key
@@ -49,11 +49,6 @@ public final class NovaParser {
             users = Map.copyOf(copy);
             rejectedPlayers = Set.copyOf(rejectedPlayers);
         }
-    }
-
-    /** Compatibility view; sources should use {@link #parseUsersDetailed(String)}. */
-    public static Map<UUID, Map<String, Tier>> parseUsers(String json) {
-        return parseUsersDetailed(json).users();
     }
 
     public static ParsedIndex parseUsersDetailed(String json) {
@@ -103,7 +98,6 @@ public final class NovaParser {
             DiscoveredGamemodes.Collector tiers = new DiscoveredGamemodes.Collector(Source.NOVATIERS);
             Map<String, Tier> allPlacements = new LinkedHashMap<>();
             boolean understood = placements.isEmpty();
-            boolean anyRefused = false;
             for (Map.Entry<String, JsonElement> entry : placements.entrySet()) {
                 Optional<Tier> parsed = isString(entry.getValue())
                         ? Tier.parse(entry.getValue().getAsString()) : Optional.empty();
@@ -119,13 +113,11 @@ public final class NovaParser {
                 if (retirement != null && !retirement.isJsonNull()) {
                     tier = new Tier(tier.level(), tier.division(), retirement.getAsBoolean());
                 }
-                Optional<String> slug = DiscoveredGamemodes.novaSlug(entry.getKey());
+                // Refused keys and placements over the cap are dropped, not malformed, and
+                // the collector counts them. Conflicts compare by slug even over the cap.
+                Optional<String> slug = tiers.acceptKey(entry.getKey());
                 if (slug.isPresent() && tiers.offer(slug.get(), tier)) {
                     understood = true;
-                } else {
-                    // Refused keys and placements over the cap are dropped, not malformed.
-                    unknownGamemodes++;
-                    anyRefused = true;
                 }
                 String key = slug.orElse(entry.getKey());
                 Tier previous = allPlacements.putIfAbsent(key, tier);
@@ -134,9 +126,10 @@ public final class NovaParser {
                     malformed = true;
                 }
             }
+            unknownGamemodes += tiers.refused();
             if (understood) {
                 understoodUsers++;
-            } else if (anyRefused) {
+            } else if (tiers.refused() > 0) {
                 // Only refused placements: neither ranked nor known to be unranked.
                 rejected.add(uuid.get());
             }

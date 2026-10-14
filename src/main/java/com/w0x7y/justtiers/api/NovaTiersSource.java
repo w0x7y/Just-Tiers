@@ -4,7 +4,6 @@ import com.w0x7y.justtiers.JustTiers;
 import com.w0x7y.justtiers.download.DownloadProgress;
 import com.w0x7y.justtiers.download.ProgressBodyHandler;
 import com.w0x7y.justtiers.tier.Source;
-import com.w0x7y.justtiers.tier.Tier;
 
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -54,11 +53,6 @@ public final class NovaTiersSource implements TierSource {
     @Override
     public Source source() {
         return Source.NOVATIERS;
-    }
-
-    @Override
-    public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) {
-        return fetchAnswer(uuid).thenApply(Answer::tiers);
     }
 
     @Override

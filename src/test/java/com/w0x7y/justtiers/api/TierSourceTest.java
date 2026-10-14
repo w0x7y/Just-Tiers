@@ -85,7 +85,7 @@ class TierSourceTest {
                  "rankings":{"crystal":{"tier":2,"pos":0,"retired":true,"peak_tier":1},
                              "neth_pot":{"tier":3,"pos":1}},"points":28}
                 """);
-        Map<String, Tier> tiers = new ProfileTierSource(Source.PVPTIERS, client, baseUrl).fetch(PLAYER).get();
+        Map<String, Tier> tiers = new ProfileTierSource(Source.PVPTIERS, client, baseUrl).fetchAnswer(PLAYER).get().tiers();
         assertEquals("RHT2", tiers.get("crystal").label());
         assertEquals("LT3", tiers.get("neth_pot").label());
     }
@@ -99,7 +99,7 @@ class TierSourceTest {
                            {"gametype":"ht_cart","tier":"HT4","unranked":false},
                            {"gametype":"axe","tier":"HT1","unranked":true}]}
                 """);
-        Map<String, Tier> tiers = new ProfileTierSource(Source.PVPHQ, client, baseUrl).fetch(PLAYER).get();
+        Map<String, Tier> tiers = new ProfileTierSource(Source.PVPHQ, client, baseUrl).fetchAnswer(PLAYER).get().tiers();
         assertEquals("MT3", tiers.get("sword").label());
         assertEquals("HT4", tiers.get("cart").label());
         assertFalse(tiers.containsKey("axe"));
@@ -113,20 +113,20 @@ class TierSourceTest {
                     ? "/profile/" + PLAYER.toString().replace("-", "") : "/players/" + PLAYER;
             var api = new ProfileTierSource(source, client, baseUrl);
             respond(path, 404, "");
-            assertTrue(api.fetch(PLAYER).get().isEmpty());
+            assertTrue(api.fetchAnswer(PLAYER).get().tiers().isEmpty());
             respond(path, 200, source == Source.PVPTIERS ? "{\"rankings\":{}}" : "{\"ranked\":[]}");
-            assertTrue(api.fetch(PLAYER).get().isEmpty());
+            assertTrue(api.fetchAnswer(PLAYER).get().tiers().isEmpty());
             for (String body : java.util.List.of("{}", "null", "[]", "<html>maintenance</html>",
                     "{\"rankings\":{\"sword\":{}},\"ranked\":[{\"gametype\":\"sword\",\"tier\":\"bad\"}]}")) {
                 respond(path, 200, body);
-                assertThrows(ExecutionException.class, () -> api.fetch(PLAYER).get(), source + ": " + body);
+                assertThrows(ExecutionException.class, () -> api.fetchAnswer(PLAYER).get().tiers(), source + ": " + body);
             }
             respond(path, 500, "");
             assertInstanceOf(TierLookupException.class,
-                    assertThrows(ExecutionException.class, () -> api.fetch(PLAYER).get()).getCause());
+                    assertThrows(ExecutionException.class, () -> api.fetchAnswer(PLAYER).get().tiers()).getCause());
             respond(path, 429, "");
             retryAfterHeaders.put(path, "120");
-            var error = assertThrows(ExecutionException.class, () -> api.fetch(PLAYER).get());
+            var error = assertThrows(ExecutionException.class, () -> api.fetchAnswer(PLAYER).get().tiers());
             assertEquals(java.time.Duration.ofSeconds(120),
                     assertInstanceOf(RetryAfterException.class, error.getCause()).delay());
         }
@@ -137,7 +137,7 @@ class TierSourceTest {
         respond("/players/" + PLAYER, 200, """
                 {"ranked":[{"gametype":"sword","tier":null,"unranked":true}]}
                 """);
-        assertTrue(new ProfileTierSource(Source.PVPHQ, client, baseUrl).fetch(PLAYER).get().isEmpty());
+        assertTrue(new ProfileTierSource(Source.PVPHQ, client, baseUrl).fetchAnswer(PLAYER).get().tiers().isEmpty());
     }
 
     @Test
@@ -145,7 +145,7 @@ class TierSourceTest {
         respond("/v2/profile/" + PLAYER + "/rankings", 200,
                 "{\"vanilla\":{\"tier\":2,\"pos\":0,\"retired\":false}}");
         Map<String, Tier> tiers =
-                new ProfileTierSource(Source.SUBTIERS, client, baseUrl).fetch(PLAYER).get();
+                new ProfileTierSource(Source.SUBTIERS, client, baseUrl).fetchAnswer(PLAYER).get().tiers();
         assertEquals("HT2", tiers.get("vanilla").label());
     }
 
@@ -153,7 +153,7 @@ class TierSourceTest {
     void notFoundMeansUnrankedNotFailure() throws Exception {
         respond("/v2/profile/" + PLAYER + "/rankings", 404, "");
         Map<String, Tier> tiers =
-                new ProfileTierSource(Source.SUBTIERS, client, baseUrl).fetch(PLAYER).get();
+                new ProfileTierSource(Source.SUBTIERS, client, baseUrl).fetchAnswer(PLAYER).get().tiers();
         assertNotNull(tiers);
         assertTrue(tiers.isEmpty());
     }
@@ -162,7 +162,7 @@ class TierSourceTest {
     void serverErrorsFailRatherThanLookingLikeAnUnrankedPlayer() {
         respond("/v2/profile/" + PLAYER + "/rankings", 500, "boom");
         ExecutionException thrown = assertThrows(ExecutionException.class,
-                () -> new ProfileTierSource(Source.SUBTIERS, client, baseUrl).fetch(PLAYER).get());
+                () -> new ProfileTierSource(Source.SUBTIERS, client, baseUrl).fetchAnswer(PLAYER).get().tiers());
         assertInstanceOf(TierLookupException.class, thrown.getCause());
     }
 
@@ -171,7 +171,7 @@ class TierSourceTest {
         // Nothing is listening here, so the transport error must reach the caller.
         ProfileTierSource dead = new ProfileTierSource(
                 Source.SUBTIERS, client, "http://127.0.0.1:1");
-        assertThrows(ExecutionException.class, () -> dead.fetch(PLAYER).get());
+        assertThrows(ExecutionException.class, () -> dead.fetchAnswer(PLAYER).get().tiers());
     }
 
     private static final String ONE_USER = """
@@ -189,12 +189,12 @@ class TierSourceTest {
                 """);
         NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
 
-        assertEquals("HT3", nova.fetch(PLAYER).get().get("axe").label());
+        assertEquals("HT3", nova.fetchAnswer(PLAYER).get().tiers().get("axe").label());
         assertEquals(1, nova.indexedPlayerCount());
 
         // A second lookup must not hit the network again.
         int before = requestCount.get();
-        assertEquals("HT3", nova.fetch(PLAYER).get().get("axe").label());
+        assertEquals("HT3", nova.fetchAnswer(PLAYER).get().tiers().get("axe").label());
         assertEquals(before, requestCount.get());
     }
 
@@ -202,7 +202,7 @@ class TierSourceTest {
     void novaReturnsEmptyForPlayersNotInTheList() throws Exception {
         respond("/users", 200, "[]");
         NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
-        assertTrue(nova.fetch(UUID.randomUUID()).get().isEmpty());
+        assertTrue(nova.fetchAnswer(UUID.randomUUID()).get().tiers().isEmpty());
     }
 
     @Test
@@ -212,7 +212,7 @@ class TierSourceTest {
                   "tiers":{"Axe":"HT3"},"retiredTiers":{}}]
                 """);
         NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
-        nova.fetch(PLAYER).get();
+        nova.fetchAnswer(PLAYER).get().tiers();
         int before = requestCount.get();
 
         nova.refresh().get();
@@ -223,7 +223,7 @@ class TierSourceTest {
     void novaReportsAFailedDownloadInsteadOfAnEmptyIndex() {
         respond("/users", 503, "");
         NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
-        assertThrows(ExecutionException.class, () -> nova.fetch(PLAYER).get());
+        assertThrows(ExecutionException.class, () -> nova.fetchAnswer(PLAYER).get().tiers());
         assertEquals(0, nova.indexedPlayerCount());
     }
 
@@ -231,24 +231,24 @@ class TierSourceTest {
     void novaRetriesAfterAFailedFirstDownloadRatherThanReplayingTheError() throws Exception {
         respond("/users", 500, "");
         NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
-        assertThrows(ExecutionException.class, () -> nova.fetch(PLAYER).get());
+        assertThrows(ExecutionException.class, () -> nova.fetchAnswer(PLAYER).get().tiers());
 
         respond("/users", 200, ONE_USER);
-        assertFalse(nova.fetch(PLAYER).get().isEmpty());
+        assertFalse(nova.fetchAnswer(PLAYER).get().tiers().isEmpty());
     }
 
     @Test
     void novaKeepsTheExistingIndexWhenARefreshFails() throws Exception {
         respond("/users", 200, ONE_USER);
         NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
-        assertFalse(nova.fetch(PLAYER).get().isEmpty());
+        assertFalse(nova.fetchAnswer(PLAYER).get().tiers().isEmpty());
         int indexed = nova.indexedPlayerCount();
         assertTrue(indexed > 0);
 
         respond("/users", 503, "");
         assertThrows(ExecutionException.class, () -> nova.refresh().get());
 
-        assertFalse(nova.fetch(PLAYER).get().isEmpty(), "stale index must survive a failed refresh");
+        assertFalse(nova.fetchAnswer(PLAYER).get().tiers().isEmpty(), "stale index must survive a failed refresh");
         assertEquals(indexed, nova.indexedPlayerCount());
     }
 
@@ -259,7 +259,7 @@ class TierSourceTest {
         respond("/users", 200, "[]");
         DownloadProgress progress = new DownloadProgress();
 
-        new NovaTiersSource(client, baseUrl, progress).fetch(PLAYER).get();
+        new NovaTiersSource(client, baseUrl, progress).fetchAnswer(PLAYER).get().tiers();
 
         DownloadProgress.Snapshot snapshot = progress.snapshot();
         assertEquals(DownloadProgress.State.IDLE, snapshot.state());
@@ -274,7 +274,7 @@ class TierSourceTest {
         DownloadProgress progress = new DownloadProgress();
 
         assertThrows(ExecutionException.class,
-                () -> new NovaTiersSource(client, baseUrl, progress).fetch(PLAYER).get());
+                () -> new NovaTiersSource(client, baseUrl, progress).fetchAnswer(PLAYER).get().tiers());
 
         DownloadProgress.Snapshot snapshot = progress.snapshot();
         assertEquals(DownloadProgress.State.FAILED, snapshot.state());
@@ -287,7 +287,7 @@ class TierSourceTest {
         for (String body : java.util.List.of("<html>unavailable</html>", "[]", "null", "", "{\"error\":\"maintenance\"}")) {
             respond("/v2/profile/" + PLAYER + "/rankings", 200, body);
             assertThrows(ExecutionException.class,
-                    () -> new ProfileTierSource(Source.SUBTIERS, client, baseUrl).fetch(PLAYER).get(), body);
+                    () -> new ProfileTierSource(Source.SUBTIERS, client, baseUrl).fetchAnswer(PLAYER).get().tiers(), body);
         }
     }
 
@@ -295,10 +295,10 @@ class TierSourceTest {
     void aMalformedRefreshFailsAndRetainsTheLastGoodNovaIndex() throws Exception {
         respond("/users", 200, ONE_USER);
         NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
-        assertEquals("HT3", nova.fetch(PLAYER).get().get("axe").label());
+        assertEquals("HT3", nova.fetchAnswer(PLAYER).get().tiers().get("axe").label());
         respond("/users", 200, "<html>maintenance</html>");
         assertThrows(ExecutionException.class, () -> nova.refresh().get());
-        assertEquals("HT3", nova.fetch(PLAYER).get().get("axe").label());
+        assertEquals("HT3", nova.fetchAnswer(PLAYER).get().tiers().get("axe").label());
         assertEquals(1, nova.indexedPlayerCount());
     }
 
@@ -323,7 +323,7 @@ class TierSourceTest {
             }
         });
         NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
-        var initial = nova.fetch(PLAYER);
+        var initial = nova.fetchAnswer(PLAYER);
         try {
             assertTrue(entered.await(5, java.util.concurrent.TimeUnit.SECONDS));
             var first = nova.refresh();
@@ -345,11 +345,11 @@ class TierSourceTest {
                      {"minecraftUuid":"dadd05d5-e1a2-41bc-be3e-de5f7d9fffee","tiers":%s}]
                     """.formatted(brokenTiers));
             NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
-            assertEquals("HT3", nova.fetch(PLAYER).get().get("axe").label());
+            assertEquals("HT3", nova.fetchAnswer(PLAYER).get().tiers().get("axe").label());
             ExecutionException error = assertThrows(ExecutionException.class,
-                    () -> nova.fetch(damaged).get(), brokenTiers);
+                    () -> nova.fetchAnswer(damaged).get().tiers(), brokenTiers);
             assertInstanceOf(TierLookupException.class, error.getCause());
-            assertTrue(nova.fetch(UUID.randomUUID()).get().isEmpty());
+            assertTrue(nova.fetchAnswer(UUID.randomUUID()).get().tiers().isEmpty());
         }
     }
 
@@ -360,7 +360,7 @@ class TierSourceTest {
                   "tiers":{"Axe":"HT3","SMP":{"unexpected":"object"}}}]
                 """);
         NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
-        ExecutionException error = assertThrows(ExecutionException.class, () -> nova.fetch(PLAYER).get());
+        ExecutionException error = assertThrows(ExecutionException.class, () -> nova.fetchAnswer(PLAYER).get().tiers());
         assertInstanceOf(TierLookupException.class, error.getCause());
     }
 
@@ -369,7 +369,7 @@ class TierSourceTest {
         respond("/users", 200, ONE_USER);
         var clock = new java.util.concurrent.atomic.AtomicLong();
         NovaTiersSource nova = new NovaTiersSource(client, baseUrl, new DownloadProgress(), clock::get);
-        assertEquals("HT3", nova.fetch(PLAYER).get().get("axe").label());
+        assertEquals("HT3", nova.fetchAnswer(PLAYER).get().tiers().get("axe").label());
         clock.addAndGet(java.time.Duration.ofHours(2).toNanos());
         server.removeContext("/users");
         var entered = new java.util.concurrent.CountDownLatch(1);
@@ -401,7 +401,7 @@ class TierSourceTest {
             assertFalse(duringRefresh.get().refreshFailed());
             release.countDown();
             refresh.get();
-            assertEquals("HT1", nova.fetch(PLAYER).get().get("axe").label());
+            assertEquals("HT1", nova.fetchAnswer(PLAYER).get().tiers().get("axe").label());
             assertEquals(2, requestCount.get());
         } finally {
             release.countDown();
@@ -415,7 +415,7 @@ class TierSourceTest {
                  {"minecraftUuid":"4b25be24-97f5-4adf-967d-8d69ef54d504","tiers":{"Axe":"HT1"}}]
                 """);
         NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
-        assertThrows(ExecutionException.class, () -> nova.fetch(PLAYER).get());
+        assertThrows(ExecutionException.class, () -> nova.fetchAnswer(PLAYER).get().tiers());
     }
 
     @Test
@@ -426,7 +426,7 @@ class TierSourceTest {
                       "tiers":{"Axe":"HT3"},"retiredTiers":%s}]
                     """.formatted(retirement));
             NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
-            assertThrows(ExecutionException.class, () -> nova.fetch(PLAYER).get(), retirement);
+            assertThrows(ExecutionException.class, () -> nova.fetchAnswer(PLAYER).get().tiers(), retirement);
         }
     }
 
@@ -437,8 +437,8 @@ class TierSourceTest {
                  {"minecraftUuid":"dadd05d5-e1a2-41bc-be3e-de5f7d9fffee","tiers":{}}]
                 """);
         NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
-        assertEquals(Map.of("new_mode", new Tier(1, true, false)), nova.fetch(PLAYER).get());
-        assertTrue(nova.fetch(UUID.fromString("dadd05d5-e1a2-41bc-be3e-de5f7d9fffee")).get().isEmpty());
+        assertEquals(Map.of("new_mode", new Tier(1, true, false)), nova.fetchAnswer(PLAYER).get().tiers());
+        assertTrue(nova.fetchAnswer(UUID.fromString("dadd05d5-e1a2-41bc-be3e-de5f7d9fffee")).get().tiers().isEmpty());
     }
 
     @Test
@@ -446,9 +446,9 @@ class TierSourceTest {
         retryAfterHeaders.put("/users", "120");
         respond("/users", 429, "rate limited");
         NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
-        assertThrows(ExecutionException.class, () -> nova.fetch(PLAYER).get());
+        assertThrows(ExecutionException.class, () -> nova.fetchAnswer(PLAYER).get().tiers());
         respond("/users", 200, ONE_USER);
-        assertThrows(ExecutionException.class, () -> nova.fetch(PLAYER).get());
+        assertThrows(ExecutionException.class, () -> nova.fetchAnswer(PLAYER).get().tiers());
         assertThrows(ExecutionException.class, () -> nova.refresh().get());
         assertEquals(1, requestCount.get(), "all bulk download paths must honor the site's deadline");
     }
@@ -457,12 +457,12 @@ class TierSourceTest {
     void novaRefreshRateLimitKeepsSnapshotAndBlocksFurtherRefreshes() throws Exception {
         respond("/users", 200, ONE_USER);
         NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
-        assertEquals("HT3", nova.fetch(PLAYER).get().get("axe").label());
+        assertEquals("HT3", nova.fetchAnswer(PLAYER).get().tiers().get("axe").label());
         retryAfterHeaders.put("/users", "120");
         respond("/users", 503, "temporarily unavailable");
         assertThrows(ExecutionException.class, () -> nova.refresh().get());
         respond("/users", 200, ONE_USER.replace("HT3", "HT1"));
-        assertEquals("HT3", nova.fetch(PLAYER).get().get("axe").label());
+        assertEquals("HT3", nova.fetchAnswer(PLAYER).get().tiers().get("axe").label());
         assertThrows(ExecutionException.class, () -> nova.refresh().get());
         assertEquals(2, requestCount.get());
     }
@@ -498,7 +498,7 @@ class TierSourceTest {
         retryAfterHeaders.put("/users", "120");
         respond("/users", 429, "rate limited");
         NovaTiersSource nova = new NovaTiersSource(client, baseUrl, new DownloadProgress(), clock::get);
-        ExecutionException first = assertThrows(ExecutionException.class, () -> nova.fetch(PLAYER).get());
+        ExecutionException first = assertThrows(ExecutionException.class, () -> nova.fetchAnswer(PLAYER).get().tiers());
         assertEquals(java.time.Duration.ofSeconds(120),
                 assertInstanceOf(RetryAfterException.class, first.getCause()).delay());
         respond("/users", 200, ONE_USER);
@@ -508,7 +508,7 @@ class TierSourceTest {
                 assertInstanceOf(RetryAfterException.class, blocked.getCause()).delay());
         assertEquals(1, requestCount.get());
         clock.addAndGet(java.time.Duration.ofSeconds(1).toNanos());
-        assertEquals("HT3", nova.fetch(PLAYER).get().get("axe").label());
+        assertEquals("HT3", nova.fetchAnswer(PLAYER).get().tiers().get("axe").label());
         assertEquals(2, requestCount.get());
     }
 
@@ -522,7 +522,7 @@ class TierSourceTest {
             retryAfterHeaders.put("/users", hint);
             respond("/users", 503, "unavailable");
             NovaTiersSource nova = new NovaTiersSource(client, baseUrl, new DownloadProgress(), clock::get);
-            ExecutionException first = assertThrows(ExecutionException.class, () -> nova.fetch(PLAYER).get());
+            ExecutionException first = assertThrows(ExecutionException.class, () -> nova.fetchAnswer(PLAYER).get().tiers());
             assertInstanceOf(RetryAfterException.class, first.getCause());
             respond("/users", 200, ONE_USER);
             assertThrows(ExecutionException.class, () -> nova.refresh().get());
@@ -540,12 +540,12 @@ class TierSourceTest {
         NovaTiersSource nova = new NovaTiersSource(client, baseUrl, new DownloadProgress(), clock::get);
         var cache = new com.w0x7y.justtiers.cache.TierCache(java.util.List.of(nova),
                 com.w0x7y.justtiers.cache.CachePolicy.DEFAULT, clock::get, () -> 0.5);
-        assertEquals("HT3", cache.load(Source.NOVATIERS, PLAYER).get().get("axe").label());
+        assertEquals("HT3", cache.loadAnswer(Source.NOVATIERS, PLAYER).get().tiers().get("axe").label());
         clock.addAndGet(java.time.Duration.ofHours(2).toNanos());
         respond("/users", 500, "unavailable");
         assertThrows(ExecutionException.class, () -> nova.refresh().get());
-        cache.load(Source.NOVATIERS, PLAYER).get();
-        var retained = cache.cachedAnswer(Source.NOVATIERS, PLAYER).orElseThrow();
+        cache.loadAnswer(Source.NOVATIERS, PLAYER).get().tiers();
+        var retained = cache.observe(Source.NOVATIERS, PLAYER).answer().orElseThrow();
         assertEquals(java.time.Duration.ofHours(2), retained.age());
         assertTrue(retained.stale());
         assertTrue(retained.refreshFailed());
@@ -556,14 +556,14 @@ class TierSourceTest {
                 "repeated frames must not treat the original data age as the last local check time");
         clock.addAndGet(java.time.Duration.ofHours(5).toNanos());
         assertTrue(cache.peek(Source.NOVATIERS, PLAYER).isEmpty());
-        assertTrue(cache.cachedAnswer(Source.NOVATIERS, PLAYER).isEmpty());
-        assertThrows(ExecutionException.class, () -> cache.load(Source.NOVATIERS, PLAYER).get());
+        assertTrue(cache.observe(Source.NOVATIERS, PLAYER).answer().isEmpty());
+        assertThrows(ExecutionException.class, () -> cache.loadAnswer(Source.NOVATIERS, PLAYER).get().tiers());
         assertEquals(2, requestCount.get());
         respond("/users", 200, ONE_USER.replace("HT3", "HT1"));
         nova.refresh().get();
         cache.invalidate(Source.NOVATIERS);
-        assertEquals("HT1", cache.load(Source.NOVATIERS, PLAYER).get().get("axe").label());
-        var fresh = cache.cachedAnswer(Source.NOVATIERS, PLAYER).orElseThrow();
+        assertEquals("HT1", cache.loadAnswer(Source.NOVATIERS, PLAYER).get().tiers().get("axe").label());
+        var fresh = cache.observe(Source.NOVATIERS, PLAYER).answer().orElseThrow();
         assertEquals(java.time.Duration.ZERO, fresh.age());
         assertFalse(fresh.stale());
         assertFalse(fresh.refreshFailed());
@@ -576,12 +576,12 @@ class TierSourceTest {
         NovaTiersSource nova = new NovaTiersSource(client, baseUrl, new DownloadProgress(), clock::get);
         var cache = new com.w0x7y.justtiers.cache.TierCache(java.util.List.of(nova),
                 com.w0x7y.justtiers.cache.CachePolicy.DEFAULT, clock::get, () -> 0.5);
-        cache.load(Source.NOVATIERS, PLAYER).get();
+        cache.loadAnswer(Source.NOVATIERS, PLAYER).get().tiers();
         clock.addAndGet(java.time.Duration.ofMinutes(30).toNanos());
         retryAfterHeaders.put("/users", "120");
         respond("/users", 503, "unavailable");
         assertThrows(ExecutionException.class, () -> nova.refresh().get());
-        var failed = cache.cachedAnswer(Source.NOVATIERS, PLAYER).orElseThrow();
+        var failed = cache.observe(Source.NOVATIERS, PLAYER).answer().orElseThrow();
         assertTrue(failed.refreshFailed(), "a timed bulk failure must be visible before the player TTL expires");
         assertTrue(failed.stale());
         assertFalse(failed.refreshing());
@@ -613,13 +613,13 @@ class TierSourceTest {
         try {
             var refresh = nova.refresh();
             assertTrue(entered.await(5, java.util.concurrent.TimeUnit.SECONDS));
-            var pending = cache.cachedAnswer(Source.NOVATIERS, PLAYER).orElseThrow();
+            var pending = cache.observe(Source.NOVATIERS, PLAYER).answer().orElseThrow();
             assertTrue(pending.refreshing());
             assertTrue(pending.refreshFailed());
             assertEquals("HT3", pending.tiers().get("axe").label());
             release.countDown();
             refresh.get();
-            var succeeded = cache.cachedAnswer(Source.NOVATIERS, PLAYER).orElseThrow();
+            var succeeded = cache.observe(Source.NOVATIERS, PLAYER).answer().orElseThrow();
             assertFalse(succeeded.refreshing());
             assertFalse(succeeded.refreshFailed());
             assertEquals(1, cache.health(Source.NOVATIERS).successes());

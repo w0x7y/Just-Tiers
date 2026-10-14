@@ -69,6 +69,18 @@ public final class DiscoveredGamemodes {
     }
 
     /**
+     * A payload key as this source's slug. NovaTiers keys go through {@link #novaSlug}; the
+     * other sources' keys go through {@link #profileSlug} and then the source's aliases in
+     * {@link Gamemodes#alias}. Empty when the key cannot be accepted.
+     */
+    public static Optional<String> slug(Source source, String apiKey) {
+        if (source == Source.NOVATIERS) {
+            return novaSlug(apiKey);
+        }
+        return profileSlug(apiKey).map(slug -> Gamemodes.alias(source, slug));
+    }
+
+    /**
      * A readable name for a slug: words split on {@code _} and {@code -}, each
      * title-cased, with known short acronyms such as SMP and UHC kept in capitals.
      */
@@ -110,9 +122,11 @@ public final class DiscoveredGamemodes {
     }
 
     /**
-     * Builds one site's answer for one player. Registered gamemodes are always admitted;
-     * discovered ones are admitted until {@link #MAX_PER_ANSWER} distinct slugs are in.
-     * The first placement for a slug wins.
+     * Builds one site's answer for one player. It turns raw payload keys into slugs with
+     * the source's policy and aliases ({@link #slug}), and counts every refusal itself: a
+     * key that cannot be accepted, or a discovered gamemode over the cap. Registered
+     * gamemodes are always admitted; discovered ones are admitted until
+     * {@link #MAX_PER_ANSWER} distinct slugs are in. The first placement for a slug wins.
      */
     public static final class Collector {
         private final Source source;
@@ -122,6 +136,33 @@ public final class DiscoveredGamemodes {
 
         public Collector(Source source) {
             this.source = source;
+        }
+
+        /**
+         * The slug for a raw payload key, without placing anything. Empty, and counted as
+         * refused, when the key cannot be accepted. Parsers use this when an entry under an
+         * acceptable key carries no placement, or when they need the slug of a placement
+         * the cap may still refuse.
+         */
+        public Optional<String> acceptKey(String rawKey) {
+            Optional<String> slug = slug(source, rawKey);
+            if (slug.isEmpty()) {
+                refused++;
+            }
+            return slug;
+        }
+
+        /**
+         * Offers a placement under a raw payload key. The admitted slug, or empty when the
+         * key cannot be accepted or the discovered cap is already reached. Either refusal
+         * is counted once.
+         */
+        public Optional<String> offerKey(String rawKey, Tier tier) {
+            Optional<String> slug = acceptKey(rawKey);
+            if (slug.isEmpty() || !offer(slug.get(), tier)) {
+                return Optional.empty();
+            }
+            return slug;
         }
 
         /**
@@ -153,7 +194,7 @@ public final class DiscoveredGamemodes {
             return discovered;
         }
 
-        /** Placements dropped for an unacceptable slug or over the cap. */
+        /** Keys and placements refused for an unacceptable key or slug, or over the cap. */
         public int refused() {
             return refused;
         }
