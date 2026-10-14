@@ -22,6 +22,10 @@ whether its request has settled and the freshness of its displayed placements. A
 session does not replace this answer.
 _Avoid_: Live cache row
 
+**Lookup history**: The names whose lookup sessions resolved to a player during the
+current game session, most recent first. It is never saved.
+_Avoid_: Saved searches, favorites
+
 **Unranked**: A source answered successfully without a listed placement. An unavailable
 source provides no evidence of whether the player is ranked.
 _Avoid_: Missing, failed lookup

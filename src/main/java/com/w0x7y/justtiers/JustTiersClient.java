@@ -9,6 +9,7 @@ import com.w0x7y.justtiers.config.JustTiersConfig;
 import com.w0x7y.justtiers.download.DownloadProgress;
 import com.w0x7y.justtiers.gui.DownloadHud;
 import com.w0x7y.justtiers.gui.JustTiersKeybinds;
+import com.w0x7y.justtiers.lookup.LookupHistory;
 import com.w0x7y.justtiers.settings.RefreshLifecycle;
 import com.w0x7y.justtiers.settings.SettingsApplication;
 import com.w0x7y.justtiers.tier.Source;
@@ -28,6 +29,8 @@ public class JustTiersClient implements ClientModInitializer {
     private static NovaTiersSource novaSource;
     private static MojangNameSource nameSource;
     private static DownloadProgress downloadProgress;
+    /** Recent lookups for this game session only; never written to disk. */
+    private static final LookupHistory lookupHistory = new LookupHistory();
 
     @Override
     public void onInitializeClient() {
@@ -88,6 +91,10 @@ public class JustTiersClient implements ClientModInitializer {
 
     public static DownloadProgress downloadProgress() {
         return downloadProgress;
+    }
+
+    public static LookupHistory lookupHistory() {
+        return lookupHistory;
     }
 
     public static SettingsApplication settings() {

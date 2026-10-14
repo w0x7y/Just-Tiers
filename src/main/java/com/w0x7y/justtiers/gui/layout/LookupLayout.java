@@ -14,6 +14,12 @@ import java.util.OptionalInt;
  * so a row filling in never shifts the panel under the cursor. The skin is drawn as
  * large as still leaves the Done button on screen.
  *
+ * <p>Above the panel, outside its scrolling, sit the search field and a one-line strip of
+ * recent lookups. The strip's line is reserved whenever the screen is tall enough, even
+ * before there is anything in it, so the panel does not move when the first name arrives.
+ * A screen too short to spare it a line goes without the strip rather than squeezing the
+ * results further.
+ *
  * <p>Deliberately Minecraft-free, like {@link GridLayout} and {@link SkinLayout} beside
  * it. The screen used to keep fifteen mutable coordinates and refill them by calling its
  * own stacking pass up to four times — once per skin scale it tried, once to measure and
@@ -25,6 +31,7 @@ public record LookupLayout(int panelX, int panelY, int panelWidth, int panelHeig
                            int footerY,
                            int firstSeparatorY, int secondSeparatorY, int thirdSeparatorY,
                            int viewportHeight, int doneButtonY,
+                           int searchX, int searchWidth, int historyY, boolean showsHistory,
                            List<Row> rows) {
 
     static final int PANEL_PADDING = 10;
@@ -36,8 +43,19 @@ public record LookupLayout(int panelX, int panelY, int panelWidth, int panelHeig
     static final int SCREEN_MARGIN = 8;
     static final int BUTTON_HEIGHT = 20;
     static final int BUTTON_GAP = 6;
+    /** Where the name field and lookup button sit, outside the scrollable content. */
+    static final int SEARCH_TOP = 8;
+    static final int SEARCH_MAX_WIDTH = 320;
     /** Room for the name field and lookup button, outside the scrollable content. */
     static final int SEARCH_BOTTOM = 36;
+    /** The recent-lookups strip: one button tall, just under the search field. */
+    static final int HISTORY_GAP = 4;
+    static final int HISTORY_HEIGHT = BUTTON_HEIGHT;
+    static final int HISTORY_Y = SEARCH_TOP + BUTTON_HEIGHT + HISTORY_GAP;
+    /** Where the panel can start when the strip is shown. */
+    static final int HISTORY_BOTTOM = HISTORY_Y + HISTORY_HEIGHT + SCREEN_MARGIN;
+    /** The least scrolling room the strip may leave the results; any less and it is dropped. */
+    static final int MIN_VIEWPORT = 64;
 
     /** Largest first: the skin is drawn as big as fits. */
     private static final int[] SKIN_SCALES = {3, 2, 1};
@@ -115,20 +133,24 @@ public record LookupLayout(int panelX, int panelY, int panelWidth, int panelHeig
                 labelWidth + widest + 2 * BOX_PADDING + 2 * PANEL_PADDING);
         int panelX = (metrics.screenWidth() - panelWidth) / 2;
 
-        int skinScale = skinScale(metrics, grids);
+        boolean showsHistory = metrics.screenHeight() - HISTORY_BOTTOM
+                - BUTTON_GAP - BUTTON_HEIGHT - SCREEN_MARGIN >= MIN_VIEWPORT;
+        int contentTop = showsHistory ? HISTORY_BOTTOM : SEARCH_BOTTOM;
+
+        int skinScale = skinScale(metrics, grids, contentTop);
         int panelHeight = height(metrics, grids, skinScale);
-        int panelY = Math.max(SEARCH_BOTTOM,
+        int panelY = Math.max(contentTop,
                 (metrics.screenHeight() - panelHeight - BUTTON_HEIGHT - BUTTON_GAP) / 2);
 
         return place(metrics, grids, skinScale, panelX, panelY, panelWidth, panelHeight,
-                labelWidth);
+                labelWidth, showsHistory);
     }
 
     /** The largest skin that still leaves the Done button on screen. */
-    private static int skinScale(LookupMetrics metrics, List<GridLayout> grids) {
+    private static int skinScale(LookupMetrics metrics, List<GridLayout> grids, int contentTop) {
         for (int scale : SKIN_SCALES) {
             int needed = height(metrics, grids, scale)
-                    + BUTTON_GAP + BUTTON_HEIGHT + SEARCH_BOTTOM + SCREEN_MARGIN;
+                    + BUTTON_GAP + BUTTON_HEIGHT + contentTop + SCREEN_MARGIN;
             if (needed <= metrics.screenHeight()) {
                 return scale;
             }
@@ -162,7 +184,8 @@ public record LookupLayout(int panelX, int panelY, int panelWidth, int panelHeig
 
     private static LookupLayout place(LookupMetrics metrics, List<GridLayout> grids,
                                       int skinScale, int panelX, int panelY,
-                                      int panelWidth, int panelHeight, int labelWidth) {
+                                      int panelWidth, int panelHeight, int labelWidth,
+                                      boolean showsHistory) {
         int y = panelY + PANEL_PADDING;
 
         int nameY = y;
@@ -200,9 +223,29 @@ public record LookupLayout(int panelX, int panelY, int panelWidth, int panelHeig
         int doneY = Math.min(panelY + panelHeight + BUTTON_GAP,
                 metrics.screenHeight() - SCREEN_MARGIN - BUTTON_HEIGHT);
         int viewportHeight = Math.max(0, doneY - BUTTON_GAP - panelY);
+        int searchWidth = Math.min(metrics.screenWidth() - 2 * SCREEN_MARGIN, SEARCH_MAX_WIDTH);
+        int searchX = (metrics.screenWidth() - searchWidth) / 2;
         return new LookupLayout(panelX, panelY, panelWidth, panelHeight, skinScale,
                 nameY, skinY, tiersY, noteY, footerY,
-                firstSeparatorY, secondSeparatorY, thirdSeparatorY, viewportHeight, doneY, rows);
+                firstSeparatorY, secondSeparatorY, thirdSeparatorY, viewportHeight, doneY,
+                searchX, searchWidth, HISTORY_Y, showsHistory, rows);
+    }
+
+    public int searchY() {
+        return SEARCH_TOP;
+    }
+
+    /**
+     * Places the recent names that fit on the strip's line, which spans the wider of the
+     * panel and the search field. Empty when the screen is too short to show the strip.
+     *
+     * @param nameWidths the drawn widths of the recent names, most recent first.
+     */
+    public HistoryStrip history(int labelWidth, List<Integer> nameWidths) {
+        if (!showsHistory) return HistoryStrip.none(historyY, HISTORY_HEIGHT);
+        int x = Math.min(panelX, searchX);
+        int right = Math.max(panelRight(), searchX + searchWidth);
+        return HistoryStrip.of(x, historyY, right - x, HISTORY_HEIGHT, labelWidth, nameWidths);
     }
 
     /** How tall the skin is drawn, at the scale that was chosen. */
