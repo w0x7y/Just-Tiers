@@ -130,7 +130,7 @@ public final class PlayerLookupScreen extends Screen {
         contentControls.clear();
         cellControls.clear();
         links.clear();
-        scroll = Math.clamp(scroll, 0, layout.maxScroll());
+        scroll = layout.scrolling().clamp(scroll);
         String typedName = nameField == null ? session.name() : nameField.getValue();
         int searchWidth = layout.searchWidth();
         int left = layout.searchX();
@@ -243,12 +243,9 @@ public final class PlayerLookupScreen extends Screen {
         drawFooter(graphics, mouseX, mouseY);
         graphics.pose().popMatrix();
         graphics.disableScissor();
-        if (layout.maxScroll() > 0) {
-            int thumbHeight = Math.max(8, layout.viewportHeight() * layout.viewportHeight() / layout.panelHeight());
-            int thumbY = layout.panelY() + scroll * (layout.viewportHeight() - thumbHeight) / layout.maxScroll();
-            graphics.fill(layout.panelRight() - 3, thumbY, layout.panelRight() - 1,
-                    thumbY + thumbHeight, Colors.SECONDARY);
-        }
+        layout.scrolling().thumb(scroll).ifPresent(thumb -> graphics.fill(
+                layout.panelRight() - 3, layout.panelY() + thumb.y(), layout.panelRight() - 1,
+                layout.panelY() + thumb.y() + thumb.height(), Colors.SECONDARY));
     }
 
     private void separator(GuiGraphicsExtractor graphics, int y) {
@@ -589,8 +586,8 @@ public final class PlayerLookupScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontal, double vertical) {
-        if (inViewport(mouseY) && layout.maxScroll() > 0) {
-            scroll = Math.clamp(scroll - (int) (vertical * 16), 0, layout.maxScroll());
+        if (inViewport(mouseY) && layout.scrolling().scrolls()) {
+            scroll = layout.scrolling().wheel(scroll, vertical);
             updateContentControls();
             return true;
         }
@@ -606,7 +603,7 @@ public final class PlayerLookupScreen extends Screen {
         }
         if (event.key() == InputConstants.KEY_PAGEDOWN || event.key() == InputConstants.KEY_PAGEUP) {
             int step = event.key() == InputConstants.KEY_PAGEDOWN ? 1 : -1;
-            scroll = Math.clamp(scroll + step * layout.viewportHeight(), 0, layout.maxScroll());
+            scroll = layout.scrolling().page(scroll, step);
             updateContentControls();
             return true;
         }

@@ -270,17 +270,17 @@ public record LookupLayout(int panelX, int panelY, int panelWidth, int panelHeig
         return panelY + viewportHeight;
     }
 
+    /** The panel scrolls inside the space between its top and the Done button. */
+    public ScrollViewport scrolling() {
+        return new ScrollViewport(panelHeight, viewportHeight);
+    }
+
     public int maxScroll() {
-        return Math.max(0, panelHeight - viewportHeight);
+        return scrolling().maxScroll();
     }
 
     /** Scroll a focused control completely into view, in content coordinates. */
     public int scrollTo(int top, int height, int scroll) {
-        int next = scroll;
-        if (top < panelY + next) next = top - panelY;
-        else if (top + height > viewportBottom() + next) {
-            next = top + height - viewportBottom();
-        }
-        return Math.clamp(next, 0, maxScroll());
+        return scrolling().reveal(scroll, top - panelY, height);
     }
 }
