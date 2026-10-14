@@ -40,7 +40,7 @@ public sealed interface SiteAnswer {
         public Unavailable { Objects.requireNonNull(siteId, "siteId"); }
     }
 
-    /** The site answered successfully and lists no placement this build recognizes. */
+    /** The site answered successfully and lists no placement for the player. */
     record Unranked(String siteId, Freshness freshness) implements SiteAnswer {
         public Unranked {
             Objects.requireNonNull(siteId, "siteId");
@@ -50,8 +50,9 @@ public sealed interface SiteAnswer {
 
     /**
      * The site answered successfully with at least one placement. Placements are sorted best
-     * first: by rank, then active before retired, then in the site's gamemode order. Retired
-     * placements are included even when the player hides retired tiers in nametags.
+     * first: by rank, then active before retired, then recognized gamemodes in the site's
+     * order, then gamemodes the site added since this build, by slug. Retired placements
+     * are included even when the player hides retired tiers in nametags.
      */
     record Ranked(String siteId, List<Placement> placements, Freshness freshness) implements SiteAnswer {
         public Ranked {

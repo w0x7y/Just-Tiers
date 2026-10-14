@@ -10,19 +10,24 @@ import java.util.Objects;
  * 2 for low. HT1 is 0, MT1 is 1, LT1 is 2, HT2 is 3, and so on to LT5 at 14. Only PvPHQ
  * reports middle divisions, which fall between the high and low tiers of the same level.
  * Retirement does not change the rank; Just-Tiers breaks equal ranks toward the active
- * placement. Sites are independent competitions, so equal ranks on different sites are
+ * placement, then toward recognized gamemodes. Sites are independent competitions, so equal ranks on different sites are
  * not equal standings.
  *
  * @param siteId       the site's stable lowercase id, one of {@link JustTiersQuery#SITE_IDS}
  * @param gamemode     the site's gamemode slug, such as {@code crystal} or {@code neth_pot}
- * @param gamemodeName the gamemode's English display name, such as {@code Netherite Pot}
+ * @param gamemodeName the gamemode's English display name, such as {@code Netherite Pot}.
+ *                     For a gamemode this build does not register, a name derived from
+ *                     the slug, such as {@code Quake Pro} for {@code quake_pro}.
  * @param label        the tier as Just-Tiers displays it, such as {@code HT1}, {@code MT3}
  *                     or {@code RLT3}. Retired placements have an {@code R} prefix.
  * @param rank         0 (HT1) to 14 (LT5), lower is better
  * @param retired      whether the site marks this placement as retired
+ * @param recognized   whether this Just-Tiers build registers the gamemode, with its own
+ *                     icon and a selectable setting. False for a gamemode the site added
+ *                     since this build, which has only a derived name.
  */
 public record Placement(String siteId, String gamemode, String gamemodeName, String label,
-                        int rank, boolean retired) {
+                        int rank, boolean retired, boolean recognized) {
     /** The best possible rank, HT1. */
     public static final int BEST_RANK = 0;
     /** The worst possible rank, LT5. */

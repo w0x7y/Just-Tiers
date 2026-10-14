@@ -91,9 +91,9 @@ class TierQueryTest {
         SiteAnswer.Ranked ranked = assertInstanceOf(SiteAnswer.Ranked.class, it.query.peek(PLAYER, "pvptiers"));
 
         assertEquals(List.of(
-                new Placement("pvptiers", "crystal", "Crystal", "HT1", 0, false),
-                new Placement("pvptiers", "sword", "Sword", "RHT1", 0, true),
-                new Placement("pvptiers", "axe", "Axe", "LT3", 8, false)), ranked.placements());
+                new Placement("pvptiers", "crystal", "Crystal", "HT1", 0, false, true),
+                new Placement("pvptiers", "sword", "Sword", "RHT1", 0, true, true),
+                new Placement("pvptiers", "axe", "Axe", "LT3", 8, false, true)), ranked.placements());
         assertEquals(new Freshness(Duration.ZERO, false, false, false), ranked.freshness());
         assertEquals(1, site.calls, "a fresh answer is not requested again");
     }
@@ -158,7 +158,7 @@ class TierQueryTest {
 
         SiteAnswer.Ranked ranked = assertInstanceOf(SiteAnswer.Ranked.class, it.query.peek(PLAYER, "novatiers"));
         assertEquals(Duration.ofMinutes(10), ranked.freshness().age());
-        assertEquals(new Placement("novatiers", "vanilla", "Vanilla", "LT1", 2, false), ranked.best());
+        assertEquals(new Placement("novatiers", "vanilla", "Vanilla", "LT1", 2, false, true), ranked.best());
     }
 
     @Test
@@ -175,12 +175,18 @@ class TierQueryTest {
     }
 
     @Test
-    void bestMirrorsTheResolverIncludingRetiredTiesAndDeclaredOrder() {
+    void bestMirrorsTheResolverIncludingRetiredTiesDeclaredOrderAndDiscoveredGamemodes() {
         List<Map<String, Tier>> cases = List.of(
                 Map.of("axe", tier("RHT2"), "pot", tier("HT2")),
                 Map.of("sword", tier("HT2"), "axe", tier("HT2")),
                 Map.of("uhc", tier("RHT1"), "smp", tier("LT1")),
-                Map.of("neth_pot", tier("RLT3")));
+                Map.of("neth_pot", tier("RLT3")),
+                // Discovered only: equal tiers break by slug.
+                Map.of("quake_pro", tier("LT2"), "beta_mode", tier("LT2")),
+                // A registered gamemode wins a tie with a discovered one, whatever the slugs.
+                Map.of("sword", tier("HT3"), "aaa_mode", tier("HT3")),
+                Map.of("axe", tier("LT3"), "zz_mode", tier("HT1")),
+                Map.of("axe", tier("RHT2"), "new_mode", tier("HT2")));
         for (Map<String, Tier> tiers : cases) {
             Fixture it = new Fixture(Source.PVPTIERS);
             it.query.peek(PLAYER, "pvptiers");
@@ -205,16 +211,25 @@ class TierQueryTest {
     }
 
     @Test
-    void unrecognizedGamemodesAreOmitted() {
+    void discoveredGamemodesAreRankedPlacementsWithDerivedNames() {
         Fixture it = new Fixture(Source.PVPTIERS, Source.SUBTIERS);
         it.query.peek(PLAYER, "pvptiers");
-        it.site(Source.PVPTIERS).answer(Map.of("future_mode", tier("HT1")));
+        it.site(Source.PVPTIERS).answer(Map.of("quake_pro", tier("RHT1")));
         it.query.peek(PLAYER, "subtiers");
-        it.site(Source.SUBTIERS).answer(Map.of("future_mode", tier("HT1"), "bed", tier("LT4")));
+        it.site(Source.SUBTIERS).answer(Map.of("zz_mode", tier("LT4"), "bed", tier("LT4"),
+                "aa_mode", tier("LT4"), "bow", tier("HT5")));
 
-        assertInstanceOf(SiteAnswer.Unranked.class, it.query.peek(PLAYER, "pvptiers"));
-        SiteAnswer.Ranked ranked = assertInstanceOf(SiteAnswer.Ranked.class, it.query.peek(PLAYER, "subtiers"));
-        assertEquals(List.of("bed"), ranked.placements().stream().map(Placement::gamemode).toList());
+        SiteAnswer.Ranked onlyDiscovered = assertInstanceOf(SiteAnswer.Ranked.class, it.query.peek(PLAYER, "pvptiers"));
+        assertEquals(List.of(new Placement("pvptiers", "quake_pro", "Quake Pro", "RHT1", 0, true, false)),
+                onlyDiscovered.placements(), "a placement in a new gamemode is evidence, not unranked");
+
+        SiteAnswer.Ranked mixed = assertInstanceOf(SiteAnswer.Ranked.class, it.query.peek(PLAYER, "subtiers"));
+        assertEquals(List.of("bed", "aa_mode", "zz_mode", "bow"),
+                mixed.placements().stream().map(Placement::gamemode).toList(),
+                "equal tiers list registered gamemodes first, then discovered ones by slug");
+        assertEquals(List.of(true, false, false, true),
+                mixed.placements().stream().map(Placement::recognized).toList());
+        assertEquals("Zz Mode", mixed.placements().get(2).gamemodeName());
     }
 
     @Test

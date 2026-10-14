@@ -83,7 +83,7 @@ are evidence about the player's standing on that site.
 | `Disabled` | The player has turned off nametag tiers or this site's toggle. Just-Tiers makes no request and reports nothing it already knows. |
 | `Pending` | No answer yet; a request is queued or in flight. Also every site before Just-Tiers initializes. |
 | `Unavailable` | No answer, and none is being fetched. The site failed or is paused, a server cooldown applies, the player is backing off after a failure, or the request was deferred. A later peek can retry. |
-| `Unranked` | The site answered successfully with no placement this build recognizes. HTTP 404 from PvPTiers, PvPHQ and SubTiers counts as unranked. |
+| `Unranked` | The site answered successfully with no placement for the player. HTTP 404 from PvPTiers, PvPHQ and SubTiers counts as unranked. |
 | `Ranked` | The site answered successfully with at least one placement. |
 
 Do not present `Disabled`, `Pending` or `Unavailable` as unranked. One site's answer says
@@ -117,26 +117,38 @@ reports this:
 
 ## Placements
 
-`Ranked.placements()` is sorted best first: by rank, then active before retired, then in
-the site's gamemode order. `Ranked.best()` is its first element. It matches the tier a
-nametag shows for that site when retired tiers are shown and no selected gamemode applies.
+`Ranked.placements()` is sorted best first: by rank, then active before retired, then
+recognized gamemodes in the site's order, then discovered gamemodes by slug.
+`Ranked.best()` is its first element. It matches the tier a nametag shows for that site
+when retired tiers are shown and no selected gamemode applies.
 
 | Field | Example | Meaning |
 |---|---|---|
 | `siteId` | `pvphq` | The site's id |
-| `gamemode` | `neth_pot` | The site's gamemode slug, as listed in the README |
-| `gamemodeName` | `Netherite Pot` | English display name |
+| `gamemode` | `neth_pot` | The site's gamemode slug, as listed in the README for recognized gamemodes |
+| `gamemodeName` | `Netherite Pot` | English display name, derived from the slug for a discovered gamemode |
 | `label` | `HT1`, `MT3`, `RLT3` | The tier as displayed; `R` marks a retired placement |
 | `rank` | `0` | Lower is better, from 0 to 14 |
 | `retired` | `true` | Whether the site marks the placement as retired |
+| `recognized` | `true` | Whether this Just-Tiers build registers the gamemode |
+
+### Discovered gamemodes
+
+A site can add a gamemode before Just-Tiers is updated for it. Its placements still count:
+they appear with `recognized` false and a name derived from the slug, so `quake_pro`
+becomes `Quake Pro`. Just-Tiers has no icon for such a gamemode, and the player cannot
+select it in settings. If you draw icons, use your own fallback for these placements; the
+lookup screen shows the name's first letter. Accepted slugs are lowercase letters, digits,
+`_` and `-`, at most 32 characters, and one site's answer for one player holds at most 16
+discovered gamemodes. A later Just-Tiers version may recognize the same slug, with a
+different display name.
 
 `rank = (level - 1) * 3 + division`, where the division is 0 for high, 1 for middle and 2
 for low. HT1 is 0, MT1 is 1, LT1 is 2, HT2 is 3, and LT5 is 14. Only PvPHQ reports middle
 divisions, so MT3 ranks between HT3 and LT3. Retirement does not change the rank.
 
-An enabled site's answer includes every recognized placement regardless of the player's
-selected gamemodes, retired-tier setting or badge appearance. Placements in a gamemode this
-Just-Tiers build does not recognize are omitted, as they are on the lookup screen.
+An enabled site's answer includes every placement, recognized or discovered, regardless of
+the player's selected gamemodes, retired-tier setting or badge appearance.
 
 ## Threads and timing
 

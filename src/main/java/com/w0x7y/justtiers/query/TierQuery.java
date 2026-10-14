@@ -93,8 +93,10 @@ final class TierQuery {
     }
 
     /**
-     * Placements in gamemodes this build does not know are omitted, as the lookup screen and
-     * nametags omit them, rather than reported under a guessed name.
+     * Registered gamemodes in the site's declared order, then discovered ones by slug, as
+     * the lookup screen lists them. The stable sort keeps that order among equal tiers, so
+     * the first placement is the one {@code TierResolver.highestOn} picks. Parsers already
+     * bound how many discovered gamemodes one answer holds.
      */
     private static List<Placement> placements(Source source, Map<String, Tier> tiers) {
         List<Placement> placements = new ArrayList<>(tiers.size());
@@ -102,13 +104,19 @@ final class TierQuery {
             Tier tier = tiers.get(gamemode.slug());
             if (tier != null) placements.add(placement(gamemode, tier));
         }
+        tiers.keySet().stream()
+                .filter(slug -> Gamemodes.find(source, slug).isEmpty())
+                .sorted()
+                .map(slug -> Gamemodes.forSlug(source, slug))
+                .flatMap(Optional::stream)
+                .forEach(gamemode -> placements.add(placement(gamemode, tiers.get(gamemode.slug()))));
         placements.sort(BEST_FIRST);
         return placements;
     }
 
     static Placement placement(Gamemode gamemode, Tier tier) {
         return new Placement(siteId(gamemode.source()), gamemode.slug(), gamemode.displayName(),
-                tier.label(), tier.rank(), tier.retired());
+                tier.label(), tier.rank(), tier.retired(), Gamemodes.isRegistered(gamemode));
     }
 
     /** Spelled out rather than derived from enum names, so an internal rename cannot change the API. */
