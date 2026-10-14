@@ -6,9 +6,10 @@ Just-Tiers is a client-side Fabric mod that adds competitive PvP tiers to Minecr
 nametags using [PvPTiers](https://pvptiers.com), [PvPHQ](https://pvphq.com),
 [SubTiers](https://subtiers.net) and [NovaTiers](https://novatiers.com). The mod is in beta.
 
-Version 1.1.7 replaces MCTiers with PvPTiers, adds PvPHQ, and lets you toggle each
-site individually. Builds cover every stable Minecraft version from 1.21.10
-through 26.3. See the [release notes](docs/releases/v1.1.7.md).
+Version 1.2.0 lets every enabled site prefer its selected gamemode, shows gamemodes a
+site adds before the mod knows them, keeps recent lookups for the session and adds a
+tier-query API for other mods. Builds cover every stable Minecraft version from 1.21.10
+through 26.3. See the [release notes](docs/releases/v1.2.0.md).
 
 ## What it shows
 
@@ -228,7 +229,8 @@ still work, and NovaTiers' startup, scheduled and requested downloads remain ind
 that switch. Hiding the progress bar changes only the indicator, not the downloads.
 Another installed mod that uses the [tier-query API](docs/api.md) makes automatic lookups
 too, so the same switches apply: it gets no answer and causes no request for a site
-while that site, or nametag tiers, are turned off.
+while that site, or nametag tiers, are turned off. Like nametags, it never sends a UUID
+that is not an online-mode account, such as an offline-mode player or a server NPC.
 
 PvPTiers, PvPHQ and SubTiers answers, including valid unranked answers, expire after an hour by default.
 Repeated requests for one player share the pending result. Expired successful answers stay

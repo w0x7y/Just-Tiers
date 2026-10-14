@@ -92,4 +92,28 @@ class GamemodesTest {
         assertEquals(Optional.empty(), Gamemodes.normaliseNovaKey(null));
     }
 
+    @Test
+    void discoveredGamemodesAreTheUnregisteredAcceptableSlugsBySlug() {
+        var discovered = Gamemodes.discovered(Source.PVPTIERS,
+                java.util.List.of("zz_mode", "axe", "Not Valid", "aa_mode"));
+
+        assertEquals(java.util.List.of("aa_mode", "zz_mode"),
+                discovered.stream().map(Gamemode::slug).toList());
+        for (Gamemode gamemode : discovered) {
+            assertFalse(Gamemodes.isRegistered(gamemode));
+            assertTrue(gamemode.icon().isEmpty());
+        }
+        assertTrue(Gamemodes.discovered(Source.PVPTIERS, java.util.List.of("axe", "sword")).isEmpty());
+    }
+
+    @Test
+    void discoveredGamemodesAreCappedPerAnswer() {
+        var slugs = new java.util.ArrayList<String>();
+        for (int i = 0; i < DiscoveredGamemodes.MAX_PER_ANSWER + 4; i++) slugs.add(String.format("mode_%02d", i));
+
+        var discovered = Gamemodes.discovered(Source.NOVATIERS, slugs);
+
+        assertEquals(DiscoveredGamemodes.MAX_PER_ANSWER, discovered.size());
+        assertEquals("mode_00", discovered.getFirst().slug());
+    }
 }

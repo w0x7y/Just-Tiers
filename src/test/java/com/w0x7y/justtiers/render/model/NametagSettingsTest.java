@@ -18,7 +18,7 @@ class NametagSettingsTest {
             Source.NOVATIERS, "spleef");
 
     private static NametagSettings settings() {
-        return new NametagSettings(true, Set.copyOf(Source.ALL), SELECTED, true, NametagStyle.DEFAULT);
+        return new NametagSettings(true, Set.copyOf(Source.ALL), SELECTED, true, NametagStyle.DEFAULT, false);
     }
 
     @Test
@@ -46,7 +46,7 @@ class NametagSettingsTest {
     void theSelectionIsCopiedRatherThanBorrowed() {
         Map<Source, String> mutable = new HashMap<>(SELECTED);
         NametagSettings settings = new NametagSettings(true, Set.copyOf(Source.ALL), mutable, true,
-                NametagStyle.DEFAULT);
+                NametagStyle.DEFAULT, false);
 
         mutable.put(Source.PVPTIERS, "axe");
         assertEquals("crystal", settings.selectedGamemodes().get(Source.PVPTIERS));
@@ -56,7 +56,7 @@ class NametagSettingsTest {
      * would be worse than one in the default shape. */
     @Test
     void aMissingStyleFallsBackToTheDefault() {
-        NametagSettings settings = new NametagSettings(true, Set.copyOf(Source.ALL), SELECTED, true, null);
+        NametagSettings settings = new NametagSettings(true, Set.copyOf(Source.ALL), SELECTED, true, null, false);
 
         assertEquals(NametagStyle.DEFAULT, settings.style());
     }
@@ -64,7 +64,29 @@ class NametagSettingsTest {
     @Test
     void thePreviewBadgeFollowsTheSettings() {
         assertEquals(settings().previewBadge(0L).plainText(),
-                Badge.preview(Set.copyOf(Source.ALL), SELECTED, true, 0L, NametagStyle.DEFAULT)
+                new NametagSettings(true, Set.copyOf(Source.ALL), SELECTED, true, NametagStyle.DEFAULT, false).previewBadge(0L)
                         .plainText());
+    }
+
+    @Test
+    void automaticLookupsUseTheEnabledSitesOnlyWhileTiersAreOn() {
+        Set<Source> sites = Set.of(Source.PVPHQ, Source.NOVATIERS);
+        assertEquals(sites, new NametagSettings(true, sites, SELECTED, true,
+                NametagStyle.DEFAULT, false).automaticLookupSites());
+        assertEquals(Set.of(), new NametagSettings(false, sites, SELECTED, true,
+                NametagStyle.DEFAULT, false).automaticLookupSites());
+    }
+
+    @Test
+    void thePreviewFollowsPreferringSelections() {
+        Set<Source> sites = Set.of(Source.PVPTIERS, Source.SUBTIERS);
+        Map<Source, String> picks = Map.of(Source.PVPTIERS, "axe", Source.SUBTIERS, "bow");
+        String preferred = new NametagSettings(true, sites, picks, false, NametagStyle.DEFAULT, true)
+                .previewBadge(0L).plainText();
+        String samples = new NametagSettings(true, sites, picks, false, NametagStyle.DEFAULT, false)
+                .previewBadge(0L).plainText();
+        assertTrue(preferred.contains(com.w0x7y.justtiers.tier.Gamemodes.find(Source.PVPTIERS, "axe")
+                .orElseThrow().icon().orElseThrow() + "HT1"), preferred);
+        assertNotEquals(preferred, samples);
     }
 }

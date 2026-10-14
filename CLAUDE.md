@@ -45,6 +45,17 @@ components, commands and events.
 - `render/model/Badge` owns badge construction and position. Callers render the result.
 - `render/model/TierView` is the nametag's access to settings and tier answers.
   `render/LiveTierView` reads the live config/cache; model tests provide their own view.
+  Badge construction takes the whole `NametagSettings`, not its fields one by one.
+- Automatic lookups (nametags and the tier-query API) contact only
+  `NametagSettings.automaticLookupSites` and only UUIDs `api/PlayerRef.isAccount` accepts.
+  Explicit lookups have their own identity path through `LookupSession`.
+- `resolve/GamemodeSelection` decides when a site's selected gamemode applies. The resolver,
+  preview, picker explanations and command warnings all ask it.
+- `resolve/TierResolver.ranked` and `tier/Gamemodes.discovered` define one placement order:
+  registered gamemodes as declared, then discovered ones by slug. Nametags, lookup rows and
+  the tier-query API all list placements in that order.
+- Site ids for commands and the tier-query API come from `Source.id`/`Source.fromId`.
+  Config keys use `Source.name()`, a separate persisted format.
 - `render/Nametags` converts segments to Minecraft components.
 - `config/Palette` owns color rules in ints. Read active colors through
   `JustTiersConfig.colorOf`, not `Source.defaultColor`, when rendering user-facing UI.

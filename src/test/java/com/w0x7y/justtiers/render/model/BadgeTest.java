@@ -41,7 +41,7 @@ class BadgeTest {
 
     private static Badge badge(Set<Source> sites, Map<Source, Map<String, Tier>> answers,
                                boolean showRetired) {
-        return Badge.forPlayer(sites, answers, SELECTED, showRetired, NametagStyle.DEFAULT);
+        return Badge.forPlayer(new NametagSettings(true, sites, SELECTED, showRetired, NametagStyle.DEFAULT, false), answers);
     }
 
     // --- what the nametag shows ---
@@ -108,8 +108,7 @@ class BadgeTest {
     @Test
     void noAnswersMeansNoBadge() {
         assertTrue(badge(Set.copyOf(Source.ALL), Map.of(), true).isEmpty());
-        assertTrue(Badge.forPlayer(Set.copyOf(Source.ALL), null, SELECTED, true,
-                NametagStyle.DEFAULT).isEmpty());
+        assertTrue(Badge.forPlayer(new NametagSettings(true, Set.copyOf(Source.ALL), SELECTED, true, NametagStyle.DEFAULT, false), null).isEmpty());
     }
 
     @Test
@@ -153,16 +152,13 @@ class BadgeTest {
 
     /** The same one placement, laid out under whatever style is being tested. */
     private static Badge styled(NametagStyle style) {
-        return Badge.forPlayer(Set.of(Source.PVPTIERS),
-                Map.of(Source.PVPTIERS, Map.of("crystal", ht(2))), SELECTED, true, style);
+        return Badge.forPlayer(new NametagSettings(true, Set.of(Source.PVPTIERS), SELECTED, true, style, false), Map.of(Source.PVPTIERS, Map.of("crystal", ht(2))));
     }
 
     @Test
     void aMissingStyleFallsBackToTheDefaultRatherThanFailing() {
         assertEquals(styled(NametagStyle.DEFAULT).plainText(),
-                Badge.forPlayer(Set.of(Source.PVPTIERS),
-                        Map.of(Source.PVPTIERS, Map.of("crystal", ht(2))),
-                        SELECTED, true, null).plainText());
+                Badge.forPlayer(new NametagSettings(true, Set.of(Source.PVPTIERS), SELECTED, true, null, false), Map.of(Source.PVPTIERS, Map.of("crystal", ht(2)))).plainText());
     }
 
     // --- colors ---
@@ -213,24 +209,21 @@ class BadgeTest {
     @Test
     void thePreviewIsAlwaysTierOne() {
         assertEquals("[" + gamemode(Source.PVPTIERS, "crystal").icon().orElseThrow() + "HT1] ",
-                Badge.preview(Set.of(Source.PVPTIERS), SELECTED, false, 0L,
-                        NametagStyle.DEFAULT).plainText());
+                new NametagSettings(true, Set.of(Source.PVPTIERS), SELECTED, false, NametagStyle.DEFAULT, false).previewBadge(0L).plainText());
     }
 
     @Test
     void thePreviewCyclesThroughRetiredOnlyWhenRetiredIsShown() {
         long retiredTime = PreviewSample.RETIRED_CYCLE_MILLIS;
 
-        assertTrue(Badge.preview(Set.of(Source.PVPTIERS), SELECTED, true, retiredTime,
-                NametagStyle.DEFAULT).plainText().contains("RHT1"));
-        assertFalse(Badge.preview(Set.of(Source.PVPTIERS), SELECTED, false, retiredTime,
-                NametagStyle.DEFAULT).plainText().contains("RHT1"));
+        assertTrue(new NametagSettings(true, Set.of(Source.PVPTIERS), SELECTED, true, NametagStyle.DEFAULT, false).previewBadge(retiredTime).plainText().contains("RHT1"));
+        assertFalse(new NametagSettings(true, Set.of(Source.PVPTIERS), SELECTED, false, NametagStyle.DEFAULT, false).previewBadge(retiredTime).plainText().contains("RHT1"));
     }
 
     @Test
     void thePreviewIsNeverEmptyInAnyMode() {
         for (Set<Source> sites : java.util.List.of(Set.of(Source.PVPTIERS), Set.of(Source.PVPHQ), Set.of(Source.SUBTIERS), Set.of(Source.NOVATIERS), Set.copyOf(Source.ALL))) {
-            assertFalse(Badge.preview(sites, Map.of(), true, 0L, NametagStyle.DEFAULT).isEmpty(),
+            assertFalse(new NametagSettings(true, sites, Map.of(), true, NametagStyle.DEFAULT, false).previewBadge(0L).isEmpty(),
                     sites.toString());
         }
     }
@@ -239,7 +232,7 @@ class BadgeTest {
 
     @Test
     void noEnabledSitesProducesNoBadgeOrPreview() {
-        assertTrue(Badge.preview(Set.of(), SELECTED, true, 0L, NametagStyle.DEFAULT).isEmpty());
+        assertTrue(new NametagSettings(true, Set.of(), SELECTED, true, NametagStyle.DEFAULT, false).previewBadge(0L).isEmpty());
         assertTrue(badge(Set.of(), Map.of(Source.PVPTIERS, Map.of("axe", ht(1))), true).isEmpty());
     }
 

@@ -29,13 +29,13 @@ public record NametagSettings(boolean enabled,
         style = style == null ? NametagStyle.DEFAULT : style;
     }
 
-    /** Settings where several enabled sites each show their best tier. */
-    public NametagSettings(boolean enabled,
-                           Set<Source> enabledSources,
-                           Map<Source, String> selectedGamemodes,
-                           boolean showRetired,
-                           NametagStyle style) {
-        this(enabled, enabledSources, selectedGamemodes, showRetired, style, false);
+    /**
+     * The sites an automatic lookup may contact: none while nametag tiers are off,
+     * otherwise the enabled ones. A nametag and another mod's tier query are both
+     * automatic, because the player did not ask for them; an explicit lookup is not.
+     */
+    public Set<Source> automaticLookupSites() {
+        return enabled ? enabledSources : Set.of();
     }
 
     /**
@@ -56,7 +56,6 @@ public record NametagSettings(boolean enabled,
      * animated tag out of a record that holds no clock of its own.
      */
     public Badge previewBadge(long timeMillis) {
-        return Badge.preview(enabledSources, selectedGamemodes, showRetired, preferSelected,
-                timeMillis, style);
+        return Badge.preview(this, timeMillis);
     }
 }

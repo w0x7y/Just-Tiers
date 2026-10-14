@@ -26,6 +26,12 @@ _Avoid_: Live cache row
 current game session, most recent first. It is never saved.
 _Avoid_: Saved searches, favorites
 
+**Automatic lookup**: A lookup the player did not ask for, such as a nametag's or another
+mod's tier query. It follows the nametag and site switches and never sends a UUID that is
+not an online-mode account. An explicit lookup is one the player started, such as
+`/justtiers lookup`.
+_Avoid_: Background fetch, passive lookup
+
 **Unranked**: A source answered successfully without a listed placement. An unavailable
 source provides no evidence of whether the player is ranked.
 _Avoid_: Missing, failed lookup

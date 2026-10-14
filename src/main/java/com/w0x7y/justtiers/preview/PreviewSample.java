@@ -1,5 +1,6 @@
 package com.w0x7y.justtiers.preview;
 
+import com.w0x7y.justtiers.resolve.GamemodeSelection;
 import com.w0x7y.justtiers.resolve.ResolvedTier;
 import com.w0x7y.justtiers.tier.Gamemode;
 import com.w0x7y.justtiers.tier.Gamemodes;
@@ -57,16 +58,10 @@ public final class PreviewSample {
         return Math.floorMod(Math.floorDiv(timeMillis, RETIRED_CYCLE_MILLIS), 2L) == 1L;
     }
 
-    public static List<ResolvedTier> resolve(Set<Source> sites,
-                                             Map<Source, String> selectedGamemodes,
-                                             boolean retired) {
-        return resolve(sites, selectedGamemodes, false, retired);
-    }
-
     /**
-     * As {@link #resolve(Set, Map, boolean)}. With {@code preferSelected}, several enabled
-     * sites preview their selections rather than the fixed samples, because those
-     * selections are what the nametag would then prefer.
+     * The sample tiers for the enabled sites. Where {@link GamemodeSelection#applies} says
+     * selections are used, they preview the selections, because those are what the nametag
+     * would prefer; otherwise they preview fixed samples.
      */
     public static List<ResolvedTier> resolve(Set<Source> sites,
                                              Map<Source, String> selectedGamemodes,
@@ -85,7 +80,7 @@ public final class PreviewSample {
     private static List<Gamemode> gamemodes(Set<Source> sites,
                                             Map<Source, String> selectedGamemodes,
                                             boolean preferSelected) {
-        Map<Source, String> shown = sites.size() == 1 || preferSelected
+        Map<Source, String> shown = GamemodeSelection.applies(sites, preferSelected)
                 ? selectedGamemodes : MULTI_SITE_GAMEMODES;
         List<Gamemode> all = new ArrayList<>(Source.ALL.size());
         for (Source source : Source.ALL) {

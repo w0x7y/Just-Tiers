@@ -1,5 +1,6 @@
 package com.w0x7y.justtiers.debug;
 
+import com.w0x7y.justtiers.api.TestSources;
 import com.w0x7y.justtiers.api.TierSource;
 import com.w0x7y.justtiers.cache.CachePolicy;
 import com.w0x7y.justtiers.cache.TierCache;
@@ -38,9 +39,9 @@ class CacheDiagnosticsTest {
             return source;
         }
 
-        @Override public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) {
+        @Override public CompletableFuture<Answer> fetchAnswer(UUID uuid) {
             pending = new CompletableFuture<>();
-            return pending;
+            return TestSources.fresh(pending);
         }
     }
 

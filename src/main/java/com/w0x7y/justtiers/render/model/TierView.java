@@ -23,8 +23,10 @@ public interface TierView {
 
     /**
      * What this site has already said about this player, or empty while it is still
-     * being asked. Never blocks and never starts a lookup: this is read per player per
-     * frame, and a site that has not answered yet is simply left out of the badge.
+     * being asked. Never blocks: this is read per player per frame, and a site that has
+     * not answered yet is simply left out of the badge. On a miss the live view admits an
+     * asynchronous lookup, which is why the badge asks only the sites automatic lookups
+     * may use.
      */
     Optional<Map<String, Tier>> peek(Source source, UUID uuid);
 }

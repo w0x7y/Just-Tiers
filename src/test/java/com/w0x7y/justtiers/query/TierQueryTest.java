@@ -16,7 +16,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -39,7 +38,6 @@ class TierQueryTest {
         Site(Source source) { this.source = source; }
 
         @Override public Source source() { return source; }
-        @Override public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) { throw new UnsupportedOperationException(); }
         @Override public CompletableFuture<Answer> fetchAnswer(UUID uuid) {
             calls++;
             pending = new CompletableFuture<>();
@@ -67,7 +65,7 @@ class TierQueryTest {
                 sources.add(site);
             }
             cache = new TierCache(sources, CachePolicy.DEFAULT, clock::get, () -> 0.5);
-            query = new TierQuery(() -> cache, () -> TierQuery.lookupSites(config.nametagSettings()));
+            query = new TierQuery(() -> cache, () -> config.nametagSettings().automaticLookupSites());
         }
 
         Site site(Source source) { return sites.get(source); }
@@ -313,14 +311,32 @@ class TierQueryTest {
     }
 
     @Test
-    void lookupSitesFollowTheMasterSwitchAndSiteToggles() {
+    void aUuidThatIsNotAnAccountIsUnavailableAndNeverSentToASite() {
+        Fixture it = new Fixture(Source.PVPTIERS, Source.NOVATIERS);
+        // Offline-mode servers mint name-based version 3 UUIDs; the leaderboards never list them.
+        UUID offline = UUID.nameUUIDFromBytes("OfflinePlayer:Steve".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        assertEquals(3, offline.version());
+
+        assertEquals(new SiteAnswer.Unavailable("pvptiers"), it.query.peek(offline, "pvptiers"));
+        assertEquals(new SiteAnswer.Unavailable("novatiers"), it.query.peekAll(offline).get("novatiers"));
+        assertEquals(Optional.empty(), it.query.best(offline, "pvptiers"));
+        assertEquals(0, it.site(Source.PVPTIERS).calls);
+        assertEquals(0, it.site(Source.NOVATIERS).calls);
+
+        // A disabled site still reads as the player's choice rather than as unavailable.
+        it.config.setSiteEnabled(Source.PVPTIERS, false);
+        assertEquals(new SiteAnswer.Disabled("pvptiers"), it.query.peek(offline, "pvptiers"));
+    }
+
+    @Test
+    void automaticLookupSitesFollowTheMasterSwitchAndSiteToggles() {
         JustTiersConfig config = new JustTiersConfig();
-        assertEquals(java.util.Set.copyOf(Source.ALL), TierQuery.lookupSites(config.nametagSettings()));
+        assertEquals(java.util.Set.copyOf(Source.ALL), config.nametagSettings().automaticLookupSites());
         config.setSiteEnabled(Source.NOVATIERS, false);
         assertEquals(java.util.Set.of(Source.PVPTIERS, Source.PVPHQ, Source.SUBTIERS),
-                TierQuery.lookupSites(config.nametagSettings()));
+                config.nametagSettings().automaticLookupSites());
         config.setEnabled(false);
-        assertEquals(java.util.Set.of(), TierQuery.lookupSites(config.nametagSettings()));
+        assertEquals(java.util.Set.of(), config.nametagSettings().automaticLookupSites());
     }
 
     @Test
@@ -347,7 +363,7 @@ class TierQueryTest {
     @Test
     void siteIdsAreStableLowercaseAndMatchCommandIds() {
         assertEquals(List.of("pvptiers", "pvphq", "subtiers", "novatiers"), JustTiersQuery.SITE_IDS);
-        assertEquals(Source.ALL.stream().map(source -> source.name().toLowerCase(Locale.ROOT)).toList(),
+        assertEquals(Source.ALL.stream().map(Source::id).toList(),
                 JustTiersQuery.SITE_IDS, "the API and /justtiers site use the same ids");
         assertEquals(1, JustTiersQuery.API_VERSION);
         assertEquals(Source.PVPHQ, TierQuery.source(" PvPHQ "));

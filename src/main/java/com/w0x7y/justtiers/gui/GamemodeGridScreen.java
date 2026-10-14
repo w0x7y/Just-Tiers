@@ -4,6 +4,7 @@ import com.w0x7y.justtiers.render.Icons;
 import com.w0x7y.justtiers.render.SiteColors;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.w0x7y.justtiers.gui.layout.GridLayout;
+import com.w0x7y.justtiers.gui.layout.ScrollViewport;
 import com.w0x7y.justtiers.render.model.NametagSettings;
 import com.w0x7y.justtiers.render.Nametags;
 import com.w0x7y.justtiers.tier.Gamemode;
@@ -63,7 +64,7 @@ public final class GamemodeGridScreen extends Screen {
     private GridLayout grid;
     private int originX;
     private int originY;
-    private int viewportHeight;
+    private ScrollViewport viewport;
     private int scroll;
     private final List<TileButton> tiles = new ArrayList<>();
     private int hoveredIndex = -1;
@@ -113,8 +114,8 @@ public final class GamemodeGridScreen extends Screen {
         grid = GridLayout.of(gamemodes.size(), width - 2 * MARGIN, TILE, TILE, GAP, MAX_COLUMNS);
         originX = (width - grid.contentWidth()) / 2;
         originY = GRID_TOP;
-        viewportHeight = Math.max(0, height - FOOTER_HEIGHT - originY);
-        scroll = Math.clamp(scroll, 0, maxScroll());
+        viewport = new ScrollViewport(grid.contentHeight(), Math.max(0, height - FOOTER_HEIGHT - originY));
+        scroll = viewport.clamp(scroll);
         positionTiles();
     }
 
@@ -134,10 +135,6 @@ public final class GamemodeGridScreen extends Screen {
     public void setFocused(GuiEventListener listener) {
         super.setFocused(listener);
         if (listener instanceof TileButton tile) scrollTo(tile.index);
-    }
-
-    private int maxScroll() {
-        return Math.max(0, grid.contentHeight() - viewportHeight);
     }
 
     /** The pending settings with this site's gamemode swapped for the candidate slug. */
@@ -179,10 +176,10 @@ public final class GamemodeGridScreen extends Screen {
     }
 
     private void extractTiles(GuiGraphicsExtractor graphics) {
-        if (grid.itemCount() == 0 || viewportHeight <= 0) {
+        if (grid.itemCount() == 0 || viewport.viewportHeight() <= 0) {
             return;
         }
-        graphics.enableScissor(0, originY, width, originY + viewportHeight);
+        graphics.enableScissor(0, originY, width, originY + viewport.viewportHeight());
         for (int i = 0; i < gamemodes.size(); i++) {
             tiles.get(i).extractRenderState(graphics,
                     hoveredIndex == i ? tiles.get(i).getX() + 1 : -1,
@@ -195,7 +192,7 @@ public final class GamemodeGridScreen extends Screen {
         Gamemode gamemode = gamemodes.get(index);
         int x = originX + grid.xOf(index);
         int y = originY + grid.yOf(index) - scroll;
-        if (y + TILE < originY || y > originY + viewportHeight) {
+        if (y + TILE < originY || y > originY + viewport.viewportHeight()) {
             return;   // scrolled out of the viewport
         }
 
@@ -222,7 +219,7 @@ public final class GamemodeGridScreen extends Screen {
     }
 
     private OptionalInt indexAtScreen(double mouseX, double mouseY) {
-        if (grid == null || mouseY < originY || mouseY > originY + viewportHeight) {
+        if (grid == null || mouseY < originY || mouseY > originY + viewport.viewportHeight()) {
             return OptionalInt.empty();
         }
         return grid.indexAt((int) mouseX - originX, (int) mouseY - originY + scroll);
@@ -236,8 +233,8 @@ public final class GamemodeGridScreen extends Screen {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY,
                                  double horizontal, double vertical) {
-        if (maxScroll() > 0) {
-            scroll = Math.clamp(scroll - (int) (vertical * 16), 0, maxScroll());
+        if (viewport.scrolls()) {
+            scroll = viewport.wheel(scroll, vertical);
             positionTiles();
             return true;
         }
@@ -265,14 +262,7 @@ public final class GamemodeGridScreen extends Screen {
 
     /** Keeps the keyboard focus inside the viewport when navigation runs off the edge. */
     private void scrollTo(int index) {
-        int top = grid.yOf(index);
-        int bottom = top + TILE;
-        if (top < scroll) {
-            scroll = top;
-        } else if (bottom > scroll + viewportHeight) {
-            scroll = bottom - viewportHeight;
-        }
-        scroll = Math.clamp(scroll, 0, maxScroll());
+        scroll = viewport.reveal(scroll, grid.yOf(index), TILE);
         positionTiles();
     }
 
@@ -293,7 +283,7 @@ public final class GamemodeGridScreen extends Screen {
 
         @Override
         public boolean isMouseOver(double mouseX, double mouseY) {
-            return mouseY >= originY && mouseY < originY + viewportHeight
+            return mouseY >= originY && mouseY < originY + viewport.viewportHeight()
                     && super.isMouseOver(mouseX, mouseY);
         }
 

@@ -29,26 +29,20 @@ public final class PvpHqParser {
             }
             DiscoveredGamemodes.Collector tiers = new DiscoveredGamemodes.Collector(Source.PVPHQ);
             boolean recognized = ranked.getAsJsonArray().isEmpty();
-            int refusedKeys = 0;
             for (var value : ranked.getAsJsonArray()) {
                 if (!value.isJsonObject()) continue;
                 var entry = value.getAsJsonObject();
                 try {
-                    Optional<String> gametype = DiscoveredGamemodes.profileSlug(entry.get("gametype").getAsString());
-                    if (gametype.isEmpty()) {
-                        refusedKeys++;
-                        continue;
-                    }
-                    String slug = gametype.get();
-                    // Profile responses still use ht_cart while metadata calls it cart.
-                    if (slug.equals("ht_cart")) slug = "cart";
+                    // The collector applies the source aliases and counts a refused gametype.
+                    Optional<String> gametype = tiers.acceptKey(entry.get("gametype").getAsString());
+                    if (gametype.isEmpty()) continue;
                     if (entry.has("unranked") && entry.get("unranked").getAsBoolean()) {
                         recognized = true;
                         continue;
                     }
                     var tier = Tier.parse(entry.get("tier").getAsString());
                     if (tier.isEmpty()) continue;
-                    if (tiers.offer(slug, tier.orElseThrow())) {
+                    if (tiers.offer(gametype.get(), tier.orElseThrow())) {
                         recognized = true;
                     }
                     // Inactive means not recently played, not a retired placement.
@@ -57,7 +51,7 @@ public final class PvpHqParser {
                     // A malformed entry does not discard the other gametypes.
                 }
             }
-            int refused = refusedKeys + tiers.refused();
+            int refused = tiers.refused();
             if (refused > 0) {
                 JustTiers.LOGGER.warn("PvPHQ profile refused {} entries with unacceptable or excess gametype keys", refused);
             }

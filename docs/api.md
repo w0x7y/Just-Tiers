@@ -1,8 +1,8 @@
 # Tier-query API for other mods
 
 Other Fabric client mods can read the tiers Just-Tiers knows about a player through
-`com.w0x7y.justtiers.query.JustTiersQuery`. This page describes API version 1, added after
-Just-Tiers 1.1.7.
+`com.w0x7y.justtiers.query.JustTiersQuery`. This page describes API version 1, added in
+Just-Tiers 1.2.0.
 
 The `query` package is the only supported surface. Its types hold standard Java values
 and UUIDs, with no Minecraft types. Every other Just-Tiers package, including
@@ -82,7 +82,7 @@ are evidence about the player's standing on that site.
 |---|---|
 | `Disabled` | The player has turned off nametag tiers or this site's toggle. Just-Tiers makes no request and reports nothing it already knows. |
 | `Pending` | No answer yet; a request is queued or in flight. Also every site before Just-Tiers initializes. |
-| `Unavailable` | No answer, and none is being fetched. The site failed or is paused, a server cooldown applies, the player is backing off after a failure, or the request was deferred. A later peek can retry. |
+| `Unavailable` | No answer, and none is being fetched. The site failed or is paused, a server cooldown applies, the player is backing off after a failure, or the request was deferred. A later peek can retry. A UUID that is not an online-mode account, such as an offline-mode player or an NPC, is always unavailable and is never sent to a site. |
 | `Unranked` | The site answered successfully with no placement for the player. HTTP 404 from PvPTiers, PvPHQ and SubTiers counts as unranked. |
 | `Ranked` | The site answered successfully with at least one placement. |
 

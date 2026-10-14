@@ -8,8 +8,10 @@ import com.w0x7y.justtiers.gui.layout.HistoryStrip;
 import com.w0x7y.justtiers.gui.layout.LookupLayout;
 import com.w0x7y.justtiers.gui.layout.LookupMetrics;
 import com.w0x7y.justtiers.gui.layout.SkinLayout;
+import com.w0x7y.justtiers.gui.state.LookupFocus;
 import com.w0x7y.justtiers.lookup.LookupCell;
 import com.w0x7y.justtiers.lookup.LookupHistory;
+import com.w0x7y.justtiers.lookup.LookupRow;
 import com.w0x7y.justtiers.lookup.LookupSection;
 import com.w0x7y.justtiers.lookup.LookupResult;
 import com.w0x7y.justtiers.tier.DiscoveredGamemodes;
@@ -128,7 +130,7 @@ public final class PlayerLookupScreen extends Screen {
         contentControls.clear();
         cellControls.clear();
         links.clear();
-        scroll = Math.clamp(scroll, 0, layout.maxScroll());
+        scroll = layout.scrolling().clamp(scroll);
         String typedName = nameField == null ? session.name() : nameField.getValue();
         int searchWidth = layout.searchWidth();
         int left = layout.searchX();
@@ -158,15 +160,11 @@ public final class PlayerLookupScreen extends Screen {
                 cellWidth, cellHeight, counts);
     }
 
-    /**
-     * Cells per row: every registered gamemode, plus the discovered ones in the current
-     * answer. A site that has not answered yet keeps just its registered cells.
-     */
+    /** Cells per row, as {@link LookupRow#cellCount} reserves them for the current answers. */
     private List<Integer> rowCounts() {
         List<Integer> counts = new ArrayList<>(Source.ALL.size());
         for (Source source : Source.ALL) {
-            int answered = session.result(source).section().map(section -> section.cells().size()).orElse(0);
-            counts.add(Math.max(Gamemodes.of(source).size(), answered));
+            counts.add(LookupRow.cellCount(source, session.result(source).section()));
         }
         return counts;
     }
@@ -245,12 +243,9 @@ public final class PlayerLookupScreen extends Screen {
         drawFooter(graphics, mouseX, mouseY);
         graphics.pose().popMatrix();
         graphics.disableScissor();
-        if (layout.maxScroll() > 0) {
-            int thumbHeight = Math.max(8, layout.viewportHeight() * layout.viewportHeight() / layout.panelHeight());
-            int thumbY = layout.panelY() + scroll * (layout.viewportHeight() - thumbHeight) / layout.maxScroll();
-            graphics.fill(layout.panelRight() - 3, thumbY, layout.panelRight() - 1,
-                    thumbY + thumbHeight, Colors.SECONDARY);
-        }
+        layout.scrolling().thumb(scroll).ifPresent(thumb -> graphics.fill(
+                layout.panelRight() - 3, layout.panelY() + thumb.y(), layout.panelRight() - 1,
+                layout.panelY() + thumb.y() + thumb.height(), Colors.SECONDARY));
     }
 
     private void separator(GuiGraphicsExtractor graphics, int y) {
@@ -299,16 +294,14 @@ public final class PlayerLookupScreen extends Screen {
             graphics.outline(row.x(), row.y(), row.width(), row.height(), color);
 
             LookupResult result = session.result(source);
-            Optional<LookupSection> section = result.section();
-            if (section.isEmpty()) {
-                graphics.centeredText(font, Component.translatable("justtiers.lookup.pending"),
+            switch (LookupRow.state(result.section())) {
+                case PENDING -> graphics.centeredText(font,
+                        Component.translatable("justtiers.lookup.pending"),
                         row.centerX(), textY, Colors.SECONDARY);
-            } else if (section.get().status() == LookupSection.Status.UNAVAILABLE) {
-                graphics.centeredText(font,
+                case UNAVAILABLE -> graphics.centeredText(font,
                         Component.translatable("justtiers.lookup.unavailable"),
                         row.centerX(), textY, UNAVAILABLE_COLOR);
-            } else {
-                drawCells(graphics, row, source, result, mouseX, mouseY);
+                case ANSWERED -> drawCells(graphics, row, source, result, mouseX, mouseY);
             }
         }
     }
@@ -465,8 +458,13 @@ public final class PlayerLookupScreen extends Screen {
 
         // A lookup moves its name to the front: keep focus on that name, not on its old slot.
         if (focusedName != null) {
-            focusHistoryName(focusedName);
+            restoreFocus(new LookupFocus.History(focusedName));
         }
+    }
+
+    /** The names the strip's visible slots show, in slot order. */
+    private List<String> visibleHistory() {
+        return shownHistory.subList(0, historyStrip.entries().size());
     }
 
     /** The name on the focused recent-lookup button, or null when none is focused. */
@@ -474,17 +472,6 @@ public final class PlayerLookupScreen extends Screen {
         int slot = historyButtons.indexOf(getFocused());
         return shownHistory != null && slot >= 0 && slot < shownHistory.size()
                 ? shownHistory.get(slot) : null;
-    }
-
-    /** Focuses the button showing a name, or the name field when it is no longer shown. */
-    private void focusHistoryName(String name) {
-        for (int i = 0; i < historyStrip.entries().size(); i++) {
-            if (shownHistory.get(i).equalsIgnoreCase(name)) {
-                setFocused(historyButtons.get(i));
-                return;
-            }
-        }
-        setFocused(nameField);
     }
 
     private void lookUpRecent(int slot) {
@@ -522,10 +509,11 @@ public final class PlayerLookupScreen extends Screen {
         for (Source source : Source.ALL) {
             LookupResult result = session.result(source);
             Optional<LookupSection> section = result.section();
+            int shown = LookupRow.shownCells(section);
             List<ContentControl> controls = cellControls.get(source);
             for (int i = 0; i < controls.size(); i++) {
                 ContentControl control = controls.get(i);
-                control.active = section.isPresent() && i < section.get().cells().size();
+                control.active = i < shown;
                 if (control.active) {
                     control.setMessage(Component.literal(source.displayName() + ": ")
                             .append(tooltip(section.get().cells().get(i), result)));
@@ -546,40 +534,45 @@ public final class PlayerLookupScreen extends Screen {
 
     /**
      * Rebuilds the widgets for a new number of cells. Rebuilding drops focus, so the
-     * focused control is found again by its place: the search or Done controls, a recent
-     * name by the name it shows, a site's cell by index, or a link.
+     * focused control is recorded by what it is first and found again afterwards, as
+     * {@link LookupFocus#restore} decides.
      */
     private void relayout() {
+        Optional<LookupFocus.Key> focused = focusKey();
+        rebuildWidgets();
+        focused.ifPresent(this::restoreFocus);
+    }
+
+    /** What the focused widget is, or empty when nothing on the screen has focus. */
+    private Optional<LookupFocus.Key> focusKey() {
         GuiEventListener focused = getFocused();
-        boolean nameFocused = focused == nameField;
-        boolean searchFocused = focused == lookupButton;
-        boolean doneFocused = focused == doneButton;
+        if (focused == null) return Optional.empty();
+        if (focused == nameField) return Optional.of(new LookupFocus.Name());
+        if (focused == lookupButton) return Optional.of(new LookupFocus.Search());
+        if (focused == doneButton) return Optional.of(new LookupFocus.Done());
         String historyName = focusedHistoryName();
-        Source cellSource = null;
-        int cellIndex = -1;
-        int linkIndex = links.indexOf(focused);
+        if (historyName != null) return Optional.of(new LookupFocus.History(historyName));
         for (Source source : Source.ALL) {
             int index = cellControls.getOrDefault(source, List.of()).indexOf(focused);
-            if (index >= 0) {
-                cellSource = source;
-                cellIndex = index;
-            }
+            if (index >= 0) return Optional.of(new LookupFocus.Cell(source, index));
         }
-        rebuildWidgets();
-        if (nameFocused) {
-            setFocused(nameField);
-        } else if (searchFocused) {
-            setFocused(lookupButton);
-        } else if (doneFocused) {
-            setFocused(doneButton);
-        } else if (historyName != null) {
-            focusHistoryName(historyName);
-        } else if (cellSource != null) {
-            List<ContentControl> cells = cellControls.get(cellSource);
-            if (cellIndex < cells.size()) setFocused(cells.get(cellIndex));
-        } else if (linkIndex >= 0 && linkIndex < links.size()) {
-            setFocused(links.get(linkIndex));
-        }
+        int link = links.indexOf(focused);
+        return link >= 0 ? Optional.of(new LookupFocus.Link(link)) : Optional.empty();
+    }
+
+    /** Focuses the widget that now stands for a recorded control. */
+    private void restoreFocus(LookupFocus.Key recorded) {
+        LookupFocus.Key key = LookupFocus.restore(recorded, visibleHistory(),
+                source -> cellControls.get(source).size(), links.size());
+        setFocused(switch (key) {
+            case LookupFocus.Name ignored -> nameField;
+            case LookupFocus.Search ignored -> lookupButton;
+            case LookupFocus.Done ignored -> doneButton;
+            case LookupFocus.History history -> historyButtons.get(
+                    LookupFocus.historySlot(history.name(), visibleHistory()).orElseThrow());
+            case LookupFocus.Cell cell -> cellControls.get(cell.source()).get(cell.index());
+            case LookupFocus.Link link -> links.get(link.index());
+        });
     }
 
     @Override
@@ -593,8 +586,8 @@ public final class PlayerLookupScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontal, double vertical) {
-        if (inViewport(mouseY) && layout.maxScroll() > 0) {
-            scroll = Math.clamp(scroll - (int) (vertical * 16), 0, layout.maxScroll());
+        if (inViewport(mouseY) && layout.scrolling().scrolls()) {
+            scroll = layout.scrolling().wheel(scroll, vertical);
             updateContentControls();
             return true;
         }
@@ -610,7 +603,7 @@ public final class PlayerLookupScreen extends Screen {
         }
         if (event.key() == InputConstants.KEY_PAGEDOWN || event.key() == InputConstants.KEY_PAGEUP) {
             int step = event.key() == InputConstants.KEY_PAGEDOWN ? 1 : -1;
-            scroll = Math.clamp(scroll + step * layout.viewportHeight(), 0, layout.maxScroll());
+            scroll = layout.scrolling().page(scroll, step);
             updateContentControls();
             return true;
         }
@@ -625,11 +618,13 @@ public final class PlayerLookupScreen extends Screen {
             return message.append(". ").append(error.get());
         }
         for (Source source : Source.ALL) {
-            var section = session.result(source).section();
-            if (section.isEmpty() || section.get().status() == LookupSection.Status.UNAVAILABLE) {
-                message.append(". " + source.displayName() + ": ")
-                        .append(Component.translatable(section.isEmpty() ? "justtiers.lookup.pending"
-                                : "justtiers.lookup.unavailable"));
+            String key = switch (LookupRow.state(session.result(source).section())) {
+                case PENDING -> "justtiers.lookup.pending";
+                case UNAVAILABLE -> "justtiers.lookup.unavailable";
+                case ANSWERED -> null;
+            };
+            if (key != null) {
+                message.append(". " + source.displayName() + ": ").append(Component.translatable(key));
             }
         }
         return message;

@@ -9,15 +9,16 @@ Minecraft 26.3 also requires Fabric Loader 0.19.5 or newer. ModMenu is optional.
 
 ![Nametag showcase](https://cdn.modrinth.com/data/8zkz6d1C/images/195de1f0351ecc64b1d7505f03aa71a3ef173b35.jpeg)
 
-*Example nametags from an earlier release. Version 1.1.7 adds PvPHQ and individual site toggles.*
+*Example nametags from an earlier release, before PvPHQ and individual site toggles.*
 
-## New in 1.1.7
+## New in 1.2.0
 
-MCTiers is replaced by PvPTiers, using the same yellow color, and PvPHQ is added in
-gray `#D2D2D2`. Each of the four sites now has its own toggle instead of the old
-single-site/all-sites selector. PvPHQ middle tiers are supported, and existing
-settings migrate automatically. Minecraft 1.21.10 joins the supported versions.
-[Full release notes](https://github.com/w0x7y/Just-Tiers/blob/main/docs/releases/v1.1.7.md).
+With several sites enabled, turn on Prefer selected gamemodes to show each site's
+selected gamemode, falling back to its best placement. `/justtiers gamemode <site> <slug>`
+sets any site's gamemode. Gamemodes a site adds before a mod update now appear with a
+name and no icon instead of being dropped. The lookup screen keeps your recent names for
+the current session, and other client mods can read tiers through a public API.
+[Full release notes](https://github.com/w0x7y/Just-Tiers/blob/main/docs/releases/v1.2.0.md).
 
 ## What you can do
 
@@ -88,7 +89,8 @@ a cached answer's usual expiry; the cache interval is not a strict request-rate 
 Another installed mod that uses the
 [tier-query API](https://github.com/w0x7y/Just-Tiers/blob/main/docs/api.md) makes automatic
 lookups too, so the same switches apply: it gets no answer and causes no request for a
-site while that site, or nametag tiers, are turned off.
+site while that site, or nametag tiers, are turned off. Like nametags, it never sends a UUID
+that is not an online-mode account, such as an offline-mode player or a server NPC.
 
 Failed or malformed responses are not shown as unranked players. Retries back off, and repeated
 site failures temporarily pause new requests. Failed NovaTiers refreshes retain usable cached

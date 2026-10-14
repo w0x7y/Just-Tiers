@@ -1,5 +1,6 @@
 package com.w0x7y.justtiers.render.model;
 
+import com.w0x7y.justtiers.api.PlayerRef;
 import com.w0x7y.justtiers.preview.PreviewSample;
 import com.w0x7y.justtiers.resolve.ResolvedTier;
 import com.w0x7y.justtiers.resolve.TierResolver;
@@ -52,26 +53,22 @@ public record Badge(List<Segment> segments, BadgePosition position) {
      * caller to get right. Empty when the mod is off, when the player cannot be on a
      * leaderboard, or when no site has answered yet.
      *
-     * <p>Only enabled sites are asked, so disabled sites neither start nametag lookups
-     * nor reach the badge even when their answers are cached.
+     * <p>Only {@link NametagSettings#automaticLookupSites()} are asked, so disabled sites
+     * neither start nametag lookups nor reach the badge even when their answers are cached.
      */
     public static Badge forPlayer(TierView view, UUID uuid) {
         NametagSettings settings = view.settings();
-        if (!settings.enabled() || uuid == null) {
-            return NONE;
-        }
-        // Offline-mode and NPC entities use v3 UUIDs and are never in these leaderboards.
-        if (uuid.version() != 4) {
+        Set<Source> sites = settings.automaticLookupSites();
+        if (sites.isEmpty() || !PlayerRef.isAccount(uuid)) {
             return NONE;
         }
 
         Map<Source, Map<String, Tier>> answers = new EnumMap<>(Source.class);
         for (Source source : Source.ALL) {
-            if (!settings.enabledSources().contains(source)) continue;
+            if (!sites.contains(source)) continue;
             view.peek(source, uuid).ifPresent(tiers -> answers.put(source, tiers));
         }
-        return forPlayer(settings.enabledSources(), answers, settings.selectedGamemodes(),
-                settings.showRetired(), settings.preferSelected(), settings.style());
+        return forPlayer(settings, answers);
     }
 
     /**
@@ -79,29 +76,13 @@ public record Badge(List<Segment> segments, BadgePosition position) {
      * in flight are simply absent from {@code tiersBySource}, so a badge appears as soon
      * as the first one answers and fills in over the next few frames.
      */
-    public static Badge forPlayer(Set<Source> sites,
-                                  Map<Source, Map<String, Tier>> tiersBySource,
-                                  Map<Source, String> selectedGamemodes,
-                                  boolean showRetired,
-                                  NametagStyle style) {
-        return forPlayer(sites, tiersBySource, selectedGamemodes, showRetired, false, style);
-    }
-
-    /**
-     * As {@link #forPlayer(Set, Map, Map, boolean, NametagStyle)}, where
-     * {@code preferSelected} lets several enabled sites each prefer their selected gamemode.
-     */
-    public static Badge forPlayer(Set<Source> sites,
-                                  Map<Source, Map<String, Tier>> tiersBySource,
-                                  Map<Source, String> selectedGamemodes,
-                                  boolean showRetired,
-                                  boolean preferSelected,
-                                  NametagStyle style) {
+    static Badge forPlayer(NametagSettings settings, Map<Source, Map<String, Tier>> tiersBySource) {
         if (tiersBySource == null || tiersBySource.isEmpty()) {
             return NONE;
         }
-        return of(TierResolver.resolve(sites, tiersBySource, selectedGamemodes, showRetired,
-                preferSelected), style);
+        return of(TierResolver.resolve(settings.enabledSources(), tiersBySource,
+                settings.selectedGamemodes(), settings.showRetired(), settings.preferSelected()),
+                settings.style());
     }
 
     /**
@@ -109,24 +90,10 @@ public record Badge(List<Segment> segments, BadgePosition position) {
      * {@link PreviewSample} — so this is a picture of the settings, never a lookup, and
      * {@code timeMillis} is what drives the active/retired cycle.
      */
-    public static Badge preview(Set<Source> sites,
-                                Map<Source, String> selectedGamemodes,
-                                boolean showRetired,
-                                long timeMillis,
-                                NametagStyle style) {
-        return preview(sites, selectedGamemodes, showRetired, false, timeMillis, style);
-    }
-
-    /** As {@link #preview(Set, Map, boolean, long, NametagStyle)}, honoring {@code preferSelected}. */
-    public static Badge preview(Set<Source> sites,
-                                Map<Source, String> selectedGamemodes,
-                                boolean showRetired,
-                                boolean preferSelected,
-                                long timeMillis,
-                                NametagStyle style) {
-        boolean retired = PreviewSample.retiredPhase(showRetired, timeMillis);
-        return of(PreviewSample.resolve(sites, selectedGamemodes, preferSelected, retired),
-                style);
+    static Badge preview(NametagSettings settings, long timeMillis) {
+        boolean retired = PreviewSample.retiredPhase(settings.showRetired(), timeMillis);
+        return of(PreviewSample.resolve(settings.enabledSources(), settings.selectedGamemodes(),
+                settings.preferSelected(), retired), settings.style());
     }
 
     public boolean isEmpty() {

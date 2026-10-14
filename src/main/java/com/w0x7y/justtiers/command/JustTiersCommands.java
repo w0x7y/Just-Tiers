@@ -15,6 +15,7 @@ import com.w0x7y.justtiers.debug.DebugSnapshot;
 import com.w0x7y.justtiers.gui.JustTiersKeybinds;
 import com.w0x7y.justtiers.gui.PlayerLookupScreen;
 import com.w0x7y.justtiers.render.model.BadgePosition;
+import com.w0x7y.justtiers.resolve.GamemodeSelection;
 import com.w0x7y.justtiers.tier.Gamemode;
 import com.w0x7y.justtiers.tier.Gamemodes;
 import com.w0x7y.justtiers.tier.Source;
@@ -61,12 +62,7 @@ public final class JustTiersCommands {
                                 JustTiersConfig::isHideOwnBadge, JustTiersConfig::setHideOwnBadge,
                                 "justtiers.command.ownbadge.on", "justtiers.command.ownbadge.off",
                                 ChatFormatting.YELLOW)))
-                        .then(literal("preferselected").executes(context -> toggle(context,
-                                JustTiersConfig::isPreferSelectedGamemodes,
-                                JustTiersConfig::setPreferSelectedGamemodes,
-                                "justtiers.command.preferSelected.on",
-                                "justtiers.command.preferSelected.off",
-                                ChatFormatting.YELLOW)))
+                        .then(literal("preferselected").executes(JustTiersCommands::togglePreferSelected))
                         .then(literal("brackets").executes(context -> toggle(context,
                                 JustTiersConfig::isShowBrackets, JustTiersConfig::setShowBrackets,
                                 "justtiers.command.brackets.on", "justtiers.command.brackets.off",
@@ -76,7 +72,7 @@ public final class JustTiersCommands {
                         .then(literal("debug").executes(JustTiersCommands::debug))
                         .then(literal("site")
                                 .then(argument("site", StringArgumentType.word())
-                                        .suggests(suggestIds(Source.values(), JustTiersCommands::sourceId))
+                                        .suggests(suggestIds(Source.values(), Source::id))
                                         .executes(context -> setSite(context, null))
                                         .then(argument("enabled", BoolArgumentType.bool())
                                                 .executes(context -> setSite(context,
@@ -124,14 +120,14 @@ public final class JustTiersCommands {
                                                 }
                                             });
                                             for (Source source : Source.ALL) {
-                                                builder.suggest(sourceId(source));
+                                                builder.suggest(source.id());
                                             }
                                             return builder.buildFuture();
                                         })
                                         .executes(JustTiersCommands::setGamemode)
                                         .then(argument("siteGamemode", StringArgumentType.word())
                                                 .suggests((context, builder) -> {
-                                                    sourceNamed(StringArgumentType.getString(
+                                                    Source.fromId(StringArgumentType.getString(
                                                             context, "gamemode")).ifPresent(source -> {
                                                         for (Gamemode mode : Gamemodes.of(source)) {
                                                             builder.suggest(mode.slug());
@@ -142,25 +138,14 @@ public final class JustTiersCommands {
                                                 .executes(JustTiersCommands::setSiteGamemode))))));
     }
 
-    private static String sourceId(Source source) {
-        return source.name().toLowerCase(Locale.ROOT);
-    }
-
-    private static Optional<Source> sourceNamed(String raw) {
-        for (Source source : Source.ALL) {
-            if (sourceId(source).equalsIgnoreCase(raw)) return Optional.of(source);
-        }
-        return Optional.empty();
-    }
-
     private static void replyUnknownSite(CommandContext<FabricClientCommandSource> context, String raw) {
         reply(context, ChatFormatting.RED, "justtiers.command.unknown", "site", raw,
-                Source.ALL.stream().map(JustTiersCommands::sourceId).collect(Collectors.joining(", ")));
+                Source.ALL.stream().map(Source::id).collect(Collectors.joining(", ")));
     }
 
     private static int setSite(CommandContext<FabricClientCommandSource> context, Boolean enabled) {
         String raw = StringArgumentType.getString(context, "site");
-        Optional<Source> named = sourceNamed(raw);
+        Optional<Source> named = Source.fromId(raw);
         if (named.isEmpty()) {
             replyUnknownSite(context, raw);
             return 0;
@@ -236,6 +221,22 @@ public final class JustTiersCommands {
         if (!editSettings(context, candidate -> set.accept(candidate, now))) return 0;
         reply(context, now ? ChatFormatting.GREEN : offColor, now ? onKey : offKey);
         return 1;
+    }
+
+    /**
+     * Flips preferring selected gamemodes, and says so when it changes nothing yet: a
+     * single enabled site already prefers its selection, as the config screen explains.
+     */
+    private static int togglePreferSelected(CommandContext<FabricClientCommandSource> context) {
+        int result = toggle(context, JustTiersConfig::isPreferSelectedGamemodes,
+                JustTiersConfig::setPreferSelectedGamemodes,
+                "justtiers.command.preferSelected.on", "justtiers.command.preferSelected.off",
+                ChatFormatting.YELLOW);
+        if (result == 1 && !GamemodeSelection.preferenceMatters(
+                JustTiersClient.config().enabledSources())) {
+            reply(context, ChatFormatting.YELLOW, "justtiers.option.preferSelected.singleSite");
+        }
+        return result;
     }
 
     private static boolean editSettings(CommandContext<FabricClientCommandSource> context,
@@ -316,7 +317,7 @@ public final class JustTiersCommands {
 
     private static int setSiteGamemode(CommandContext<FabricClientCommandSource> context) {
         String raw = StringArgumentType.getString(context, "gamemode");
-        Optional<Source> source = sourceNamed(raw);
+        Optional<Source> source = Source.fromId(raw);
         if (source.isEmpty()) {
             replyUnknownSite(context, raw);
             return 0;
@@ -339,11 +340,13 @@ public final class JustTiersCommands {
                 source.displayName(), gamemode.get().displayName());
         // Saved either way, but say so when the nametag will not use it yet.
         JustTiersConfig config = JustTiersClient.config();
-        if (!config.isSiteEnabled(source)) {
-            reply(context, ChatFormatting.YELLOW, "justtiers.command.gamemode.siteDisabled",
-                    source.displayName());
-        } else if (config.enabledSources().size() > 1 && !config.isPreferSelectedGamemodes()) {
-            reply(context, ChatFormatting.YELLOW, "justtiers.command.gamemode.showingBest");
+        switch (GamemodeSelection.of(source, config.enabledSources(),
+                config.isPreferSelectedGamemodes())) {
+            case USED -> { }
+            case SHOWING_BEST -> reply(context, ChatFormatting.YELLOW,
+                    "justtiers.command.gamemode.showingBest");
+            case NEEDS_SITE, NEEDS_ONLY_SITE -> reply(context, ChatFormatting.YELLOW,
+                    "justtiers.command.gamemode.siteDisabled", source.displayName());
         }
         return 1;
     }

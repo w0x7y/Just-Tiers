@@ -9,6 +9,7 @@ import com.w0x7y.justtiers.render.SiteColors;
 import com.w0x7y.justtiers.render.model.BadgePosition;
 import com.w0x7y.justtiers.render.model.NametagSettings;
 import com.w0x7y.justtiers.render.model.NametagStyle;
+import com.w0x7y.justtiers.resolve.GamemodeSelection;
 import com.w0x7y.justtiers.tier.Source;
 
 import dev.isxander.yacl3.api.ButtonOption;
@@ -74,7 +75,8 @@ public final class JustTiersScreens {
         // so the box is greyed and says why rather than looking like it does nothing.
         Option<Boolean> preferSelected = Option.<Boolean>createBuilder()
                 .name(Component.translatable("justtiers.option.preferSelected"))
-                .description(value -> description(pendingSites(siteToggles).size() > 1
+                .description(value -> description(
+                        GamemodeSelection.preferenceMatters(pendingSites(siteToggles))
                         ? "justtiers.option.preferSelected.desc"
                         : "justtiers.option.preferSelected.singleSite"))
                 .binding(false, config::isPreferSelectedGamemodes,
@@ -149,7 +151,7 @@ public final class JustTiersScreens {
                     .description(value -> gamemodeDescription(source, ControlAvailability.of(
                             enabled.pendingValue(), pendingSites(siteToggles),
                             preferSelected.pendingValue(), palette.pendingValue())
-                            .reasonFor(source), preferSelected.pendingValue()))
+                            .reasonFor(source)))
                     .binding(JustTiersConfig.defaultGamemode(source),
                             () -> config.selectedGamemode(source),
                             slug -> config.setSelectedGamemode(source, slug))
@@ -352,16 +354,16 @@ public final class JustTiersScreens {
                 .build();
     }
 
-    private static OptionDescription gamemodeDescription(Source source, ControlAvailability.Reason reason,
-                                                         boolean preferSelected) {
+    private static OptionDescription gamemodeDescription(Source source, ControlAvailability.Reason reason) {
         return switch (reason) {
             case AVAILABLE -> OptionDescription.of(Component.translatable(
                     "justtiers.option.gamemode.desc", source.displayName()));
             case MOD_DISABLED -> description("justtiers.option.gamemode.disabled");
             case MULTIPLE_SITES -> description("justtiers.option.gamemode.inactive");
-            case SITE_DISABLED -> OptionDescription.of(Component.translatable(preferSelected
-                            ? "justtiers.option.gamemode.siteDisabled"
-                            : "justtiers.option.gamemode.otherSite", source.displayName()));
+            case SITE_DISABLED -> OptionDescription.of(Component.translatable(
+                    "justtiers.option.gamemode.siteDisabled", source.displayName()));
+            case ONLY_SITE_NEEDED -> OptionDescription.of(Component.translatable(
+                    "justtiers.option.gamemode.otherSite", source.displayName()));
         };
     }
 

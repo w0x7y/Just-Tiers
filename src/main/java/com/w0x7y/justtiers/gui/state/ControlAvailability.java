@@ -1,6 +1,7 @@
 package com.w0x7y.justtiers.gui.state;
 
 import com.w0x7y.justtiers.config.Palette;
+import com.w0x7y.justtiers.resolve.GamemodeSelection;
 import com.w0x7y.justtiers.tier.Source;
 
 import java.util.EnumMap;
@@ -20,14 +21,24 @@ public record ControlAvailability(boolean sites,
                                   boolean customColors,
                                   Map<Source, Reason> reasons) {
 
-    public enum Reason { AVAILABLE, MOD_DISABLED, MULTIPLE_SITES, SITE_DISABLED }
+    /**
+     * Why a site's gamemode picker is live or greyed, one explanation each. Apart from the
+     * master switch these are {@link GamemodeSelection.Use}, so the picker says exactly
+     * what the nametag will do.
+     */
+    public enum Reason {
+        AVAILABLE,
+        MOD_DISABLED,
+        /** Several sites show their best tiers instead of their selections. */
+        MULTIPLE_SITES,
+        /** Enabling the site would put its selection to use. */
+        SITE_DISABLED,
+        /** The selection is used only while this is the only enabled site. */
+        ONLY_SITE_NEEDED
+    }
 
     public ControlAvailability {
         reasons = Map.copyOf(reasons);
-    }
-
-    public static ControlAvailability of(boolean enabled, Set<Source> sites, Palette palette) {
-        return of(enabled, sites, false, palette);
     }
 
     /**
@@ -43,7 +54,8 @@ public record ControlAvailability(boolean sites,
         // The badge's shape - its side, its icons, its brackets - means the same thing in
         // every site selection, so the master switch is the only thing that can grey it.
         // The color pickers additionally need the palette to be the one they feed.
-        return new ControlAvailability(enabled, enabled, enabled && sites.size() > 1, enabled,
+        return new ControlAvailability(enabled, enabled,
+                enabled && GamemodeSelection.preferenceMatters(sites), enabled,
                 enabled && palette != null && palette.isCustom(), reasons);
     }
 
@@ -52,8 +64,12 @@ public record ControlAvailability(boolean sites,
         if (!enabled) {
             return Reason.MOD_DISABLED;
         }
-        if (!sites.contains(source)) return Reason.SITE_DISABLED;
-        return sites.size() == 1 || preferSelected ? Reason.AVAILABLE : Reason.MULTIPLE_SITES;
+        return switch (GamemodeSelection.of(source, sites, preferSelected)) {
+            case USED -> Reason.AVAILABLE;
+            case SHOWING_BEST -> Reason.MULTIPLE_SITES;
+            case NEEDS_SITE -> Reason.SITE_DISABLED;
+            case NEEDS_ONLY_SITE -> Reason.ONLY_SITE_NEEDED;
+        };
     }
 
     public boolean gamemode(Source source) {

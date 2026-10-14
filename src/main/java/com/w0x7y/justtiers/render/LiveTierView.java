@@ -12,8 +12,9 @@ import java.util.UUID;
 
 /**
  * The running mod, seen through {@link TierView}: the saved config and the live cache.
- * The only class on the nametag path that touches the static hub, so everything above it
- * can be answered without the game.
+ * The badge decision reads the static hub only through here, so everything above it can
+ * be answered without the game. Hiding your own badge is decided earlier, in
+ * {@code PlayerMixin}, because only the game knows which entity is the local player.
  */
 public final class LiveTierView implements TierView {
 

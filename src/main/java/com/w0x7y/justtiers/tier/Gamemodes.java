@@ -1,5 +1,7 @@
 package com.w0x7y.justtiers.tier;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -67,16 +69,21 @@ public final class Gamemodes {
             Stream.of(PVPTIERS, PVPHQ, SUBTIERS, NOVATIERS).flatMap(List::stream).toList();
 
     /**
-     * Maps a squashed NovaTiers key to our slug. Every slug maps to itself; listed here
-     * are only the historical spellings that do not, mirroring the alias table in
-     * novatiers.com/js/script.js so old key spellings keep resolving.
+     * Payload keys a source still sends for a registered gamemode it names differently.
+     * Each key is in the form the source's slug policy produces before aliasing: PvPHQ's
+     * lowercased gametype and NovaTiers' squashed display name. Every slug maps to itself;
+     * listed here are only the spellings that do not.
      */
-    private static final Map<String, String> NOVA_ALIASES = Map.of(
-            "spear", "elytraspear",
-            "elytrasword", "elytraspear",
-            "mace", "spearmace",
-            "spearmacekit", "spearmace",
-            "modern", "modernsmp");
+    private static final Map<Source, Map<String, String>> ALIASES = Map.of(
+            // Profile responses still use ht_cart while metadata calls it cart.
+            Source.PVPHQ, Map.of("ht_cart", "cart"),
+            // Mirrors the alias table in novatiers.com/js/script.js so old key spellings keep resolving.
+            Source.NOVATIERS, Map.of(
+                    "spear", "elytraspear",
+                    "elytrasword", "elytraspear",
+                    "mace", "spearmace",
+                    "spearmacekit", "spearmace",
+                    "modern", "modernsmp"));
 
     private static final Set<String> NOVA_SLUGS =
             NOVATIERS.stream().map(Gamemode::slug).collect(Collectors.toUnmodifiableSet());
@@ -126,9 +133,40 @@ public final class Gamemodes {
         return registered.isPresent() ? registered : DiscoveredGamemodes.of(source, slug);
     }
 
+    /**
+     * The discovered gamemodes a site's placements name: slugs this build does not register
+     * but would have admitted, ordered by slug and capped at
+     * {@link DiscoveredGamemodes#MAX_PER_ANSWER}. Every caller that lists a site's
+     * gamemodes puts these after {@link #of} in this order, so they agree on which ones
+     * exist and how ties among them break.
+     */
+    public static List<Gamemode> discovered(Source source, Collection<String> slugs) {
+        List<String> unregistered = new ArrayList<>();
+        for (String slug : slugs) {
+            if (find(source, slug).isEmpty() && DiscoveredGamemodes.isAcceptable(slug)) {
+                unregistered.add(slug);
+            }
+        }
+        if (unregistered.isEmpty()) {
+            return List.of();
+        }
+        unregistered.sort(null);
+        List<Gamemode> gamemodes = new ArrayList<>();
+        for (String slug : unregistered) {
+            if (gamemodes.size() == DiscoveredGamemodes.MAX_PER_ANSWER) break;
+            DiscoveredGamemodes.of(source, slug).ifPresent(gamemodes::add);
+        }
+        return List.copyOf(gamemodes);
+    }
+
     /** True when this exact gamemode is in the registry rather than discovered. */
     public static boolean isRegistered(Gamemode gamemode) {
         return find(gamemode.source(), gamemode.slug()).filter(gamemode::equals).isPresent();
+    }
+
+    /** The slug a source's historical key now names, or the key itself when it has no alias. */
+    public static String alias(Source source, String key) {
+        return ALIASES.getOrDefault(source, Map.of()).getOrDefault(key, key);
     }
 
     /** "Spear Mace" / "spear_mace" / "SPEARMACE" all collapse to "spearmace". */
@@ -140,7 +178,7 @@ public final class Gamemodes {
         if (NOVA_SLUGS.contains(squashed)) {
             return Optional.of(squashed);
         }
-        return Optional.ofNullable(NOVA_ALIASES.get(squashed));
+        return Optional.ofNullable(ALIASES.get(Source.NOVATIERS).get(squashed));
     }
 
     private Gamemodes() {
