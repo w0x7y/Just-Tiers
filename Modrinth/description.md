@@ -85,6 +85,10 @@ stops nametag lookups for that site. Explicit lookup screens and
 NovaTiers' startup, scheduled and requested downloads remain available. Hiding the download
 indicator does not stop downloads. Manual refresh and failure retries can make requests before
 a cached answer's usual expiry; the cache interval is not a strict request-rate guarantee.
+Another installed mod that uses the
+[tier-query API](https://github.com/w0x7y/Just-Tiers/blob/main/docs/api.md) makes automatic
+lookups too, so the same switches apply: it gets no answer and causes no request for a
+site while that site, or nametag tiers, are turned off.
 
 Failed or malformed responses are not shown as unranked players. Retries back off, and repeated
 site failures temporarily pause new requests. Failed NovaTiers refreshes retain usable cached

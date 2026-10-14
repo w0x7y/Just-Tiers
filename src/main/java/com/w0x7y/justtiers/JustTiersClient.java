@@ -22,9 +22,10 @@ import java.util.List;
 
 public class JustTiersClient implements ClientModInitializer {
 
-    private static SettingsApplication settings;
+    // Volatile: JustTiersQuery lets other mods read these from any thread, null until initialized.
+    private static volatile SettingsApplication settings;
     private static RefreshLifecycle refresh;
-    private static TierCache cache;
+    private static volatile TierCache cache;
     private static NovaTiersSource novaSource;
     private static MojangNameSource nameSource;
     private static DownloadProgress downloadProgress;

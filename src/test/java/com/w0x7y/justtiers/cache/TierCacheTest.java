@@ -110,6 +110,29 @@ class TierCacheTest {
     }
 
     @Test
+    void observingNeverRequestsAndSeparatesInFlightFromFailed() {
+        FakeSource fake = new FakeSource(Source.PVPTIERS, Map.of("axe", new Tier(2, true, false)));
+        TierCache cache = new TierCache(List.of(fake));
+
+        assertEquals(TierCache.Observation.NONE, cache.observe(Source.PVPTIERS, PLAYER));
+        assertEquals(0, fake.calls.get(), "observation must not start a request");
+
+        cache.peek(Source.PVPTIERS, PLAYER);
+        assertEquals(new TierCache.Observation(Optional.empty(), true), cache.observe(Source.PVPTIERS, PLAYER));
+        fake.pending.completeExceptionally(new IllegalStateException("down"));
+        assertEquals(TierCache.Observation.NONE, cache.observe(Source.PVPTIERS, PLAYER),
+                "a failed request with nothing retained is neither pending nor answered");
+
+        UUID other = UUID.randomUUID();
+        cache.peek(Source.PVPTIERS, other);
+        fake.complete();
+        TierCache.Observation answered = cache.observe(Source.PVPTIERS, other);
+        assertFalse(answered.inFlight());
+        assertEquals("HT2", answered.answer().orElseThrow().tiers().get("axe").label());
+        assertEquals(2, fake.calls.get());
+    }
+
+    @Test
     void invalidateAllForcesARefetch() {
         FakeSource fake = new FakeSource(Source.PVPTIERS, Map.of());
         TierCache cache = new TierCache(List.of(fake));
