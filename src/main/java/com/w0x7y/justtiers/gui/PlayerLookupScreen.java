@@ -9,6 +9,7 @@ import com.w0x7y.justtiers.gui.layout.LookupLayout;
 import com.w0x7y.justtiers.gui.layout.LookupMetrics;
 import com.w0x7y.justtiers.gui.layout.SkinLayout;
 import com.w0x7y.justtiers.gui.state.LookupFocus;
+import com.w0x7y.justtiers.gui.state.LookupText;
 import com.w0x7y.justtiers.lookup.LookupCell;
 import com.w0x7y.justtiers.lookup.LookupHistory;
 import com.w0x7y.justtiers.lookup.LookupRow;
@@ -314,7 +315,7 @@ public final class PlayerLookupScreen extends Screen {
                     || cellControls.get(source).get(i).isFocused();
             drawCell(graphics, cells.get(i), source, row.cellX(i), row.cellY(i), isHovered);
             if (isHovered) {
-                graphics.setTooltipForNextFrame(font, tooltip(cells.get(i), result),
+                graphics.setTooltipForNextFrame(font, lines(LookupText.tooltip(cells.get(i), result)),
                         cellControls.get(source).get(i).isFocused() ? row.cellX(i) : mouseX,
                         cellControls.get(source).get(i).isFocused() ? row.cellY(i) - scroll + cellHeight : mouseY);
             }
@@ -348,26 +349,21 @@ public final class PlayerLookupScreen extends Screen {
                 tier.isPresent() ? Colors.opaque(SiteColors.of(source)) : Colors.DISABLED, false);
     }
 
-    private Component tooltip(LookupCell cell, LookupResult result) {
-        String gamemode = cell.gamemode().displayName();
-        var description = cell.tier()
-                .map(tier -> Component.literal(gamemode + ": " + tier.label()))
-                .orElseGet(() -> Component.translatable("justtiers.lookup.cellUntested",
-                        gamemode));
-        if (!Gamemodes.isRegistered(cell.gamemode())) {
-            description.append("\n").append(Component.translatable("justtiers.lookup.unrecognizedGamemode"));
+    /** A message translated, with any message among its arguments translated first. */
+    private static MutableComponent component(LookupText.Message message) {
+        Object[] args = message.args().stream()
+                .map(arg -> arg instanceof LookupText.Message nested ? component(nested) : arg)
+                .toArray();
+        return Component.translatable(message.key(), args);
+    }
+
+    /** Messages as one component, a line each. */
+    private static Component lines(List<LookupText.Message> messages) {
+        MutableComponent text = component(messages.getFirst());
+        for (LookupText.Message message : messages.subList(1, messages.size())) {
+            text.append("\n").append(component(message));
         }
-        result.freshness().ifPresent(freshness -> {
-            description.append("\n").append(Component.translatable("justtiers.lookup.age", freshness.age().toMinutes()));
-            String key = switch (freshness.status()) {
-                case REFRESH_FAILED -> "justtiers.lookup.cachedUnavailable";
-                case REFRESHING -> "justtiers.lookup.cachedRefreshing";
-                case STALE -> "justtiers.lookup.cachedStale";
-                case FRESH -> null;
-            };
-            if (key != null) description.append("\n").append(Component.translatable(key));
-        });
-        return description;
+        return text;
     }
 
     private void drawFooter(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
@@ -514,8 +510,8 @@ public final class PlayerLookupScreen extends Screen {
                 ContentControl control = controls.get(i);
                 control.active = i < shown;
                 if (control.active) {
-                    control.setMessage(Component.literal(source.displayName() + ": ")
-                            .append(tooltip(section.get().cells().get(i), result)));
+                    control.setMessage(lines(LookupText.cellNarration(source,
+                            section.get().cells().get(i), result)));
                 }
             }
         }
@@ -611,22 +607,7 @@ public final class PlayerLookupScreen extends Screen {
 
     @Override
     public Component getNarrationMessage() {
-        var message = Component.translatable("justtiers.lookup.header", session.name());
-        Optional<Component> error = session.error();
-        if (error.isPresent()) {
-            return message.append(". ").append(error.get());
-        }
-        for (Source source : Source.ALL) {
-            String key = switch (LookupRow.state(session.result(source).section())) {
-                case PENDING -> "justtiers.lookup.pending";
-                case UNAVAILABLE -> "justtiers.lookup.unavailable";
-                case ANSWERED -> null;
-            };
-            if (key != null) {
-                message.append(". " + source.displayName() + ": ").append(Component.translatable(key));
-            }
-        }
-        return message;
+        return component(LookupText.narration(session.name(), session.error(), session::result));
     }
 
     /** Focusable text content. Links activate; cells are read-only and narrated in full. */
