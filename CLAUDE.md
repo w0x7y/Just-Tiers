@@ -46,6 +46,10 @@ components, commands and events.
 - `render/model/TierView` is the nametag's access to settings and tier answers.
   `render/LiveTierView` reads the live config/cache; model tests provide their own view.
   Badge construction takes the whole `NametagSettings`, not its fields one by one.
+- `render/model/BadgeMemo` rebuilds a nametag badge only when the settings instance or a
+  peeked answer map is a different object, and still peeks every site on every call.
+  `PlayerMixin` keeps one per client player entity. This relies on `nametagSettings()`
+  and cached answer maps staying the same immutable objects until they change.
 - Automatic lookups (nametags and the tier-query API) contact only
   `NametagSettings.automaticLookupSites` and only UUIDs `api/PlayerRef.isAccount` accepts.
   Explicit lookups have their own identity path through `LookupSession`.

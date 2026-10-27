@@ -4,8 +4,10 @@ import com.sun.management.ThreadMXBean;
 import com.w0x7y.justtiers.api.TierSource;
 import com.w0x7y.justtiers.cache.TierCache;
 import com.w0x7y.justtiers.config.JustTiersConfig;
+import com.w0x7y.justtiers.render.NametagRenderer;
 import com.w0x7y.justtiers.render.Nametags;
 import com.w0x7y.justtiers.render.model.Badge;
+import com.w0x7y.justtiers.render.model.BadgeMemo;
 import com.w0x7y.justtiers.render.model.NametagSettings;
 import com.w0x7y.justtiers.render.model.TierView;
 import com.w0x7y.justtiers.tier.Gamemode;
@@ -26,6 +28,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.stream.IntStream;
 
 /** Standalone diagnostic, deliberately without pass/fail timing thresholds. */
 public final class BadgeBenchmark {
@@ -54,6 +57,20 @@ public final class BadgeBenchmark {
                 for (int i = 0; i < iterations; i++) {
                     Badge badge = Badge.forPlayer(view, players[i & 127]);
                     result += (badge.isEmpty() ? NAME : Nametags.compose(badge, NAME)).getSiblings().size();
+                }
+                return result;
+            }
+        },
+        /** What it returns now: NametagRenderer.decorate, with one memo per player entity. */
+        MEMOIZED {
+            private final List<BadgeMemo<Nametags.Drawn>> memos =
+                    IntStream.range(0, 128).mapToObj(i -> NametagRenderer.memo()).toList();
+
+            int run(TierView view, UUID[] players, int iterations) {
+                int result = 0;
+                for (int i = 0; i < iterations; i++) {
+                    Nametags.Drawn badge = memos.get(i & 127).get(view, players[i & 127]);
+                    result += (badge == null ? NAME : badge.beside(NAME)).getSiblings().size();
                 }
                 return result;
             }

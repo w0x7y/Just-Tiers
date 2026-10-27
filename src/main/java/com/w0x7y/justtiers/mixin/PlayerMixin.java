@@ -2,16 +2,23 @@ package com.w0x7y.justtiers.mixin;
 
 import com.w0x7y.justtiers.JustTiersClient;
 import com.w0x7y.justtiers.render.NametagRenderer;
+import com.w0x7y.justtiers.render.Nametags;
+import com.w0x7y.justtiers.render.model.BadgeMemo;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 
 @Mixin(Player.class)
 public class PlayerMixin {
+
+    /** Created on first use, so server-side players never carry one. */
+    @Unique
+    private BadgeMemo<Nametags.Drawn> justtiers$badge;
 
     @ModifyReturnValue(method = "getDisplayName", at = @At("RETURN"))
     private Component justtiers$prependTier(Component original) {
@@ -26,6 +33,10 @@ public class PlayerMixin {
         if (JustTiersClient.config().isHideOwnBadge() && self == Minecraft.getInstance().player) {
             return original;
         }
-        return NametagRenderer.decorate(self.getUUID(), original);
+        BadgeMemo<Nametags.Drawn> memo = justtiers$badge;
+        if (memo == null) {
+            justtiers$badge = memo = NametagRenderer.memo();
+        }
+        return NametagRenderer.decorate(memo, self.getUUID(), original);
     }
 }

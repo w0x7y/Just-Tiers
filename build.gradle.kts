@@ -79,7 +79,7 @@ val benchmark = sourceSets.create("benchmark") {
 val verificationJavaVersion = javaVersion
 tasks.register<JavaExec>("badgeBenchmark") {
     group = "verification"
-    description = "Measure warmed-cache Badge.forPlayer time and thread allocation"
+    description = "Measure warmed-cache nametag badge time and thread allocation"
     classpath = benchmark.runtimeClasspath
     mainClass.set("com.w0x7y.justtiers.benchmark.BadgeBenchmark")
     javaLauncher.set(javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(verificationJavaVersion)) })
