@@ -564,6 +564,23 @@ class TierSourceTest {
     }
 
     @Test
+    void novaTreatsA503WithoutRetryAfterAsAFailureNotACooldown() throws Exception {
+        respond("/users", 200, ONE_USER);
+        NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
+        nova.fetchAnswer(PLAYER).get();
+        respond("/users", 503, "unavailable");
+        Throwable failure = assertThrows(ExecutionException.class, () -> nova.refresh().get()).getCause();
+        assertInstanceOf(TierLookupException.class, failure);
+        assertFalse(failure instanceof RetryAfterException, failure.toString());
+        assertEquals(Duration.ZERO, nova.refreshState().cooldown());
+
+        respond("/users", 200, ONE_USER.replace("HT3", "HT1"));
+        nova.refresh().get();
+        assertEquals(3, requestCount.get(), "the next refresh must ask the site");
+        assertEquals("HT1", nova.fetchAnswer(PLAYER).get().tiers().get("axe").label());
+    }
+
+    @Test
     void novaAndTierCacheKeepDataVintageAndExpireBeyondStaleGrace() throws Exception {
         var clock = new java.util.concurrent.atomic.AtomicLong();
         respond("/users", 200, ONE_USER);
