@@ -47,51 +47,12 @@ class CreditLineTest {
     }
 
     @Test
-    void aClickLandsOnTheNameItLooksLikeItLandsOn() {
-        CreditLine line = line();
-
-        for (int i = 0; i < line.spans().size(); i++) {
-            CreditLine.Span span = line.spans().get(i);
-            assertEquals(i, line.spanAt(span.x()).orElseThrow(), "left edge of " + i);
-            assertEquals(i, line.spanAt(span.x() + span.width() - 1).orElseThrow(),
-                    "right edge of " + i);
-        }
-    }
-
-    /** The separator between two names is not a third thing to click. */
-    @Test
-    void theSeparatorBetweenTwoNamesOpensNothing() {
-        CreditLine line = line();
-        CreditLine.Span first = line.spans().getFirst();
-
-        assertTrue(line.spanAt(first.x() + first.width()).isEmpty());
-        assertTrue(line.spanAt(first.x() + first.width() + SEPARATOR - 1).isEmpty());
-    }
-
-    @Test
-    void theLeadInTextIsNotClickable() {
-        CreditLine line = line();
-
-        assertTrue(line.spanAt(line.x()).isEmpty());
-        assertTrue(line.spanAt(line.x() + PREFIX).isEmpty());
-    }
-
-    @Test
-    void pastEitherEndIsNothing() {
-        CreditLine line = line();
-        CreditLine.Span last = line.spans().getLast();
-
-        assertTrue(line.spanAt(line.x() - 1).isEmpty());
-        assertTrue(line.spanAt(last.x() + last.width()).isEmpty());
-    }
-
-    @Test
     void aSingleNameNeedsNoSeparator() {
         CreditLine line = CreditLine.centeredIn(0, 200, PREFIX, SPACE, SEPARATOR, List.of(30));
 
         assertEquals(1, line.spans().size());
         assertEquals((200 - (PREFIX + SPACE + 30)) / 2, line.x());
-        assertEquals(0, line.spanAt(line.spans().getFirst().x()).orElseThrow());
+        assertEquals(line.x() + PREFIX + SPACE, line.spans().getFirst().x());
     }
 
     @Test
@@ -99,6 +60,5 @@ class CreditLineTest {
         CreditLine line = CreditLine.centeredIn(0, 200, PREFIX, SPACE, SEPARATOR, List.of());
 
         assertEquals(List.of(), line.spans());
-        assertTrue(line.spanAt(line.x()).isEmpty());
     }
 }

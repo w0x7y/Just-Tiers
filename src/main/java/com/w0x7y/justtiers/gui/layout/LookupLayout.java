@@ -2,7 +2,6 @@ package com.w0x7y.justtiers.gui.layout;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.OptionalInt;
 
 /**
  * Every coordinate the lookup panel draws at, worked out in one go from
@@ -92,11 +91,6 @@ public record LookupLayout(int panelX, int panelY, int panelWidth, int panelHeig
 
         public int cellY(int index) {
             return cellsTop() + grid.yOf(index);
-        }
-
-        /** The cell under this point, or empty for a gap, an edge miss or an empty box. */
-        public OptionalInt cellAt(double mouseX, double mouseY) {
-            return grid.indexAt((int) mouseX - cellsLeft(), (int) mouseY - cellsTop());
         }
 
         /** Where the site's name ends: its text is right-aligned to here. */

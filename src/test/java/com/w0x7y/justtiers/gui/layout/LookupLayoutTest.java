@@ -239,26 +239,6 @@ class LookupLayoutTest {
     }
 
     @Test
-    void aCellIsFoundWhereItWasDrawn() {
-        LookupLayout.Row row = layout(854, 480).rows().getFirst();
-
-        for (int i = 0; i < row.grid().itemCount(); i++) {
-            assertEquals(i, row.cellAt(row.cellX(i) + 1, row.cellY(i) + 1).orElseThrow(),
-                    "cell " + i);
-        }
-    }
-
-    @Test
-    void theGapBetweenTwoCellsIsNoCellAtAll() {
-        LookupLayout.Row row = layout(854, 480).rows().getFirst();
-        int betweenX = row.cellX(0) + metrics(854, 480).cellWidth();
-
-        assertTrue(row.cellAt(betweenX, row.cellY(0) + 1).isEmpty());
-        assertTrue(row.cellAt(row.x() - 1, row.cellY(0) + 1).isEmpty());
-        assertTrue(row.cellAt(row.cellX(0) + 1, row.y() - 1).isEmpty());
-    }
-
-    @Test
     void everyCellIsInsideItsOwnBox() {
         for (LookupLayout.Row row : layout(854, 480).rows()) {
             for (int i = 0; i < row.grid().itemCount(); i++) {

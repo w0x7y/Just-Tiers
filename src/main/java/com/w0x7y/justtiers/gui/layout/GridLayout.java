@@ -1,15 +1,15 @@
 package com.w0x7y.justtiers.gui.layout;
 
 import java.util.Objects;
-import java.util.OptionalInt;
 
 /**
  * Tile-grid arithmetic for the gamemode picker: how many columns fit, where each tile
- * lands, which tile a point is inside, and where an arrow key moves the focus.
+ * lands, and where an arrow key moves the focus. The screens place their widgets here,
+ * and the widgets answer which one is under the mouse.
  *
  * <p>Coordinates are relative to the grid's own top-left origin, and the class knows
- * nothing about Minecraft — which is what lets "clicking the gap between two tiles
- * selects nothing" be a unit test rather than a manual click-around.
+ * nothing about Minecraft, which is what lets "an arrow key never lands on an empty
+ * trailing cell" be a unit test rather than a manual check.
  */
 public final class GridLayout {
 
@@ -70,25 +70,6 @@ public final class GridLayout {
 
     public int yOf(int index) {
         return (index / columns) * (tileHeight + gap);
-    }
-
-    /** The tile containing this point, or empty for a gap, an edge miss or an empty cell. */
-    public OptionalInt indexAt(int localX, int localY) {
-        if (itemCount == 0 || localX < 0 || localY < 0) {
-            return OptionalInt.empty();
-        }
-        int strideX = tileWidth + gap;
-        int strideY = tileHeight + gap;
-        if (localX % strideX >= tileWidth || localY % strideY >= tileHeight) {
-            return OptionalInt.empty();   // landed in a gap
-        }
-        int column = localX / strideX;
-        int row = localY / strideY;
-        if (column >= columns || row >= rows) {
-            return OptionalInt.empty();
-        }
-        int index = row * columns + column;
-        return index < itemCount ? OptionalInt.of(index) : OptionalInt.empty();
     }
 
     /**

@@ -44,7 +44,6 @@ import java.util.List;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.OptionalInt;
 
 /**
  * The screen {@code /justtiers lookup} opens: a player's name, their skin, and one row
@@ -310,16 +309,15 @@ public final class PlayerLookupScreen extends Screen {
 
     private void drawCells(GuiGraphicsExtractor graphics, LookupLayout.Row row, Source source,
                            LookupResult result, int mouseX, int mouseY) {
-        OptionalInt hovered = inViewport(mouseY) ? row.cellAt(mouseX, mouseY + scroll) : OptionalInt.empty();
         List<LookupCell> cells = result.section().orElseThrow().cells();
         for (int i = 0; i < cells.size() && i < row.grid().itemCount(); i++) {
-            boolean isHovered = (hovered.isPresent() && hovered.getAsInt() == i)
-                    || cellControls.get(source).get(i).isFocused();
+            ContentControl control = cellControls.get(source).get(i);
+            boolean isHovered = control.isMouseOver(mouseX, mouseY) || control.isFocused();
             drawCell(graphics, cells.get(i), source, row.cellX(i), row.cellY(i), isHovered);
             if (isHovered) {
                 graphics.setTooltipForNextFrame(font, lines(LookupText.tooltip(cells.get(i), result)),
-                        cellControls.get(source).get(i).isFocused() ? row.cellX(i) : mouseX,
-                        cellControls.get(source).get(i).isFocused() ? row.cellY(i) - scroll + cellHeight : mouseY);
+                        control.isFocused() ? row.cellX(i) : mouseX,
+                        control.isFocused() ? row.cellY(i) - scroll + cellHeight : mouseY);
             }
         }
     }
@@ -373,7 +371,6 @@ public final class PlayerLookupScreen extends Screen {
         graphics.text(font, Component.translatable("justtiers.lookup.credit"),
                 credit.x(), footerY, Colors.SECONDARY);
 
-        OptionalInt hovered = linkAt(mouseX, mouseY);
         for (int i = 0; i < credit.spans().size(); i++) {
             CreditLine.Span span = credit.spans().get(i);
             Source source = Source.ALL.get(i);
@@ -383,7 +380,7 @@ public final class PlayerLookupScreen extends Screen {
                         footerY, Colors.SECONDARY);
             }
             graphics.text(font, source.displayName(), span.x(), footerY, color);
-            if ((hovered.isPresent() && hovered.getAsInt() == i) || links.get(i).isFocused()) {
+            if (links.get(i).isMouseOver(mouseX, mouseY) || links.get(i).isFocused()) {
                 graphics.horizontalLine(span.x(), span.x() + span.width() - 1,
                         footerY + font.lineHeight - 1, color);
             }
@@ -391,15 +388,6 @@ public final class PlayerLookupScreen extends Screen {
     }
 
     // ---------------------------------------------------------------- input
-
-    /** The site name under the cursor, if the cursor is on the footer line at all. */
-    private OptionalInt linkAt(double mouseX, double mouseY) {
-        if (!inViewport(mouseY) || mouseY + scroll < layout.footerY()
-                || mouseY + scroll >= layout.footerY() + font.lineHeight) {
-            return OptionalInt.empty();
-        }
-        return credit.spanAt(mouseX);
-    }
 
     private boolean inViewport(double mouseY) {
         return mouseY >= layout.panelY() && mouseY < layout.viewportBottom();
