@@ -253,11 +253,6 @@ public record LookupLayout(int panelX, int panelY, int panelWidth, int panelHeig
         return SkinLayout.HEIGHT * skinScale;
     }
 
-    /** The middle of the space the skin occupies, where a failed lookup says why. */
-    public int skinCenterY() {
-        return skinY + skinHeight() / 2;
-    }
-
     public int panelRight() {
         return panelX + panelWidth;
     }

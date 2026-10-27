@@ -88,10 +88,6 @@ public final class LookupSession {
                     answered(site, cached, clock.getAsLong(), false)));
             cache.loadAnswer(site, found.uuid()).whenComplete((answer, failure) -> {
                 long capturedAt = clock.getAsLong();
-                if (failure != null) {
-                    // An offline player may never be peeked by nametags, so allow a new session to retry.
-                    cache.forgetFailed(site, found.uuid());
-                }
                 publisher.execute(() -> {
                     if (failure == null) {
                         results.put(site, answered(site, answer, capturedAt, true));

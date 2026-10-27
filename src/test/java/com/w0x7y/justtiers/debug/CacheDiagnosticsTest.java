@@ -8,7 +8,6 @@ import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
 import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -183,7 +182,7 @@ class CacheDiagnosticsTest {
         cache.peek(site.source(), UUID.randomUUID());
         site.pending.complete(Map.of());
 
-        cache.invalidateAll();
+        cache.invalidate(site.source());
 
         SiteDiagnostics row = CacheDiagnostics.of(cache, site.source());
         assertEquals(0, row.cachedPlayers());
@@ -194,7 +193,7 @@ class CacheDiagnosticsTest {
 
     @Test
     void aCacheWithNoSourcesAtAllStillReportsEverySite() {
-        TierCache empty = new TierCache(List.of(), CachePolicy.DEFAULT.withBaseRetry(Duration.ofMinutes(5)));
+        TierCache empty = new TierCache(List.of());
 
         assertEquals(Source.ALL.size(), CacheDiagnostics.of(empty).size());
     }

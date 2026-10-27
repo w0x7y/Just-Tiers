@@ -221,15 +221,6 @@ class LookupLayoutTest {
         assertTrue(layout.panelHeight() > 0);
     }
 
-    @Test
-    void theSkinBandIsWhereAFailedLookupSaysWhy() {
-        LookupLayout layout = layout(854, 480);
-
-        assertEquals(layout.skinY() + layout.skinHeight() / 2, layout.skinCenterY());
-        assertTrue(layout.skinCenterY() > layout.skinY());
-        assertTrue(layout.skinCenterY() < layout.tiersY());
-    }
-
     // --- cells inside a row ---
 
     @Test

@@ -261,16 +261,6 @@ final class SiteRequests {
         return new TierCache.CachedAnswer(answer.tiers(), age, stale, pending, failed || sourceFailed, freshFor, answer.revision());
     }
 
-    void forgetFailed(UUID uuid) {
-        synchronized (this) {
-            Entry entry = entries.get(uuid);
-            if (entry != null && entry.future.isCompletedExceptionally()) {
-                if (entry.answer == null) entries.remove(uuid, entry);
-                else entry.retryable = true;
-            }
-        }
-    }
-
     void reset(boolean retainAnswers) {
         List<CompletableFuture<TierCache.CachedAnswer>> cancelled;
         synchronized (this) {

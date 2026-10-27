@@ -6,7 +6,6 @@ import com.w0x7y.justtiers.cache.TierCache;
 import com.w0x7y.justtiers.config.JustTiersConfig;
 import com.w0x7y.justtiers.render.NametagRenderer;
 import com.w0x7y.justtiers.render.Nametags;
-import com.w0x7y.justtiers.render.model.Badge;
 import com.w0x7y.justtiers.render.model.BadgeMemo;
 import com.w0x7y.justtiers.render.model.NametagSettings;
 import com.w0x7y.justtiers.render.model.TierView;
@@ -41,27 +40,18 @@ public final class BadgeBenchmark {
 
     /** One way of turning a player into what the nametag draws, each with its own loop so its calls stay monomorphic. */
     private enum Path {
-        BADGE {
+        /** What a frame costs when the inputs changed: a fresh memo has to build and draw. */
+        REBUILT {
             int run(TierView view, UUID[] players, int iterations) {
                 int result = 0;
                 for (int i = 0; i < iterations; i++) {
-                    result += Badge.forPlayer(view, players[i & 127]).segments().size();
+                    Nametags.Drawn badge = NametagRenderer.memo().get(view, players[i & 127]);
+                    result += (badge == null ? NAME : badge.beside(NAME)).getSiblings().size();
                 }
                 return result;
             }
         },
-        /** What the nametag mixin returned before memoization. */
-        COMPOSED {
-            int run(TierView view, UUID[] players, int iterations) {
-                int result = 0;
-                for (int i = 0; i < iterations; i++) {
-                    Badge badge = Badge.forPlayer(view, players[i & 127]);
-                    result += (badge.isEmpty() ? NAME : Nametags.compose(badge, NAME)).getSiblings().size();
-                }
-                return result;
-            }
-        },
-        /** What it returns now: NametagRenderer.decorate, with one memo per player entity. */
+        /** What an ordinary frame costs: NametagRenderer.decorate, with one memo per player entity. */
         MEMOIZED {
             private final List<BadgeMemo<Nametags.Drawn>> memos =
                     IntStream.range(0, 128).mapToObj(i -> NametagRenderer.memo()).toList();

@@ -26,6 +26,12 @@ class BadgeMemoTest {
         return badge.plainText();
     });
 
+    /** The badge built from scratch, as the memo would build it on a miss. */
+    private static String rebuilt(TierView view) {
+        NametagSettings settings = view.settings();
+        return Badge.forPlayer(settings, Badge.answers(view, settings, ACCOUNT)).plainText();
+    }
+
     private static NametagSettings settings(boolean enabled) {
         return new NametagSettings(enabled, Set.of(Source.PVPTIERS, Source.SUBTIERS), SELECTED, true,
                 NametagStyle.DEFAULT, false);
@@ -36,10 +42,10 @@ class BadgeMemoTest {
         FakeTierView view = new FakeTierView(settings(true))
                 .answering(Source.PVPTIERS, Map.of("crystal", new Tier(2, true, false)));
         for (int frame = 0; frame < 3; frame++) {
-            assertEquals(Badge.forPlayer(view, ACCOUNT).plainText(), memo.get(view, ACCOUNT));
+            assertEquals(rebuilt(view), memo.get(view, ACCOUNT));
         }
         assertEquals(1, built.size());
-        // Six peeks from forPlayer and six from the memo: a hit does not skip admission.
+        // Six peeks from rebuilding and six from the memo: a hit does not skip admission.
         assertEquals(12, view.asked().size());
     }
 
@@ -57,7 +63,7 @@ class BadgeMemoTest {
         assertEquals(3, built.size());
 
         view.answering(Source.SUBTIERS, Map.of("bow", new Tier(1, false, false)));
-        assertEquals(Badge.forPlayer(view, ACCOUNT).plainText(), memo.get(view, ACCOUNT));
+        assertEquals(rebuilt(view), memo.get(view, ACCOUNT));
         assertEquals(4, built.size());
     }
 

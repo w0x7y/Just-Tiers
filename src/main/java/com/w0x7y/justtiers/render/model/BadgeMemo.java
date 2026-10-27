@@ -42,7 +42,11 @@ public final class BadgeMemo<T> {
         this.render = render;
     }
 
-    /** The rendered form of {@link Badge#forPlayer(TierView, UUID)}, reused while its inputs are the same. */
+    /**
+     * The badge this player should be wearing right now, rendered, and reused while its
+     * inputs are the same. Rendered from {@link Badge#NONE} when the mod is off, when the
+     * player cannot be on a leaderboard, or when no site has answered yet.
+     */
     public T get(TierView view, UUID uuid) {
         NametagSettings settings = view.settings();
         Map<Source, Map<String, Tier>> answers = Badge.answers(view, settings, uuid);

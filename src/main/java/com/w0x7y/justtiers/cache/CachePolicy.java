@@ -41,11 +41,6 @@ public record CachePolicy(Duration ttl,
                 siteFailureThreshold, basePause, maxPause);
     }
 
-    public CachePolicy withBaseRetry(Duration baseRetry) {
-        return new CachePolicy(ttl, baseRetry, maxRetry, retryJitter,
-                siteFailureThreshold, basePause, maxPause);
-    }
-
     /** Zero disables expiry: answers are kept for the whole session, as they once were. */
     public boolean expires() {
         return !ttl.isZero();

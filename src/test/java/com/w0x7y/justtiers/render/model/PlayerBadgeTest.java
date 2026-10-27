@@ -16,12 +16,17 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * {@code Badge.forPlayer(TierView, UUID)} — the decision the world nametag makes, every
- * player, every frame. It used to live inside {@code NametagRenderer.decorate} reaching
- * straight into the static hub, so none of it could be asserted without launching the
- * game; behind {@link TierView} it is ordinary code with a fake in front of it.
+ * The decision the world nametag makes, every player, every frame, asked through a fresh
+ * {@link BadgeMemo} as the nametag asks it. It used to live inside
+ * {@code NametagRenderer.decorate} reaching straight into the static hub, so none of it
+ * could be asserted without launching the game; behind {@link TierView} it is ordinary
+ * code with a fake in front of it.
  */
 class PlayerBadgeTest {
+
+    private static Badge badge(TierView view, UUID uuid) {
+        return new BadgeMemo<Badge>(badge -> badge).get(view, uuid);
+    }
 
     @Test
     void everySiteCombinationQueriesOnlyEnabledSitesInDisplayOrder() {
@@ -37,7 +42,7 @@ class PlayerBadgeTest {
                 view.answering(source, Map.of(com.w0x7y.justtiers.config.JustTiersConfig.defaultGamemode(source),
                         new Tier(2, true, false)));
             }
-            Badge badge = Badge.forPlayer(view, ACCOUNT);
+            Badge badge = badge(view, ACCOUNT);
             assertEquals(order.stream().filter(enabled::contains).toList(), view.asked(), "selection " + mask);
             assertEquals(enabled.isEmpty(), badge.isEmpty());
             assertEquals(enabled.size(), badge.segments().stream().filter(Segment::icon).count());
@@ -75,14 +80,14 @@ class PlayerBadgeTest {
     @Test
     void aRankedAccountGetsItsBadge() {
         assertEquals("[" + gamemode(Source.PVPTIERS, "crystal").icon().orElseThrow() + "HT2] ",
-                Badge.forPlayer(view(true, Set.of(Source.PVPTIERS)), ACCOUNT).plainText());
+                badge(view(true, Set.of(Source.PVPTIERS)), ACCOUNT).plainText());
     }
 
     @Test
     void theModBeingOffCostsNothing() {
         FakeTierView view = view(false, Set.copyOf(Source.ALL));
 
-        assertTrue(Badge.forPlayer(view, ACCOUNT).isEmpty());
+        assertTrue(badge(view, ACCOUNT).isEmpty());
         // Not merely blank: switched off, nothing should be asking the cache at all.
         assertEquals(List.of(), view.asked());
     }
@@ -91,7 +96,7 @@ class PlayerBadgeTest {
     void anOfflineOrNpcUuidIsNeverLookedUp() {
         FakeTierView view = view(true, Set.copyOf(Source.ALL));
 
-        assertTrue(Badge.forPlayer(view, OFFLINE).isEmpty());
+        assertTrue(badge(view, OFFLINE).isEmpty());
         assertEquals(List.of(), view.asked());
     }
 
@@ -99,7 +104,7 @@ class PlayerBadgeTest {
     void aMissingUuidIsNotAFailure() {
         FakeTierView view = view(true, Set.copyOf(Source.ALL));
 
-        assertTrue(Badge.forPlayer(view, null).isEmpty());
+        assertTrue(badge(view, null).isEmpty());
         assertEquals(List.of(), view.asked());
     }
 
@@ -107,7 +112,7 @@ class PlayerBadgeTest {
     void aPlayerNoSiteHasAnsweredForWearsNothing() {
         FakeTierView silent = new FakeTierView(settings(true, Set.copyOf(Source.ALL)));
 
-        assertTrue(Badge.forPlayer(silent, ACCOUNT).isEmpty());
+        assertTrue(badge(silent, ACCOUNT).isEmpty());
         assertEquals(Source.ALL, silent.asked());
     }
 
@@ -116,7 +121,7 @@ class PlayerBadgeTest {
     @Test
     void aSingleSiteModeAsksOnlyItsOwnSite() {
         FakeTierView view = view(true, Set.of(Source.SUBTIERS));
-        Badge badge = Badge.forPlayer(view, ACCOUNT);
+        Badge badge = badge(view, ACCOUNT);
 
         assertEquals(List.of(Source.SUBTIERS), view.asked());
         // Cached answers from the other two are right there and must not reach the tag.
@@ -126,7 +131,7 @@ class PlayerBadgeTest {
     @Test
     void allModeAsksEverySite() {
         FakeTierView view = view(true, Set.copyOf(Source.ALL));
-        Badge badge = Badge.forPlayer(view, ACCOUNT);
+        Badge badge = badge(view, ACCOUNT);
 
         assertEquals(Source.ALL, view.asked());
         assertEquals("[" + gamemode(Source.PVPTIERS, "crystal").icon().orElseThrow() + "HT2 "
@@ -139,7 +144,7 @@ class PlayerBadgeTest {
     void aSiteStillInFlightIsSimplyLeftOut() {
         FakeTierView view = new FakeTierView(settings(true, Set.copyOf(Source.ALL)))
                 .answering(Source.NOVATIERS, Map.of("spleef", new Tier(1, true, false)));
-        Badge badge = Badge.forPlayer(view, ACCOUNT);
+        Badge badge = badge(view, ACCOUNT);
 
         assertEquals(Source.ALL, view.asked());
         assertEquals("[" + gamemode(Source.NOVATIERS, "spleef").icon().orElseThrow() + "HT1] ",
@@ -151,10 +156,10 @@ class PlayerBadgeTest {
     @Test
     void everyBadgeIsBuiltFromTheSettingsInForceRightThen() {
         FakeTierView view = view(true, Set.copyOf(Source.ALL));
-        String all = Badge.forPlayer(view, ACCOUNT).plainText();
+        String all = badge(view, ACCOUNT).plainText();
 
         view.settings(settings(true, Set.of(Source.PVPTIERS)));
-        String one = Badge.forPlayer(view, ACCOUNT).plainText();
+        String one = badge(view, ACCOUNT).plainText();
 
         assertNotEquals(all, one);
         assertEquals("[" + gamemode(Source.PVPTIERS, "crystal").icon().orElseThrow() + "HT2] ", one);
@@ -166,7 +171,7 @@ class PlayerBadgeTest {
         FakeTierView view = view(true, Set.of(Source.PVPTIERS));
         view.settings(new NametagSettings(true, Set.of(Source.PVPTIERS), SELECTED, true, after, false));
 
-        Badge badge = Badge.forPlayer(view, ACCOUNT);
+        Badge badge = badge(view, ACCOUNT);
         assertEquals(BadgePosition.AFTER, badge.position());
         assertEquals(" [HT2]", badge.plainText());
     }
@@ -176,11 +181,11 @@ class PlayerBadgeTest {
         FakeTierView view = new FakeTierView(settings(true, Set.of(Source.PVPTIERS)))
                 .answering(Source.PVPTIERS, Map.of("crystal", new Tier(1, true, true)));
 
-        assertFalse(Badge.forPlayer(view, ACCOUNT).isEmpty());
+        assertFalse(badge(view, ACCOUNT).isEmpty());
 
         view.settings(new NametagSettings(true, Set.of(Source.PVPTIERS), SELECTED, false,
                 NametagStyle.DEFAULT, false));
-        assertTrue(Badge.forPlayer(view, ACCOUNT).isEmpty());
+        assertTrue(badge(view, ACCOUNT).isEmpty());
     }
 
     @Test
@@ -191,7 +196,7 @@ class PlayerBadgeTest {
 
         view.settings(settings(true, Set.of(Source.PVPTIERS)).withGamemode(Source.PVPTIERS, "axe"));
         assertEquals("[" + gamemode(Source.PVPTIERS, "axe").icon().orElseThrow() + "HT4] ",
-                Badge.forPlayer(view, ACCOUNT).plainText());
+                badge(view, ACCOUNT).plainText());
     }
 
     @Test
@@ -201,12 +206,12 @@ class PlayerBadgeTest {
                 .answering(Source.PVPTIERS,
                         Map.of("crystal", new Tier(4, true, false), "axe", new Tier(1, true, false)))
                 .answering(Source.SUBTIERS, Map.of("bow", new Tier(3, false, false)));
-        String bestTiers = Badge.forPlayer(view, ACCOUNT).plainText();
+        String bestTiers = badge(view, ACCOUNT).plainText();
         assertTrue(bestTiers.contains(gamemode(Source.PVPTIERS, "axe").icon().orElseThrow() + "HT1"),
                 bestTiers);
 
         view.settings(new NametagSettings(true, sites, SELECTED, true, NametagStyle.DEFAULT, true));
-        String selections = Badge.forPlayer(view, ACCOUNT).plainText();
+        String selections = badge(view, ACCOUNT).plainText();
         assertTrue(selections.contains(gamemode(Source.PVPTIERS, "crystal").icon().orElseThrow() + "HT4"),
                 selections);
         assertTrue(selections.contains(gamemode(Source.SUBTIERS, "bow").icon().orElseThrow() + "LT3"),

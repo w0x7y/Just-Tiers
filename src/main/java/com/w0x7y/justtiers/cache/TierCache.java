@@ -65,11 +65,8 @@ public final class TierCache {
      */
     public Observation observe(Source source, UUID uuid) { return sites.get(source).observe(uuid); }
 
-    public void forgetFailed(Source source, UUID uuid) { sites.get(source).forgetFailed(uuid); }
-
     /** Manual refresh keeps successful placements but forces the next access to recheck. */
     public void refreshAll() { sites.values().forEach(site -> site.reset(true)); }
-    public void invalidateAll() { sites.values().forEach(site -> site.reset(false)); }
     public void invalidate(Source source) { sites.get(source).reset(false); }
 
     /** Run periodically on the client tick, independent of whether departed players reappear. */

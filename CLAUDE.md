@@ -69,7 +69,7 @@ components, commands and events.
   retired tiers independently of nametag settings. Pending and unavailable are distinct
   from a valid unranked answer.
 - `lookup/LookupSession` owns online identity preference, remote resolution, concurrent
-  site requests, partial answers and failed-entry eviction for explicit retry.
+  site requests and partial answers. An explicit lookup retries a failed entry itself.
   Read `LookupSession.result` for one coherent `LookupResult`, including the section,
   request settlement and freshness. Captured source revisions prevent later identical
   placements from replacing an earlier answer's age; transient refresh progress follows

@@ -48,22 +48,10 @@ public record Badge(List<Segment> segments, BadgePosition position) {
     }
 
     /**
-     * The badge one player should be wearing right now: the whole decision, from the
-     * settings in force and whatever the sites have said, with nothing left for the
-     * caller to get right. Empty when the mod is off, when the player cannot be on a
-     * leaderboard, or when no site has answered yet.
-     *
-     * <p>Only {@link NametagSettings#automaticLookupSites()} are asked, so disabled sites
-     * neither start nametag lookups nor reach the badge even when their answers are cached.
-     */
-    public static Badge forPlayer(TierView view, UUID uuid) {
-        NametagSettings settings = view.settings();
-        return forPlayer(settings, answers(view, settings, uuid));
-    }
-
-    /**
      * What the automatic lookup sites have said about this player so far, peeking each so
      * a miss admits its lookup. Empty when these settings or this player rule out a badge.
+     * Disabled sites are never asked, so they neither start nametag lookups nor reach the
+     * badge even when their answers are cached.
      */
     static Map<Source, Map<String, Tier>> answers(TierView view, NametagSettings settings, UUID uuid) {
         Set<Source> sites = settings.automaticLookupSites();
