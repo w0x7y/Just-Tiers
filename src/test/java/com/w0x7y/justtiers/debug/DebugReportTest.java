@@ -39,7 +39,7 @@ class DebugReportTest {
     }
 
     private static SiteDiagnostics site(SiteHealth.Snapshot health, SiteGate.Status gate) {
-        return new SiteDiagnostics(Source.PVPTIERS, health, gate, 42, 1, 0, 1, 0, Duration.ZERO);
+        return new SiteDiagnostics(Source.PVPTIERS, health, gate, 42, 0, 1, 0, Duration.ZERO);
     }
 
     /** The one site line the report produced, for a report built with exactly one site. */
@@ -144,7 +144,7 @@ class DebugReportTest {
     @Test
     void everySiteIsReportedInDeclarationOrder() {
         List<SiteDiagnostics> sites = Source.ALL.stream()
-                .map(source -> new SiteDiagnostics(source, idle(), OPEN, 0, 0, 0, 0, 0, Duration.ZERO))
+                .map(source -> new SiteDiagnostics(source, idle(), OPEN, 0, 0, 0, 0, Duration.ZERO))
                 .toList();
         List<String> lines = DebugReport.lines(snapshotOf(sites.toArray(SiteDiagnostics[]::new)));
 

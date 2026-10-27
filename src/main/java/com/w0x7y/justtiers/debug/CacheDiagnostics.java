@@ -16,8 +16,8 @@ import java.util.List;
  * need to know it is ever reported on. See
  * {@code docs/adr/0001-tiercache-keeps-its-own-observability.md}.
  *
- * <p>Small, and still worth a module of its own, because {@link SiteDiagnostics} ends in
- * three adjacent {@code int} parameters. Nothing in the type system stops two of them
+ * <p>Small, and still worth a module of its own, because {@link SiteDiagnostics} has
+ * four adjacent {@code int} parameters. Nothing in the type system stops two of them
  * being swapped, so the mapping is asserted rather than assumed.
  */
 public final class CacheDiagnostics {
@@ -36,7 +36,6 @@ public final class CacheDiagnostics {
                 cache.health(source),
                 cache.gateStatus(source),
                 cache.cachedPlayers(source),
-                cache.pendingLookups(source),
                 cache.playersAwaitingRetry(source),
                 cache.activeRequests(source),
                 cache.queuedRequests(source),

@@ -8,8 +8,8 @@ import com.w0x7y.justtiers.tier.Source;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.LongSupplier;
@@ -134,11 +134,10 @@ public final class NovaTiersSource implements TierSource {
         return JustTiers.withDeadline(client.sendAsync(request,
                         new ProgressBodyHandler(bytes -> progress.advanced(token, bytes))), Duration.ofMinutes(2))
                 .thenApply(response -> {
-                    if (response.statusCode() == 429 || response.statusCode() == 503) {
-                        Duration delay = RetryAfter.parse(response.headers().firstValue("Retry-After").orElse(null),
-                                Instant.now());
-                        recordCooldown(delay);
-                        throw new RetryAfterException("NovaTiers returned HTTP " + response.statusCode(), delay);
+                    Optional<Duration> cooldown = RetryAfter.cooldown(response);
+                    if (cooldown.isPresent()) {
+                        recordCooldown(cooldown.get());
+                        throw new RetryAfterException("NovaTiers returned HTTP " + response.statusCode(), cooldown.get());
                     }
                     if (response.statusCode() != 200) {
                         throw new TierLookupException(

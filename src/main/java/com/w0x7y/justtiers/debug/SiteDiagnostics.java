@@ -9,14 +9,12 @@ import com.w0x7y.justtiers.tier.Source;
  * retry rules are currently holding for it.
  *
  * @param cachedPlayers       players this site has an answer for, in-flight ones included.
- * @param pendingLookups      of those, the ones still waiting on the network.
  * @param playersAwaitingRetry players held back by their own retry delay after a failure or deferral.
  */
 public record SiteDiagnostics(Source source,
                               SiteHealth.Snapshot health,
                               SiteGate.Status gate,
                               int cachedPlayers,
-                              int pendingLookups,
                               int playersAwaitingRetry,
                               int activeRequests,
                               int queuedRequests,

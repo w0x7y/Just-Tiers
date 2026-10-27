@@ -9,6 +9,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -45,10 +46,9 @@ public final class ProfileTierSource implements TierSource {
                         return Map.<String, Tier>of();
                     }
                     if (status != 200) {
-                        if (status == 429 || (status == 503 && response.headers().firstValue("Retry-After").isPresent())) {
-                            throw new RetryAfterException(source + " returned HTTP " + status,
-                                    RetryAfter.parse(response.headers().firstValue("Retry-After").orElse(null),
-                                            java.time.Instant.now()));
+                        Optional<Duration> cooldown = RetryAfter.cooldown(response);
+                        if (cooldown.isPresent()) {
+                            throw new RetryAfterException(source + " returned HTTP " + status, cooldown.get());
                         }
                         // Not "unranked" — the site failed to answer. Fail so the cache retries.
                         throw new TierLookupException(

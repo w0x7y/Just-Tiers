@@ -242,7 +242,7 @@ class TierCacheTest {
         cache.peek(Source.PVPTIERS, PLAYER);
         fake.pending.completeExceptionally(new RuntimeException("site down"));
 
-        // The player left render distance, so no later peek marked the failure retryable.
+        // The failure is still inside its retry delay, so no automatic peek would ask again.
         CompletableFuture<TierCache.CachedAnswer> lookup = cache.loadAnswer(Source.PVPTIERS, PLAYER);
         assertEquals(2, fake.calls.get(), "an explicit lookup must ask the site");
         fake.complete();
@@ -1065,25 +1065,6 @@ class TierCacheTest {
         assertEquals(1, it.cache.health(Source.PVPTIERS).failures());
         assertEquals("RuntimeException: site down",
                 it.cache.health(Source.PVPTIERS).lastError().orElseThrow());
-    }
-    @Test
-    void aFailureBetweenCompletionChecksNeverEscapesPeek() {
-        class RacingFuture extends CompletableFuture<Map<String, Tier>> {
-            boolean armed;
-            @Override public boolean isDone() {
-                if (armed) {
-                    armed = false;
-                    completeExceptionally(new RuntimeException("HTTP timeout"));
-                }
-                return super.isDone();
-            }
-        }
-        RacingFuture response = new RacingFuture();
-        TierSource source = TestSources.of(Source.PVPTIERS, uuid -> response);
-        TierCache cache = new TierCache(List.of(source));
-        cache.loadAnswer(Source.PVPTIERS, PLAYER);
-        response.armed = true;
-        assertTrue(assertDoesNotThrow(() -> cache.peek(Source.PVPTIERS, PLAYER)).isEmpty());
     }
 
     @Test

@@ -13,7 +13,7 @@ the cache depend on its reporting consumer.
 
 Keep the five accessors on TierCache. They expose cache state without choosing the format
 of a diagnostic report. Keep assembly in debug/CacheDiagnostics and test it with distinct
-cached, pending and retrying counts so accidentally swapped fields fail a test.
+cached, in-flight, queued and retrying counts so accidentally swapped fields fail a test.
 
 ## Consequences
 
