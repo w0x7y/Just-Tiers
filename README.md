@@ -120,8 +120,9 @@ is on, and for the only enabled site otherwise. It previews pending changes, inc
 badge position, icons, brackets, colors and hiding your own badge.
 
 A gamemode picker opens with a click or keyboard activation. Arrow keys move between tiles;
-Enter or Space selects the focused tile. Hovering or focusing a tile previews it. Back or
-Escape returns without selecting. Selection stays pending until you save the parent screen.
+Enter or Space selects the focused tile. Hovering or focusing a tile previews it. The narrator
+announces which tile is the current selection. Back or Escape returns without selecting.
+Selection stays pending until you save the parent screen.
 
 Save writes settings; Cancel discards pending edits and Undo restores saved values. A failed save
 reports the problem and preserves the previously saved file and active settings. A failed
@@ -138,6 +139,7 @@ to have saved. Refresh is an immediate data action, separate from saving setting
 Alternative palettes offer different hue and brightness contrasts; their suitability depends
 on the player and background. Custom color controls are available in the Custom palette.
 The chosen colors reach nametags, lookup rows, previews, pickers and the NovaTiers progress bar.
+The palette controls stay available while nametag display is off.
 Icon artwork keeps its original colors.
 
 ## Config file

@@ -34,6 +34,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -60,25 +61,26 @@ public final class JustTiersScreens {
             siteToggles.put(source, Option.<Boolean>createBuilder()
                     .name(Component.translatable("justtiers.option.site", source.displayName())
                             .withStyle(style -> style.withColor(config.colorOf(source))))
-                    .description(OptionDescription.of(Component.translatable(
-                            "justtiers.option.site.desc", source.displayName())))
+                    .description(value -> nametagDescription(enabled, OptionDescription.of(
+                            Component.translatable("justtiers.option.site.desc",
+                                    source.displayName()))))
                     .binding(true, () -> config.isSiteEnabled(source),
                             value -> config.setSiteEnabled(source, value))
                     .controller(TickBoxControllerBuilder::create)
                     .build());
         }
 
-        Option<Boolean> showRetired = tickBox("justtiers.option.showRetired",
+        Option<Boolean> showRetired = tickBox("justtiers.option.showRetired", enabled, true,
                 config::isShowRetired, config::setShowRetired);
 
         // Described from the pending sites: with one site its selection is always used,
         // so the box is greyed and says why rather than looking like it does nothing.
         Option<Boolean> preferSelected = Option.<Boolean>createBuilder()
                 .name(Component.translatable("justtiers.option.preferSelected"))
-                .description(value -> description(
+                .description(value -> nametagDescription(enabled, description(
                         GamemodeSelection.preferenceMatters(pendingSites(siteToggles))
                         ? "justtiers.option.preferSelected.desc"
-                        : "justtiers.option.preferSelected.singleSite"))
+                        : "justtiers.option.preferSelected.singleSite")))
                 .binding(false, config::isPreferSelectedGamemodes,
                         config::setPreferSelectedGamemodes)
                 .controller(TickBoxControllerBuilder::create)
@@ -86,7 +88,8 @@ public final class JustTiersScreens {
 
         Option<BadgePosition> badgePosition = Option.<BadgePosition>createBuilder()
                 .name(Component.translatable("justtiers.option.badgePosition"))
-                .description(description("justtiers.option.badgePosition.desc"))
+                .description(value -> nametagDescription(enabled,
+                        description("justtiers.option.badgePosition.desc")))
                 .binding(BadgePosition.BEFORE, config::getBadgePosition, config::setBadgePosition)
                 .controller(opt -> EnumControllerBuilder.create(opt)
                         .enumClass(BadgePosition.class)
@@ -94,13 +97,13 @@ public final class JustTiersScreens {
                                 Component.translatable("justtiers.badge." + position.id())))
                 .build();
 
-        Option<Boolean> showIcons = tickBox("justtiers.option.showIcons",
+        Option<Boolean> showIcons = tickBox("justtiers.option.showIcons", enabled, true,
                 config::isShowIcons, config::setShowIcons);
 
-        Option<Boolean> showBrackets = tickBox("justtiers.option.showBrackets",
+        Option<Boolean> showBrackets = tickBox("justtiers.option.showBrackets", enabled, true,
                 config::isShowBrackets, config::setShowBrackets);
 
-        Option<Boolean> hideOwnBadge = tickBox("justtiers.option.hideOwnBadge", false,
+        Option<Boolean> hideOwnBadge = tickBox("justtiers.option.hideOwnBadge", enabled, false,
                 config::isHideOwnBadge, config::setHideOwnBadge);
 
         Option<Palette> palette = Option.<Palette>createBuilder()
@@ -132,9 +135,7 @@ public final class JustTiersScreens {
             colorPickers.put(source, Option.<Color>createBuilder()
                     .name(Component.translatable("justtiers.option.customColor",
                             source.displayName()))
-                    .description(value -> description(!enabled.pendingValue()
-                            ? "justtiers.option.gamemode.disabled"
-                            : palette.pendingValue().isCustom()
+                    .description(value -> description(palette.pendingValue().isCustom()
                             ? "justtiers.option.customColor.desc"
                             : "justtiers.option.customColor.inactive"))
                     .binding(new Color(source.defaultColor()),
@@ -171,7 +172,6 @@ public final class JustTiersScreens {
             showIcons.setAvailable(state.appearance());
             showBrackets.setAvailable(state.appearance());
             hideOwnBadge.setAvailable(state.appearance());
-            palette.setAvailable(state.appearance());
             pickers.forEach((source, option) -> option.setAvailable(state.gamemode(source)));
             colorPickers.values().forEach(option -> option.setAvailable(state.customColors()));
         };
@@ -358,7 +358,7 @@ public final class JustTiersScreens {
         return switch (reason) {
             case AVAILABLE -> OptionDescription.of(Component.translatable(
                     "justtiers.option.gamemode.desc", source.displayName()));
-            case MOD_DISABLED -> description("justtiers.option.gamemode.disabled");
+            case MOD_DISABLED -> description("justtiers.option.nametagsOff");
             case MULTIPLE_SITES -> description("justtiers.option.gamemode.inactive");
             case SITE_DISABLED -> OptionDescription.of(Component.translatable(
                     "justtiers.option.gamemode.siteDisabled", source.displayName()));
@@ -378,18 +378,35 @@ public final class JustTiersScreens {
      */
     private static Option<Boolean> tickBox(String key, Supplier<Boolean> get,
                                            Consumer<Boolean> set) {
-        return tickBox(key, true, get, set);
+        return tickBox(key, true, value -> description(key + ".desc"), get, set);
     }
 
-    /** As {@link #tickBox(String, Supplier, Consumer)}, for a setting that defaults off. */
+    /** As {@link #tickBox(String, Supplier, Consumer)}, for a setting only nametags use. */
+    private static Option<Boolean> tickBox(String key, Option<Boolean> nametags, boolean fallback,
+                                           Supplier<Boolean> get, Consumer<Boolean> set) {
+        return tickBox(key, fallback,
+                value -> nametagDescription(nametags, description(key + ".desc")), get, set);
+    }
+
     private static Option<Boolean> tickBox(String key, boolean fallback,
+                                           Function<Boolean, OptionDescription> description,
                                            Supplier<Boolean> get, Consumer<Boolean> set) {
         return Option.<Boolean>createBuilder()
                 .name(Component.translatable(key))
-                .description(description(key + ".desc"))
+                .description(description)
                 .binding(fallback, get, set)
                 .controller(TickBoxControllerBuilder::create)
                 .build();
+    }
+
+    /**
+     * A nametag-only row's own description, or, while nametags are off and the row is
+     * grayed, the switch that makes it live again. YACL asks for a description again only
+     * when the row's own value or availability changes.
+     */
+    private static OptionDescription nametagDescription(Option<Boolean> nametags,
+                                                        OptionDescription own) {
+        return nametags.pendingValue() ? own : description("justtiers.option.nametagsOff");
     }
 
     private static OptionDescription description(String key) {
