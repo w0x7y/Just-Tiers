@@ -58,9 +58,17 @@ public record Badge(List<Segment> segments, BadgePosition position) {
      */
     public static Badge forPlayer(TierView view, UUID uuid) {
         NametagSettings settings = view.settings();
+        return forPlayer(settings, answers(view, settings, uuid));
+    }
+
+    /**
+     * What the automatic lookup sites have said about this player so far, peeking each so
+     * a miss admits its lookup. Empty when these settings or this player rule out a badge.
+     */
+    static Map<Source, Map<String, Tier>> answers(TierView view, NametagSettings settings, UUID uuid) {
         Set<Source> sites = settings.automaticLookupSites();
         if (sites.isEmpty() || !PlayerRef.isAccount(uuid)) {
-            return NONE;
+            return Map.of();
         }
 
         Map<Source, Map<String, Tier>> answers = new EnumMap<>(Source.class);
@@ -68,7 +76,7 @@ public record Badge(List<Segment> segments, BadgePosition position) {
             if (!sites.contains(source)) continue;
             view.peek(source, uuid).ifPresent(tiers -> answers.put(source, tiers));
         }
-        return forPlayer(settings, answers);
+        return answers;
     }
 
     /**
