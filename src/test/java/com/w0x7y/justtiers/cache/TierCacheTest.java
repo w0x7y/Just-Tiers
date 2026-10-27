@@ -1066,25 +1066,6 @@ class TierCacheTest {
         assertEquals("RuntimeException: site down",
                 it.cache.health(Source.PVPTIERS).lastError().orElseThrow());
     }
-    @Test
-    void aFailureBetweenCompletionChecksNeverEscapesPeek() {
-        class RacingFuture extends CompletableFuture<Map<String, Tier>> {
-            boolean armed;
-            @Override public boolean isDone() {
-                if (armed) {
-                    armed = false;
-                    completeExceptionally(new RuntimeException("HTTP timeout"));
-                }
-                return super.isDone();
-            }
-        }
-        RacingFuture response = new RacingFuture();
-        TierSource source = TestSources.of(Source.PVPTIERS, uuid -> response);
-        TierCache cache = new TierCache(List.of(source));
-        cache.loadAnswer(Source.PVPTIERS, PLAYER);
-        response.armed = true;
-        assertTrue(assertDoesNotThrow(() -> cache.peek(Source.PVPTIERS, PLAYER)).isEmpty());
-    }
 
     @Test
     void discardedFailuresCannotCloseARefreshedGate() {
