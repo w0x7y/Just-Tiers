@@ -18,8 +18,8 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * That every number lands in the field it belongs to.
  *
- * <p>Worth its own test because {@link SiteDiagnostics} ends in three adjacent
- * {@code int} components — cached, in flight, retrying. Swap two of them and the compiler
+ * <p>Worth its own test because {@link SiteDiagnostics} has four adjacent
+ * {@code int} components: cached, retrying, in flight and queued. Swap two of them and the compiler
  * is happy, every cache test still passes, and {@code /justtiers debug} quietly reports
  * the wrong thing in exactly the situation someone is running it to understand.
  */
@@ -68,18 +68,19 @@ class CacheDiagnosticsTest {
             assertNotNull(row.health(), row.source().toString());
             assertNotNull(row.gate(), row.source().toString());
             assertEquals(0, row.cachedPlayers());
-            assertEquals(0, row.pendingLookups());
             assertEquals(0, row.playersAwaitingRetry());
+            assertEquals(0, row.activeRequests());
+            assertEquals(0, row.queuedRequests());
         }
     }
 
     /**
-     * The transposition guard. Three players on one site, in three different states, so
-     * cached, in flight and retrying are three <em>different</em> numbers — two equal
+     * The transposition guard. Eight players on one site, in four different states, so
+     * cached, in flight, queued and retrying are four <em>different</em> numbers. Two equal
      * counts would let a swap through unnoticed.
      */
     @Test
-    void cachedInFlightAndRetryingAreToldApart() {
+    void cachedInFlightQueuedAndRetryingAreToldApart() {
         List<FakeSource> sources = sources();
         FakeSource site = sources.getFirst();
         TierCache cache = cache(sources);
@@ -92,13 +93,15 @@ class CacheDiagnosticsTest {
         cache.peek(site.source(), UUID.randomUUID());
         site.pending.completeExceptionally(new RuntimeException("nope"));
 
-        // Two still on the wire.
-        cache.peek(site.source(), UUID.randomUUID());
-        cache.peek(site.source(), UUID.randomUUID());
+        // Four on the wire, filling the site's request slots, and two waiting for one.
+        for (int i = 0; i < 6; i++) {
+            cache.peek(site.source(), UUID.randomUUID());
+        }
 
         SiteDiagnostics row = CacheDiagnostics.of(cache, site.source());
-        assertEquals(4, row.cachedPlayers(), "cachedPlayers");
-        assertEquals(2, row.pendingLookups(), "pendingLookups");
+        assertEquals(8, row.cachedPlayers(), "cachedPlayers");
+        assertEquals(4, row.activeRequests(), "activeRequests");
+        assertEquals(2, row.queuedRequests(), "queuedRequests");
         assertEquals(1, row.playersAwaitingRetry(), "playersAwaitingRetry");
     }
 
@@ -169,8 +172,8 @@ class CacheDiagnosticsTest {
      * value and two of them are never equal for long.
      */
     private static List<Integer> counts(SiteDiagnostics row) {
-        return List.of(row.source().ordinal(), row.cachedPlayers(), row.pendingLookups(),
-                row.playersAwaitingRetry(), row.health().successes(), row.health().failures(),
+        return List.of(row.source().ordinal(), row.cachedPlayers(), row.playersAwaitingRetry(),
+                row.activeRequests(), row.queuedRequests(), row.health().successes(), row.health().failures(),
                 row.gate().consecutiveFailures());
     }
 
@@ -186,7 +189,7 @@ class CacheDiagnosticsTest {
 
         SiteDiagnostics row = CacheDiagnostics.of(cache, site.source());
         assertEquals(0, row.cachedPlayers());
-        assertEquals(0, row.pendingLookups());
+        assertEquals(0, row.activeRequests());
         // Clearing the cache is a request to fetch again, not a claim the history is gone.
         assertFalse(row.health().idle());
     }
