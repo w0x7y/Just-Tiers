@@ -179,10 +179,13 @@ colors move to PvPTiers, with `vanilla` becoming `crystal` and `nethop` becoming
 all four. Explicit `enabledSites` settings take precedence over the old mode.
 
 Enum values are saved in lowercase and read case-insensitively. Missing settings receive
-defaults. Unknown selections and out-of-range intervals are corrected when loading.
-Both intervals accept 5 to 1440 minutes. Custom colors use per-site `#RRGGBB` strings;
-an invalid color falls back for that site. Changing the interval on Save updates the
-running scheduler or cache policy without restarting Minecraft.
+defaults. A setting with an unknown or wrongly typed value, such as `"enabled": 1`, falls
+back to its default and the rest of the file is kept. In `enabledSites`,
+`selectedGamemodes` and `customColors` this happens per site. Out-of-range intervals are
+clamped when loading, so both accept 5 to 1440 minutes. Custom colors use per-site
+`#RRGGBB` strings. If the file is not valid JSON or does not hold a JSON object, Just-Tiers
+copies it to `justtiers.json.bak` before loading defaults. Changing the interval on Save
+updates the running scheduler or cache policy without restarting Minecraft.
 
 ## Supported gamemodes
 

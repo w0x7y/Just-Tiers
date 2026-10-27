@@ -34,6 +34,11 @@ public class JustTiersConfig {
                     BadgePosition::id))
             .registerTypeAdapter(Palette.class, new IdEnumAdapter<>(
                     "palette", Palette.class, Palette.DEFAULT, Palette::id))
+            .registerTypeAdapter(boolean.class, FallbackAdapters.BOOLEAN)
+            .registerTypeAdapter(Boolean.class, FallbackAdapters.BOOLEAN)
+            .registerTypeAdapter(int.class, FallbackAdapters.INTEGER)
+            // Registered last so that it wraps every adapter above.
+            .registerTypeAdapterFactory(FallbackAdapters.perValue(JustTiersConfig.class))
             .create();
 
     private static final Map<Source, String> DEFAULT_GAMEMODES = Map.of(
@@ -338,7 +343,19 @@ public class JustTiersConfig {
             return config;
         } catch (IOException | RuntimeException e) {
             JustTiers.LOGGER.warn("Could not read config at {}, using defaults", path, e);
+            backUp(path);
             return new JustTiersConfig();
+        }
+    }
+
+    /** Copies an unusable file aside before the next save can replace it with defaults. */
+    private static void backUp(Path path) {
+        Path backup = path.resolveSibling(path.getFileName() + ".bak");
+        try {
+            Files.copy(path, backup, StandardCopyOption.REPLACE_EXISTING);
+            JustTiers.LOGGER.warn("Copied the unusable config to {}", backup);
+        } catch (IOException | RuntimeException e) {
+            JustTiers.LOGGER.warn("Could not back up config {} to {}", path, backup, e);
         }
     }
 
