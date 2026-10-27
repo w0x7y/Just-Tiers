@@ -1,6 +1,7 @@
 package com.w0x7y.justtiers.api;
 
 import com.sun.net.httpserver.HttpServer;
+import com.w0x7y.justtiers.JustTiers;
 import com.w0x7y.justtiers.download.DownloadProgress;
 import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
@@ -14,10 +15,14 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -174,6 +179,18 @@ class TierSourceTest {
         assertThrows(ExecutionException.class, () -> dead.fetchAnswer(PLAYER).get().tiers());
     }
 
+    @Test
+    void aStalledExchangeFailsAtItsDeadlineAndReleasesItsConnection() {
+        // A body that stalls after its headers never settles under HttpRequest.timeout alone.
+        CompletableFuture<String> stalled = new CompletableFuture<>();
+        CompletionException thrown = assertThrows(CompletionException.class,
+                () -> JustTiers.withDeadline(stalled, Duration.ZERO).join());
+        assertInstanceOf(TimeoutException.class, thrown.getCause());
+        assertTrue(stalled.isCancelled(), "cancelling the exchange closes its connection");
+
+        assertEquals("ok", JustTiers.withDeadline(CompletableFuture.completedFuture("ok"), Duration.ofMinutes(1)).join());
+    }
+
     private static final String ONE_USER = """
             [{"minecraftUuid":"4b25be2497f54adf967d8d69ef54d504",
               "tiers":{"Axe":"HT3"},"retiredTiers":{}}]
@@ -299,6 +316,19 @@ class TierSourceTest {
         respond("/users", 200, "<html>maintenance</html>");
         assertThrows(ExecutionException.class, () -> nova.refresh().get());
         assertEquals("HT3", nova.fetchAnswer(PLAYER).get().tiers().get("axe").label());
+        assertEquals(1, nova.indexedPlayerCount());
+    }
+
+    @Test
+    void anEmptyRefreshFailsAndRetainsTheLoadedNovaIndex() throws Exception {
+        respond("/users", 200, ONE_USER);
+        NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
+        assertEquals("HT3", nova.fetchAnswer(PLAYER).get().tiers().get("axe").label());
+        respond("/users", 200, "[]");
+        ExecutionException thrown = assertThrows(ExecutionException.class, () -> nova.refresh().get());
+        assertInstanceOf(TierLookupException.class, thrown.getCause());
+        assertEquals("HT3", nova.fetchAnswer(PLAYER).get().tiers().get("axe").label());
+        assertTrue(nova.fetchAnswer(PLAYER).get().refreshFailed());
         assertEquals(1, nova.indexedPlayerCount());
     }
 

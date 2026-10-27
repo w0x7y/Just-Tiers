@@ -256,7 +256,8 @@ hints use 60 seconds. NovaTiers bulk downloads obey the same cooldown rules. Man
 resets player retry and circuit state but preserves server cooldowns and diagnostic history.
 A failed NovaTiers refresh preserves the last usable index. Reading it does not reset its
 original age: the player cache refuses a bulk snapshot older than the cache interval plus
-six hours. Identifiable players with malformed or conflicting bulk records are unavailable,
+six hours. A refresh that lists no ranked players counts as failed once the index has players.
+Identifiable players with malformed or conflicting bulk records are unavailable,
 not unranked; the parser reports aggregate rejection counts while retaining valid players.
 Older requests cannot replace a newer index or reinstate retry state cleared by a refresh.
 

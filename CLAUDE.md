@@ -113,8 +113,9 @@ Preserve these distinctions when changing API or cache code:
 - Invalidation changes the site's generation. Old requests may update diagnostic history,
   but cannot restore retry delays or gate state cleared by that invalidation.
 - NovaTiers uses a bulk index. Initial loads and refreshes share an in-flight download.
-  `refresh()` reports failure while retaining a previously usable index. Callers must
-  invalidate dependent entries only after a successful refresh.
+  `refresh()` reports failure while retaining a previously usable index. A list with no
+  ranked players fails a refresh once the index has players; an empty first load is valid.
+  Callers must invalidate dependent entries only after a successful refresh.
 - DownloadProgress tokens prevent callbacks from an older download changing a newer
   indicator. Its percentage estimates from the last completed payload size.
 
