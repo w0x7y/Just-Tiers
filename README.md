@@ -6,10 +6,10 @@ Just-Tiers is a client-side Fabric mod that adds competitive PvP tiers to Minecr
 nametags using [PvPTiers](https://pvptiers.com), [PvPHQ](https://pvphq.com),
 [SubTiers](https://subtiers.net) and [NovaTiers](https://novatiers.com). The mod is in beta.
 
-Version 1.2.0 lets every enabled site prefer its selected gamemode, shows gamemodes a
-site adds before the mod knows them, keeps recent lookups for the session and adds a
-tier-query API for other mods. Builds cover every stable Minecraft version from 1.21.10
-through 26.3. See the [release notes](docs/releases/v1.2.0.md).
+Version 1.2.1 keeps your other settings when one config value is invalid, gives every
+network request a deadline, rebuilds nametag badges only when they change and keeps
+keyboard focus through window resizes. Builds cover every stable Minecraft version from
+1.21.10 through 26.3. See the [release notes](docs/releases/v1.2.1.md).
 
 ## What it shows
 
@@ -247,7 +247,9 @@ NovaTiers is indexed in memory and refreshed every 30 minutes by default; its pa
 
 HTTP 404 from PvPTiers, PvPHQ or SubTiers is a valid unranked answer. Unexpected statuses, transport
 errors and malformed successful responses are failures, not unranked results. So is a response
-whose only placements use identifiers the mod refuses. Failed requests
+whose only placements use identifiers the mod refuses. A player or Mojang request that has
+not finished after 20 seconds fails like a transport error, and so does a NovaTiers download
+after two minutes. Failed requests
 back off per player, with jitter; eight consecutive site failures pause new requests and then
 allow a recovery probe. Each site permits four active player requests and 128 waiting
 requests. Explicit lookups
