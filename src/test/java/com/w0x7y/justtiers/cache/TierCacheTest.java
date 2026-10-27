@@ -890,6 +890,78 @@ class TierCacheTest {
     }
 
     @Test
+    void peeksDuringACooldownWaitItOutInsteadOfRepeatingAdmission() {
+        MultiSource source = new MultiSource();
+        AtomicLong time = new AtomicLong();
+        TierCache cache = new TierCache(List.of(source), policy(), time::get, () -> 0.5);
+        UUID limited = UUID.randomUUID();
+        cache.peek(Source.PVPTIERS, limited);
+        source.pending.get(limited).completeExceptionally(new com.w0x7y.justtiers.api.RetryAfterException(
+                "rate limited", Duration.ofMinutes(2)));
+
+        // peek runs per visible player per frame; the first deferral records when to come back.
+        for (int i = 0; i < 50; i++) assertTrue(cache.peek(Source.PVPTIERS, PLAYER).isEmpty());
+        assertEquals(2, cache.playersAwaitingRetry(Source.PVPTIERS), "the deferred player waits like a backoff");
+        Throwable deferral = cache.loadAnswer(Source.PVPTIERS, UUID.randomUUID()).exceptionNow();
+        assertEquals(0, deferral.getStackTrace().length, "a deferral is a signal, not a captured error");
+
+        time.set(Duration.ofMinutes(2).toNanos() - 1);
+        cache.peek(Source.PVPTIERS, PLAYER);
+        assertEquals(List.of(limited), source.started);
+        time.set(Duration.ofMinutes(2).toNanos());
+        cache.peek(Source.PVPTIERS, PLAYER);
+        assertEquals(PLAYER, source.started.getLast(), "the cooldown's end releases the player");
+    }
+
+    @Test
+    void refreshClearsAPausedSitesDeferralsSoTheNextPeekAsks() {
+        Controlled it = new Controlled(Map.of(), policy());
+        for (int i = 0; i < 8; i++) {
+            UUID player = UUID.randomUUID();
+            it.cache.peek(Source.PVPTIERS, player);
+            it.fake.pending.completeExceptionally(new RuntimeException("down"));
+            it.cache.peek(Source.PVPTIERS, player);
+        }
+        for (int i = 0; i < 20; i++) it.cache.peek(Source.PVPTIERS, PLAYER);
+        assertEquals(9, it.cache.playersAwaitingRetry(Source.PVPTIERS));
+
+        it.cache.invalidateAll();
+        it.cache.peek(Source.PVPTIERS, PLAYER);
+        assertEquals(9, it.fake.calls.get(), "a manual refresh must not wait out the pause's deferral");
+    }
+
+    @Test
+    void aDeferralKeepsThePlayersFailureCount() {
+        MultiSource source = new MultiSource();
+        AtomicLong time = new AtomicLong();
+        TierCache cache = new TierCache(List.of(source), policy(), time::get, () -> 0.5);
+        for (int failure = 0; failure < 4; failure++) {
+            cache.peek(Source.PVPTIERS, PLAYER);
+            source.pending.get(PLAYER).completeExceptionally(new RuntimeException("down"));
+            cache.peek(Source.PVPTIERS, PLAYER);
+            time.addAndGet(Duration.ofMinutes(16).toNanos());
+        }
+        // The player queues behind four active requests, then a rate limit pauses the site.
+        UUID[] active = java.util.stream.IntStream.range(0, 4).mapToObj(i -> UUID.randomUUID()).toArray(UUID[]::new);
+        for (UUID other : active) cache.peek(Source.PVPTIERS, other);
+        cache.peek(Source.PVPTIERS, PLAYER);
+        source.pending.get(active[0]).completeExceptionally(new com.w0x7y.justtiers.api.RetryAfterException(
+                "rate limited", Duration.ofSeconds(1)));
+        assertEquals(4, source.started.stream().filter(PLAYER::equals).count(), "the deferred request never went out");
+
+        time.addAndGet(Duration.ofSeconds(5).toNanos());
+        cache.peek(Source.PVPTIERS, PLAYER);
+        cache.peek(Source.PVPTIERS, PLAYER);
+        source.pending.get(PLAYER).completeExceptionally(new RuntimeException("still down"));
+        cache.peek(Source.PVPTIERS, PLAYER);
+
+        // A fifth failure waits sixteen minutes, not the minute of a first failure.
+        time.addAndGet(Duration.ofMinutes(2).toNanos());
+        cache.peek(Source.PVPTIERS, PLAYER);
+        assertEquals(5, source.started.stream().filter(PLAYER::equals).count());
+    }
+
+    @Test
     void queueOverflowStaysBoundedAndExplicitWorkCanDisplaceBackgroundWork() {
         MultiSource source = new MultiSource();
         TierCache cache = new TierCache(List.of(source));

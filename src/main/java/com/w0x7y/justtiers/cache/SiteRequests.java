@@ -111,13 +111,17 @@ final class SiteRequests {
                 if (existing.future.isCompletedExceptionally() && !existing.retryable) return new Request(existing, false);
                 if (!existing.future.isCompletedExceptionally() && !needsRefresh(existing)) return new Request(existing, true);
             }
-            if (coolingDown()) return deferred("Site requested a cooldown");
+            long now = clock.getAsLong();
+            if (coolingDown()) return deferred(uuid, explicit, cooldownUntil, "Site requested a cooldown");
             SiteGate.Status status = gate.status();
             if (status.closed() && (status.probing() || status.reopensInNanos() > 0)) {
-                return deferred("Site is paused after repeated failures");
+                long wait = status.probing() ? DEFERRED_RETRY_NANOS : status.reopensInNanos();
+                return deferred(uuid, explicit, now + wait, "Site is paused after repeated failures");
             }
-            if (existing == null && !makeRoom()) return deferred("Player cache is busy");
-            entry = new Entry(generation, clock.getAsLong(), existing == null ? null : existing.answer);
+            if (existing == null && !makeRoom()) {
+                return deferred(uuid, explicit, now + DEFERRED_RETRY_NANOS, "Player cache is busy");
+            }
+            entry = new Entry(generation, now, existing == null ? null : existing.answer);
             entry.forceRefresh = existing != null && existing.forceRefresh;
             entry.refreshFailed = existing != null && existing.refreshFailed;
             entries.put(uuid, entry);
@@ -129,7 +133,7 @@ final class SiteRequests {
                 Throwable error = unwrap(failure);
                 synchronized (this) {
                     if (error instanceof RequestQueue.Deferred && current(uuid, entry)) {
-                        rememberAttempt(uuid, new Attempt(0, clock.getAsLong() + DEFERRED_RETRY_NANOS));
+                        deferAttempt(uuid, clock.getAsLong() + DEFERRED_RETRY_NANOS);
                     }
                 }
                 entry.future.completeExceptionally(error);
@@ -139,7 +143,9 @@ final class SiteRequests {
         return new Request(entry, false);
     }
 
-    private Request deferred(String message) {
+    /** Automatic peeks wait out the deferral instead of repeating admission every frame. */
+    private Request deferred(UUID uuid, boolean explicit, long retryAtNanos, String message) {
+        if (!explicit) deferAttempt(uuid, retryAtNanos);
         Entry entry = new Entry(generation, clock.getAsLong(), null);
         entry.future.completeExceptionally(new RequestQueue.Deferred(message));
         return new Request(entry, false);
@@ -307,6 +313,13 @@ final class SiteRequests {
             attempts.remove(item.getKey());
         });
         return entries.size() < MAX_PLAYERS;
+    }
+
+    /** A deferral is not a failure: it keeps the failure count and never shortens a running backoff. */
+    private void deferAttempt(UUID uuid, long retryAtNanos) {
+        Attempt previous = attempts.get(uuid);
+        if (previous != null && previous.retryAtNanos() - retryAtNanos >= 0) return;
+        rememberAttempt(uuid, new Attempt(previous == null ? 0 : previous.failures(), retryAtNanos));
     }
 
     private void rememberAttempt(UUID uuid, Attempt attempt) {
