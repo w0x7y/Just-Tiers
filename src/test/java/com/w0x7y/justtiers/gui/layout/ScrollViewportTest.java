@@ -114,7 +114,6 @@ class ScrollViewportTest {
         ScrollViewport viewport = layout.scrolling();
         assertEquals(layout.panelHeight(), viewport.contentHeight());
         assertEquals(layout.viewportHeight(), viewport.viewportHeight());
-        assertEquals(viewport.maxScroll(), layout.maxScroll());
         assertEquals(viewport.reveal(0, layout.footerY() - layout.panelY(), 9),
                 layout.scrollTo(layout.footerY(), 9, 0));
     }

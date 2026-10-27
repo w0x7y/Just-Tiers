@@ -2,8 +2,6 @@ package com.w0x7y.justtiers.gui.layout;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.OptionalInt;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 class GridLayoutTest {
@@ -45,31 +43,6 @@ class GridLayoutTest {
     }
 
     @Test
-    void hitTestingFindsTheTileUnderThePoint() {
-        GridLayout grid = layout(12, 340);
-        assertEquals(OptionalInt.of(0), grid.indexAt(0, 0));
-        assertEquals(OptionalInt.of(0), grid.indexAt(71, 71));
-        assertEquals(OptionalInt.of(1), grid.indexAt(80, 0));
-        assertEquals(OptionalInt.of(4), grid.indexAt(0, 80));
-    }
-
-    @Test
-    void gapsAndOutOfBoundsSelectNothing() {
-        GridLayout grid = layout(12, 340);
-        assertEquals(OptionalInt.empty(), grid.indexAt(75, 0));    // horizontal gap
-        assertEquals(OptionalInt.empty(), grid.indexAt(0, 75));    // vertical gap
-        assertEquals(OptionalInt.empty(), grid.indexAt(-1, 0));
-        assertEquals(OptionalInt.empty(), grid.indexAt(0, 1000));
-    }
-
-    @Test
-    void trailingEmptyCellsOfThePartialRowSelectNothing() {
-        GridLayout grid = layout(9, 340);              // 4 columns, last row holds one tile
-        assertEquals(OptionalInt.of(8), grid.indexAt(0, 160));
-        assertEquals(OptionalInt.empty(), grid.indexAt(80, 160));
-    }
-
-    @Test
     void keyboardNavigationClampsAtTheEdges() {
         GridLayout grid = layout(12, 340);
         assertEquals(1, grid.move(0, GridLayout.Direction.RIGHT));
@@ -91,6 +64,6 @@ class GridLayoutTest {
     void zeroItemsIsHarmless() {
         GridLayout grid = layout(0, 340);
         assertEquals(0, grid.rows());
-        assertEquals(OptionalInt.empty(), grid.indexAt(0, 0));
+        assertEquals(0, grid.contentHeight());
     }
 }

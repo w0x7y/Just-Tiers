@@ -2,7 +2,6 @@ package com.w0x7y.justtiers.gui.layout;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.OptionalInt;
 
 /**
  * Every coordinate the lookup panel draws at, worked out in one go from
@@ -92,11 +91,6 @@ public record LookupLayout(int panelX, int panelY, int panelWidth, int panelHeig
 
         public int cellY(int index) {
             return cellsTop() + grid.yOf(index);
-        }
-
-        /** The cell under this point, or empty for a gap, an edge miss or an empty box. */
-        public OptionalInt cellAt(double mouseX, double mouseY) {
-            return grid.indexAt((int) mouseX - cellsLeft(), (int) mouseY - cellsTop());
         }
 
         /** Where the site's name ends: its text is right-aligned to here. */
@@ -248,11 +242,6 @@ public record LookupLayout(int panelX, int panelY, int panelWidth, int panelHeig
         return HistoryStrip.of(x, historyY, right - x, HISTORY_HEIGHT, labelWidth, nameWidths);
     }
 
-    /** How tall the skin is drawn, at the scale that was chosen. */
-    public int skinHeight() {
-        return SkinLayout.HEIGHT * skinScale;
-    }
-
     public int panelRight() {
         return panelX + panelWidth;
     }
@@ -268,10 +257,6 @@ public record LookupLayout(int panelX, int panelY, int panelWidth, int panelHeig
     /** The panel scrolls inside the space between its top and the Done button. */
     public ScrollViewport scrolling() {
         return new ScrollViewport(panelHeight, viewportHeight);
-    }
-
-    public int maxScroll() {
-        return scrolling().maxScroll();
     }
 
     /** Scroll a focused control completely into view, in content coordinates. */

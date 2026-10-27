@@ -184,6 +184,8 @@ on PATH or through JAVA_HOME.
 - Navigate cells and leaderboard links using Tab and Shift+Tab. Focused content should scroll
   into view, show its tooltip and have useful narration. Enter opens the intended link using
   Minecraft's confirmation prompt. Escape and Done close the lookup.
+- Focus a lookup cell or a gamemode grid tile, then toggle fullscreen or change GUI scale.
+  Focus must stay on that cell or tile.
 - Look up several players, including one name that does not resolve. Recent-name buttons
   must appear under the search field, most recent first, without the unresolved name.
   Repeat a lookup with different casing: it moves to the front under that casing, with no

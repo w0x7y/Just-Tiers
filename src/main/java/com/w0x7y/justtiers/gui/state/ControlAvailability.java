@@ -10,21 +10,22 @@ import java.util.Set;
 
 /**
  * Decides which controls the config screen leaves live. Nothing is ever hidden; a
- * control that cannot do anything useful is greyed and carries a {@link Reason} the
+ * control that cannot do anything useful is grayed and carries a {@link Reason} the
  * UI turns into an explanation, so the screen always shows the whole configuration
- * surface rather than a shape that changes under the user.
+ * surface rather than a shape that changes under the user. A row is live exactly when
+ * its reason is {@link Reason#AVAILABLE}.
  */
-public record ControlAvailability(boolean sites,
-                                  boolean showRetired,
-                                  boolean preferSelected,
-                                  boolean appearance,
-                                  boolean customColors,
+public record ControlAvailability(Reason sites,
+                                  Reason showRetired,
+                                  Reason preferSelected,
+                                  Reason appearance,
+                                  Reason customColors,
                                   Map<Source, Reason> reasons) {
 
     /**
-     * Why a site's gamemode picker is live or greyed, one explanation each. Apart from the
-     * master switch these are {@link GamemodeSelection.Use}, so the picker says exactly
-     * what the nametag will do.
+     * Why a row is live or grayed, one explanation each. A gamemode picker's reasons
+     * apart from the master switch are {@link GamemodeSelection.Use}, so the picker says
+     * exactly what the nametag will do.
      */
     public enum Reason {
         AVAILABLE,
@@ -34,7 +35,11 @@ public record ControlAvailability(boolean sites,
         /** Enabling the site would put its selection to use. */
         SITE_DISABLED,
         /** The selection is used only while this is the only enabled site. */
-        ONLY_SITE_NEEDED
+        ONLY_SITE_NEEDED,
+        /** Preferring selections changes nothing until more than one site is enabled. */
+        SINGLE_SITE,
+        /** The color pickers feed only the Custom palette. */
+        PALETTE_NOT_CUSTOM
     }
 
     public ControlAvailability {
@@ -52,12 +57,15 @@ public record ControlAvailability(boolean sites,
             reasons.put(source, reasonFor(enabled, sites, preferSelected, source));
         }
         // The badge's shape - its side, its icons, its brackets - means the same thing in
-        // every site selection, so the master switch is the only thing that can grey it.
+        // every site selection, so the master switch is the only thing that can gray it.
+        Reason nametags = enabled ? Reason.AVAILABLE : Reason.MOD_DISABLED;
+        Reason preference = !enabled ? Reason.MOD_DISABLED
+                : GamemodeSelection.preferenceMatters(sites) ? Reason.AVAILABLE : Reason.SINGLE_SITE;
         // The palette also colors the lookup screen and download progress, so it stays live
         // with nametags off, and the color pickers need only the palette they feed.
-        return new ControlAvailability(enabled, enabled,
-                enabled && GamemodeSelection.preferenceMatters(sites), enabled,
-                palette != null && palette.isCustom(), reasons);
+        Reason colors = palette != null && palette.isCustom()
+                ? Reason.AVAILABLE : Reason.PALETTE_NOT_CUSTOM;
+        return new ControlAvailability(nametags, nametags, preference, nametags, colors, reasons);
     }
 
     private static Reason reasonFor(boolean enabled, Set<Source> sites, boolean preferSelected,
@@ -73,10 +81,7 @@ public record ControlAvailability(boolean sites,
         };
     }
 
-    public boolean gamemode(Source source) {
-        return reasonFor(source) == Reason.AVAILABLE;
-    }
-
+    /** Why a site's gamemode picker is live or grayed. */
     public Reason reasonFor(Source source) {
         return reasons.getOrDefault(source, Reason.SITE_DISABLED);
     }
