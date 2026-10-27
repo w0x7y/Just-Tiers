@@ -108,7 +108,10 @@ final class SiteRequests {
                     if (explicit) queue.promote(existing);
                     return new Request(existing, false);
                 }
-                if (existing.future.isCompletedExceptionally() && !existing.retryable) return new Request(existing, false);
+                // An explicit lookup retries a failure that no automatic peek has retried yet.
+                if (!explicit && existing.future.isCompletedExceptionally() && !existing.retryable) {
+                    return new Request(existing, false);
+                }
                 if (!existing.future.isCompletedExceptionally() && !needsRefresh(existing)) return new Request(existing, true);
             }
             long now = clock.getAsLong();

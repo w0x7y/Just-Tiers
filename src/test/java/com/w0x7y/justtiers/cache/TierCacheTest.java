@@ -235,17 +235,18 @@ class TierCacheTest {
     // --- forgetFailed ---
 
     @Test
-    void loadOnItsOwnWouldKeepAFailureForever() {
-        // The behaviour forgetFailed exists to correct: nothing peeks at a player who is
-        // not in the world, so a failed load would be replayed by every later lookup.
-        FakeSource fake = new FakeSource(Source.PVPTIERS, Map.of());
-        TierCache cache = new TierCache(List.of(fake));
+    void anExplicitLoadAsksAgainInsteadOfReplayingANametagFailure() {
+        FakeSource fake = new FakeSource(Source.PVPTIERS, Map.of("axe", new Tier(1, true, false)));
+        TierCache cache = new TierCache(List.of(fake), CachePolicy.DEFAULT.withBaseRetry(Duration.ofMinutes(10)));
 
-        cache.loadAnswer(Source.PVPTIERS, PLAYER);
+        cache.peek(Source.PVPTIERS, PLAYER);
         fake.pending.completeExceptionally(new RuntimeException("site down"));
 
-        assertTrue(cache.loadAnswer(Source.PVPTIERS, PLAYER).isCompletedExceptionally());
-        assertEquals(1, fake.calls.get());
+        // The player left render distance, so no later peek marked the failure retryable.
+        CompletableFuture<TierCache.CachedAnswer> lookup = cache.loadAnswer(Source.PVPTIERS, PLAYER);
+        assertEquals(2, fake.calls.get(), "an explicit lookup must ask the site");
+        fake.complete();
+        assertEquals("HT1", lookup.join().tiers().get("axe").label());
     }
 
     @Test
