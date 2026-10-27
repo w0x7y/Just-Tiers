@@ -209,7 +209,6 @@ public final class PlayerLookupScreen extends Screen {
             graphics.text(font, Component.translatable("justtiers.lookup.recent"),
                     historyStrip.labelX(), historyStrip.textTop(font.lineHeight), Colors.SECONDARY);
         }
-        updateContentControls();
         graphics.enableScissor(layout.panelX(), layout.panelY(), layout.panelRight(), layout.viewportBottom());
         graphics.pose().pushMatrix();
         graphics.pose().translate(0, -scroll);
