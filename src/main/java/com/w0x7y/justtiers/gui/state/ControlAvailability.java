@@ -53,10 +53,11 @@ public record ControlAvailability(boolean sites,
         }
         // The badge's shape - its side, its icons, its brackets - means the same thing in
         // every site selection, so the master switch is the only thing that can grey it.
-        // The color pickers additionally need the palette to be the one they feed.
+        // The palette also colors the lookup screen and download progress, so it stays live
+        // with nametags off, and the color pickers need only the palette they feed.
         return new ControlAvailability(enabled, enabled,
                 enabled && GamemodeSelection.preferenceMatters(sites), enabled,
-                enabled && palette != null && palette.isCustom(), reasons);
+                palette != null && palette.isCustom(), reasons);
     }
 
     private static Reason reasonFor(boolean enabled, Set<Source> sites, boolean preferSelected,

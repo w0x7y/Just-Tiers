@@ -34,7 +34,7 @@ class ControlAvailabilityTest {
     }
 
     @Test
-    void disablingTheModGreysEverythingButTheMasterSwitch() {
+    void disablingNametagsGraysEveryNametagControl() {
         var state = ControlAvailability.of(false, Set.of(Source.PVPTIERS), false, Palette.DEFAULT);
         assertFalse(state.sites());
         assertFalse(state.showRetired());
@@ -86,8 +86,11 @@ class ControlAvailabilityTest {
     }
 
     @Test
-    void theColorPickersAreDeadWhileTheModIsOff() {
-        assertFalse(ControlAvailability.of(false, Set.copyOf(Source.ALL), false, Palette.CUSTOM).customColors());
+    void theColorPickersFollowOnlyThePaletteWhileNametagsAreOff() {
+        // The palette still colors the lookup screen and download progress.
+        assertTrue(ControlAvailability.of(false, Set.copyOf(Source.ALL), false, Palette.CUSTOM).customColors());
+        assertFalse(ControlAvailability.of(false, Set.copyOf(Source.ALL), false, Palette.DEFAULT).customColors());
+        assertFalse(ControlAvailability.of(false, Set.of(), false, Palette.HIGH_CONTRAST).customColors());
     }
 
     @Test
