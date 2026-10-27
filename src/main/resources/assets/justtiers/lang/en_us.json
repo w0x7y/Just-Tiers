@@ -46,6 +46,7 @@
   "justtiers.grid.title": "%s gamemode",
   "justtiers.grid.back": "Back",
   "justtiers.grid.hint": "Arrows + Enter or click to choose. Esc: back.",
+  "justtiers.grid.selected": "%s, selected",
   "justtiers.download.title": "Downloading NovaTiers",
   "justtiers.download.failed": "NovaTiers unavailable",
   "justtiers.command.on": "on",

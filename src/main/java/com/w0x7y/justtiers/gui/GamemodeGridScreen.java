@@ -21,6 +21,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -295,6 +296,14 @@ public final class GamemodeGridScreen extends Screen {
         @Override
         protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
             extractTile(graphics, index);
+        }
+
+        /** The outline marks the current selection visually; this says it aloud. */
+        @Override
+        protected MutableComponent createNarrationMessage() {
+            MutableComponent message = super.createNarrationMessage();
+            return gamemodes.get(index).slug().equals(selectedSlug)
+                    ? Component.translatable("justtiers.grid.selected", message) : message;
         }
 
         @Override
