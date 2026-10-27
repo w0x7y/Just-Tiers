@@ -78,7 +78,8 @@ public final class MojangNameSource {
         HttpRequest request = JustTiers.jsonRequest(
                 baseUrl + "/users/profiles/minecraft/" + name, Duration.ofSeconds(10));
 
-        return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+        return JustTiers.withDeadline(client.sendAsync(request, HttpResponse.BodyHandlers.ofString()),
+                        Duration.ofSeconds(20))
                 .thenApply(response -> {
                     int status = response.statusCode();
                     // Mojang answers 404 - historically 204 - for a name nobody owns.

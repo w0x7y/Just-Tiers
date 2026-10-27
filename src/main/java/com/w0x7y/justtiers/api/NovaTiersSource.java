@@ -130,8 +130,9 @@ public final class NovaTiersSource implements TierSource {
                 JustTiers.jsonRequest(baseUrl + "/users", Duration.ofSeconds(30));
 
         long token = progress.started();
-        return client.sendAsync(request,
-                        new ProgressBodyHandler(bytes -> progress.advanced(token, bytes)))
+        // The whole list can take far longer than its headers on a slow connection.
+        return JustTiers.withDeadline(client.sendAsync(request,
+                        new ProgressBodyHandler(bytes -> progress.advanced(token, bytes))), Duration.ofMinutes(2))
                 .thenApply(response -> {
                     if (response.statusCode() == 429 || response.statusCode() == 503) {
                         Duration delay = RetryAfter.parse(response.headers().firstValue("Retry-After").orElse(null),

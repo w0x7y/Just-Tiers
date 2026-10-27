@@ -36,7 +36,8 @@ public final class ProfileTierSource implements TierSource {
         HttpRequest request = JustTiers.jsonRequest(
                 baseUrl + profilePath(uuid), Duration.ofSeconds(10));
 
-        return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+        return JustTiers.withDeadline(client.sendAsync(request, HttpResponse.BodyHandlers.ofString()),
+                        Duration.ofSeconds(20))
                 .thenApply(response -> {
                     int status = response.statusCode();
                     if (status == 404) {

@@ -10,7 +10,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.time.Duration;
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public final class JustTiers {
     public static final String MOD_ID = "justtiers";
@@ -59,6 +61,18 @@ public final class JustTiers {
                 .timeout(timeout)
                 .GET()
                 .build();
+    }
+
+    /**
+     * Bounds a whole exchange, body included: {@link HttpRequest#timeout} stops applying once
+     * headers arrive. A missed deadline fails like a transport error and cancels the exchange,
+     * which closes its connection.
+     */
+    public static <T> CompletableFuture<T> withDeadline(CompletableFuture<T> exchange, Duration deadline) {
+        return exchange.copy().orTimeout(deadline.toNanos(), TimeUnit.NANOSECONDS)
+                .whenComplete((value, error) -> {
+                    if (error != null) exchange.cancel(true);
+                });
     }
 
     /** Trims one trailing slash, so callers can append "/path" without doubling it. */

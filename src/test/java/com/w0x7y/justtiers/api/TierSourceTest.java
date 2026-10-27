@@ -1,6 +1,7 @@
 package com.w0x7y.justtiers.api;
 
 import com.sun.net.httpserver.HttpServer;
+import com.w0x7y.justtiers.JustTiers;
 import com.w0x7y.justtiers.download.DownloadProgress;
 import com.w0x7y.justtiers.tier.Source;
 import com.w0x7y.justtiers.tier.Tier;
@@ -14,10 +15,14 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -172,6 +177,18 @@ class TierSourceTest {
         ProfileTierSource dead = new ProfileTierSource(
                 Source.SUBTIERS, client, "http://127.0.0.1:1");
         assertThrows(ExecutionException.class, () -> dead.fetchAnswer(PLAYER).get().tiers());
+    }
+
+    @Test
+    void aStalledExchangeFailsAtItsDeadlineAndReleasesItsConnection() {
+        // A body that stalls after its headers never settles under HttpRequest.timeout alone.
+        CompletableFuture<String> stalled = new CompletableFuture<>();
+        CompletionException thrown = assertThrows(CompletionException.class,
+                () -> JustTiers.withDeadline(stalled, Duration.ZERO).join());
+        assertInstanceOf(TimeoutException.class, thrown.getCause());
+        assertTrue(stalled.isCancelled(), "cancelling the exchange closes its connection");
+
+        assertEquals("ok", JustTiers.withDeadline(CompletableFuture.completedFuture("ok"), Duration.ofMinutes(1)).join());
     }
 
     private static final String ONE_USER = """
