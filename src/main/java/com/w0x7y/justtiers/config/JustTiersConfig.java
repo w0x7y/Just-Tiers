@@ -34,6 +34,11 @@ public class JustTiersConfig {
                     BadgePosition::id))
             .registerTypeAdapter(Palette.class, new IdEnumAdapter<>(
                     "palette", Palette.class, Palette.DEFAULT, Palette::id))
+            .registerTypeAdapter(boolean.class, FallbackAdapters.BOOLEAN)
+            .registerTypeAdapter(Boolean.class, FallbackAdapters.BOOLEAN)
+            .registerTypeAdapter(int.class, FallbackAdapters.INTEGER)
+            // Registered last so that it wraps every adapter above.
+            .registerTypeAdapterFactory(FallbackAdapters.perValue(JustTiersConfig.class))
             .create();
 
     private static final Map<Source, String> DEFAULT_GAMEMODES = Map.of(
@@ -56,21 +61,6 @@ public class JustTiersConfig {
     private boolean hideOwnBadge = false;
     private Palette palette = Palette.DEFAULT;
     private Map<String, String> customColors = new HashMap<>();
-
-    /**
-     * Cache for {@link #selectedGamemodesBySource()}, dropped whenever a selection
-     * changes. Transient so it never reaches the config file, and volatile because the
-     * render thread reads it.
-     */
-    private transient volatile Map<Source, String> resolvedSelection;
-    private transient volatile Set<Source> resolvedEnabledSources;
-
-    /**
-     * Cache for {@link #colors()}, dropped whenever the palette or a custom color
-     * changes. Transient so it never reaches the config file, and volatile because the
-     * render thread reads it.
-     */
-    private transient volatile Map<Source, Integer> resolvedColors;
 
     /** Immutable render settings, reused until a badge-affecting setter changes them. */
     private transient volatile NametagSettings resolvedNametagSettings;
@@ -101,7 +91,6 @@ public class JustTiersConfig {
     public void setSiteEnabled(Source source, boolean enabled) {
         if (enabledSites == null) enabledSites = new HashMap<>();
         enabledSites.put(source.name(), enabled);
-        resolvedEnabledSources = null;
         resolvedNametagSettings = null;
     }
 
@@ -119,15 +108,7 @@ public class JustTiersConfig {
     }
 
     public Set<Source> enabledSources() {
-        Set<Source> cached = resolvedEnabledSources;
-        if (cached != null) return cached;
-        EnumSet<Source> sources = EnumSet.noneOf(Source.class);
-        for (Source source : Source.ALL) {
-            if (isSiteEnabled(source)) sources.add(source);
-        }
-        cached = Set.copyOf(sources);
-        resolvedEnabledSources = cached;
-        return cached;
+        return nametagSettings().enabledSources();
     }
 
     public int getNovaRefreshMinutes() {
@@ -184,7 +165,6 @@ public class JustTiersConfig {
         resolvedNametagSettings = null;
     }
 
-    /** The three cosmetic settings as the one value the nametag layout takes. */
     public boolean isHideOwnBadge() {
         return hideOwnBadge;
     }
@@ -199,7 +179,6 @@ public class JustTiersConfig {
 
     public void setPalette(Palette palette) {
         this.palette = palette == null ? Palette.DEFAULT : palette;
-        this.resolvedColors = null;
         resolvedNametagSettings = null;
     }
 
@@ -221,28 +200,17 @@ public class JustTiersConfig {
             customColors = new HashMap<>();
         }
         customColors.put(source.name(), HexColor.format(rgb));
-        this.resolvedColors = null;
         resolvedNametagSettings = null;
     }
 
     /** What color this site is drawn in, under the palette in force. */
     public int colorOf(Source source) {
-        return colors().getOrDefault(source, source.defaultColor());
+        return nametagSettings().style().colorOf(source);
     }
 
-    /**
-     * Every site's color at once. Resolved on first use and cached: this is read per
-     * player per frame, and parsing three hex strings there would be three allocations a
-     * frame for an answer that only changes when the config does.
-     */
+    /** Every site's color at once, from the cached {@link #nametagSettings()}. */
     public Map<Source, Integer> colors() {
-        Map<Source, Integer> cached = resolvedColors;
-        if (cached != null) {
-            return cached;
-        }
-        Map<Source, Integer> resolved = getPalette().colors(this::getCustomColor);
-        resolvedColors = resolved;
-        return resolved;
+        return nametagSettings().style().colors();
     }
 
     /** How long a fetched tier is trusted before it is looked up again. */
@@ -254,8 +222,10 @@ public class JustTiersConfig {
         this.tierCacheMinutes = Math.clamp(minutes, 5, 1440);
     }
 
+    /** The three cosmetic settings as the one value the nametag layout takes. */
     public NametagStyle nametagStyle() {
-        return new NametagStyle(getBadgePosition(), showIcons, showBrackets, colors());
+        return new NametagStyle(getBadgePosition(), showIcons, showBrackets,
+                getPalette().colors(this::getCustomColor));
     }
 
     /**
@@ -266,7 +236,11 @@ public class JustTiersConfig {
     public NametagSettings nametagSettings() {
         NametagSettings cached = resolvedNametagSettings;
         if (cached != null) return cached;
-        cached = new NametagSettings(enabled, enabledSources(), selectedGamemodesBySource(),
+        EnumSet<Source> sources = EnumSet.noneOf(Source.class);
+        for (Source source : Source.ALL) {
+            if (isSiteEnabled(source)) sources.add(source);
+        }
+        cached = new NametagSettings(enabled, sources, selectedGamemodesBySource(),
                 showRetired, nametagStyle(), preferSelectedGamemodes);
         resolvedNametagSettings = cached;
         return cached;
@@ -294,27 +268,19 @@ public class JustTiersConfig {
             selectedGamemodes = new HashMap<>();
         }
         selectedGamemodes.put(source.name(), slug);
-        resolvedSelection = null;
         resolvedNametagSettings = null;
     }
 
     /**
-     * Every site's selection, resolved once. The nametag asks for this per player per
-     * frame, and resolving it means four validity checks and a fresh map each time;
-     * only a setter can change the answer, so it is held until one does.
+     * Every site's selection, each resolved as {@link #selectedGamemode} does. The
+     * nametag reads the copy held in {@link #nametagSettings()}.
      */
     public Map<Source, String> selectedGamemodesBySource() {
-        Map<Source, String> cached = resolvedSelection;
-        if (cached != null) {
-            return cached;
-        }
         Map<Source, String> result = new EnumMap<>(Source.class);
         for (Source source : Source.ALL) {
             result.put(source, selectedGamemode(source));
         }
-        cached = Map.copyOf(result);
-        resolvedSelection = cached;
-        return cached;
+        return Map.copyOf(result);
     }
 
     public static JustTiersConfig load(Path path) {
@@ -332,13 +298,22 @@ public class JustTiersConfig {
             // clamp bypassed by reflection during deserialization
             config.setNovaRefreshMinutes(config.getNovaRefreshMinutes());
             config.setTierCacheMinutes(config.getTierCacheMinutes());
-            // Deserialization also bypasses the setters that would have dropped this, so
-            // a cache built before the file was read must not survive into it.
-            config.resolvedColors = null;
             return config;
         } catch (IOException | RuntimeException e) {
             JustTiers.LOGGER.warn("Could not read config at {}, using defaults", path, e);
+            backUp(path);
             return new JustTiersConfig();
+        }
+    }
+
+    /** Copies an unusable file aside before the next save can replace it with defaults. */
+    private static void backUp(Path path) {
+        Path backup = path.resolveSibling(path.getFileName() + ".bak");
+        try {
+            Files.copy(path, backup, StandardCopyOption.REPLACE_EXISTING);
+            JustTiers.LOGGER.warn("Copied the unusable config to {}", backup);
+        } catch (IOException | RuntimeException e) {
+            JustTiers.LOGGER.warn("Could not back up config {} to {}", path, backup, e);
         }
     }
 

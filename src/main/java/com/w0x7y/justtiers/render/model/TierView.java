@@ -9,7 +9,7 @@ import java.util.UUID;
 
 /**
  * What the nametag path is allowed to know about the running mod: the settings in force,
- * and whatever the sites have already said. Both are live — a badge is rebuilt every
+ * and whatever the sites have already said. Both are live — a nametag reads them every
  * frame, and the answer changes as settings are saved and lookups land.
  *
  * <p>This exists so that deciding what a player wears does not require the game to be

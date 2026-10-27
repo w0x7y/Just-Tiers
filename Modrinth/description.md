@@ -11,14 +11,16 @@ Minecraft 26.3 also requires Fabric Loader 0.19.5 or newer. ModMenu is optional.
 
 *Example nametags from an earlier release, before PvPHQ and individual site toggles.*
 
-## New in 1.2.0
+## New in 1.2.1
 
-With several sites enabled, turn on Prefer selected gamemodes to show each site's
-selected gamemode, falling back to its best placement. `/justtiers gamemode <site> <slug>`
-sets any site's gamemode. Gamemodes a site adds before a mod update now appear with a
-name and no icon instead of being dropped. The lookup screen keeps your recent names for
-the current session, and other client mods can read tiers through a public API.
-[Full release notes](https://github.com/w0x7y/Just-Tiers/blob/main/docs/releases/v1.2.0.md).
+One invalid value in the config file now falls back on its own instead of resetting every
+setting, and a file that is not valid JSON is backed up before defaults load. Every network
+request has a deadline, so a stalled server can no longer hold a request slot. Nametag
+badges are rebuilt only when settings or answers change. An empty NovaTiers refresh no
+longer turns every NovaTiers player unranked, and `/justtiers lookup` retries a site whose
+nametag request failed. Keyboard focus survives window resizes, and the narrator announces
+the selected gamemode tile.
+[Full release notes](https://github.com/w0x7y/Just-Tiers/blob/main/docs/releases/v1.2.1.md).
 
 ## What you can do
 
@@ -92,8 +94,9 @@ lookups too, so the same switches apply: it gets no answer and causes no request
 site while that site, or nametag tiers, are turned off. Like nametags, it never sends a UUID
 that is not an online-mode account, such as an offline-mode player or a server NPC.
 
-Failed or malformed responses are not shown as unranked players. Retries back off, and repeated
-site failures temporarily pause new requests. Failed NovaTiers refreshes retain usable cached
+Failed or malformed responses are not shown as unranked players. A player or Mojang request
+fails after 20 seconds without an answer, a NovaTiers download after two minutes. Retries back
+off, and repeated site failures temporarily pause new requests. Failed NovaTiers refreshes retain usable cached
 data without resetting its original age. Old answers stay visible for up to six additional
 hours beyond the configured cache interval, then become unavailable. Valid unranked replacements
 remove old badges. NovaTiers records with an identifiable player but malformed or conflicting

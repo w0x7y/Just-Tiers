@@ -6,10 +6,10 @@ Just-Tiers is a client-side Fabric mod that adds competitive PvP tiers to Minecr
 nametags using [PvPTiers](https://pvptiers.com), [PvPHQ](https://pvphq.com),
 [SubTiers](https://subtiers.net) and [NovaTiers](https://novatiers.com). The mod is in beta.
 
-Version 1.2.0 lets every enabled site prefer its selected gamemode, shows gamemodes a
-site adds before the mod knows them, keeps recent lookups for the session and adds a
-tier-query API for other mods. Builds cover every stable Minecraft version from 1.21.10
-through 26.3. See the [release notes](docs/releases/v1.2.0.md).
+Version 1.2.1 keeps your other settings when one config value is invalid, gives every
+network request a deadline, rebuilds nametag badges only when they change and keeps
+keyboard focus through window resizes. Builds cover every stable Minecraft version from
+1.21.10 through 26.3. See the [release notes](docs/releases/v1.2.1.md).
 
 ## What it shows
 
@@ -120,8 +120,9 @@ is on, and for the only enabled site otherwise. It previews pending changes, inc
 badge position, icons, brackets, colors and hiding your own badge.
 
 A gamemode picker opens with a click or keyboard activation. Arrow keys move between tiles;
-Enter or Space selects the focused tile. Hovering or focusing a tile previews it. Back or
-Escape returns without selecting. Selection stays pending until you save the parent screen.
+Enter or Space selects the focused tile. Hovering or focusing a tile previews it. The narrator
+announces which tile is the current selection. Back or Escape returns without selecting.
+Selection stays pending until you save the parent screen.
 
 Save writes settings; Cancel discards pending edits and Undo restores saved values. A failed save
 reports the problem and preserves the previously saved file and active settings. A failed
@@ -138,6 +139,7 @@ to have saved. Refresh is an immediate data action, separate from saving setting
 Alternative palettes offer different hue and brightness contrasts; their suitability depends
 on the player and background. Custom color controls are available in the Custom palette.
 The chosen colors reach nametags, lookup rows, previews, pickers and the NovaTiers progress bar.
+The palette controls stay available while nametag display is off.
 Icon artwork keeps its original colors.
 
 ## Config file
@@ -179,10 +181,13 @@ colors move to PvPTiers, with `vanilla` becoming `crystal` and `nethop` becoming
 all four. Explicit `enabledSites` settings take precedence over the old mode.
 
 Enum values are saved in lowercase and read case-insensitively. Missing settings receive
-defaults. Unknown selections and out-of-range intervals are corrected when loading.
-Both intervals accept 5 to 1440 minutes. Custom colors use per-site `#RRGGBB` strings;
-an invalid color falls back for that site. Changing the interval on Save updates the
-running scheduler or cache policy without restarting Minecraft.
+defaults. A setting with an unknown or wrongly typed value, such as `"enabled": 1`, falls
+back to its default and the rest of the file is kept. In `enabledSites`,
+`selectedGamemodes` and `customColors` this happens per site. Out-of-range intervals are
+clamped when loading, so both accept 5 to 1440 minutes. Custom colors use per-site
+`#RRGGBB` strings. If the file is not valid JSON or does not hold a JSON object, Just-Tiers
+copies it to `justtiers.json.bak` before loading defaults. Changing the interval on Save
+updates the running scheduler or cache policy without restarting Minecraft.
 
 ## Supported gamemodes
 
@@ -242,7 +247,9 @@ NovaTiers is indexed in memory and refreshed every 30 minutes by default; its pa
 
 HTTP 404 from PvPTiers, PvPHQ or SubTiers is a valid unranked answer. Unexpected statuses, transport
 errors and malformed successful responses are failures, not unranked results. So is a response
-whose only placements use identifiers the mod refuses. Failed requests
+whose only placements use identifiers the mod refuses. A player or Mojang request that has
+not finished after 20 seconds fails like a transport error, and so does a NovaTiers download
+after two minutes. Failed requests
 back off per player, with jitter; eight consecutive site failures pause new requests and then
 allow a recovery probe. Each site permits four active player requests and 128 waiting
 requests. Explicit lookups
@@ -253,7 +260,8 @@ hints use 60 seconds. NovaTiers bulk downloads obey the same cooldown rules. Man
 resets player retry and circuit state but preserves server cooldowns and diagnostic history.
 A failed NovaTiers refresh preserves the last usable index. Reading it does not reset its
 original age: the player cache refuses a bulk snapshot older than the cache interval plus
-six hours. Identifiable players with malformed or conflicting bulk records are unavailable,
+six hours. A refresh that lists no ranked players counts as failed once the index has players.
+Identifiable players with malformed or conflicting bulk records are unavailable,
 not unranked; the parser reports aggregate rejection counts while retaining valid players.
 Older requests cannot replace a newer index or reinstate retry state cleared by a refresh.
 

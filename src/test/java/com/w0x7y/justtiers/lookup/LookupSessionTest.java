@@ -231,7 +231,7 @@ class LookupSessionTest {
         fixture.executor.drain();
         fixture.sources.get(Source.PVPTIERS).pending.complete(Map.of("axe", new Tier(2, true, false)));
         fixture.executor.drain();
-        fixture.cache.invalidateAll();
+        fixture.cache.invalidate(Source.PVPTIERS);
         fixture.time.addAndGet(java.time.Duration.ofMinutes(60).toNanos());
         LookupResult result = session.result(Source.PVPTIERS);
         assertEquals(LookupSection.Status.RANKED, result.section().orElseThrow().status());
@@ -288,7 +288,7 @@ class LookupSessionTest {
         fixture.executor.drain();
         fixture.sources.get(Source.PVPTIERS).pending.complete(Map.of());
         fixture.executor.drain();
-        fixture.cache.invalidateAll();
+        fixture.cache.invalidate(Source.PVPTIERS);
         fixture.time.addAndGet(java.time.Duration.ofDays(2).toNanos());
         LookupResult result = session.result(Source.PVPTIERS);
         assertEquals(LookupResult.RefreshStatus.FRESH, result.freshness().orElseThrow().status());

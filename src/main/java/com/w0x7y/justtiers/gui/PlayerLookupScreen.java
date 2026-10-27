@@ -9,8 +9,8 @@ import com.w0x7y.justtiers.gui.layout.LookupLayout;
 import com.w0x7y.justtiers.gui.layout.LookupMetrics;
 import com.w0x7y.justtiers.gui.layout.SkinLayout;
 import com.w0x7y.justtiers.gui.state.LookupFocus;
+import com.w0x7y.justtiers.gui.state.LookupText;
 import com.w0x7y.justtiers.lookup.LookupCell;
-import com.w0x7y.justtiers.lookup.LookupHistory;
 import com.w0x7y.justtiers.lookup.LookupRow;
 import com.w0x7y.justtiers.lookup.LookupSection;
 import com.w0x7y.justtiers.lookup.LookupResult;
@@ -23,7 +23,6 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.narration.NarratedElementType;
@@ -45,7 +44,6 @@ import java.util.List;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.OptionalInt;
 
 /**
  * The screen {@code /justtiers lookup} opens: a player's name, their skin, and one row
@@ -100,11 +98,7 @@ public final class PlayerLookupScreen extends Screen {
     private final List<ContentControl> contentControls = new ArrayList<>();
     private final Map<Source, List<ContentControl>> cellControls = new EnumMap<>(Source.class);
     private final List<ContentControl> links = new ArrayList<>();
-    /** One slot per name the history can hold; slots beyond what fits stay hidden. */
-    private final List<Button> historyButtons = new ArrayList<>();
-    /** The history snapshot the slots show, or null when they need laying out again. */
-    private List<String> shownHistory;
-    private HistoryStrip historyStrip;
+    private HistoryButtons history;
 
     private LookupLayout layout;
     private List<Integer> layoutCounts = List.of();
@@ -143,7 +137,14 @@ public final class PlayerLookupScreen extends Screen {
                 button -> startLookup()).pos(left + searchWidth - 80, layout.searchY()).size(80, 20).build());
         nameField.setResponder(value -> lookupButton.active = !value.isBlank());
         lookupButton.active = !typedName.isBlank();
-        addHistoryButtons();
+        // Added straight after the search controls, so Tab reaches the recent names before
+        // the results.
+        history = new HistoryButtons(layout, font, BUTTON_WIDTH, BUTTON_HEIGHT,
+                this::addRenderableWidget, name -> {
+                    nameField.setValue(name);
+                    startLookup();
+                });
+        updateHistory();
         addContentControls();
         updateContentControls();
         doneButton = addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, button -> onClose())
@@ -205,11 +206,11 @@ public final class PlayerLookupScreen extends Screen {
                                    int mouseX, int mouseY, float delta) {
         super.extractRenderState(graphics, mouseX, mouseY, delta);
 
-        if (!historyStrip.entries().isEmpty()) {
+        HistoryStrip strip = history.strip();
+        if (!strip.entries().isEmpty()) {
             graphics.text(font, Component.translatable("justtiers.lookup.recent"),
-                    historyStrip.labelX(), historyStrip.textTop(font.lineHeight), Colors.SECONDARY);
+                    strip.labelX(), strip.textTop(font.lineHeight), Colors.SECONDARY);
         }
-        updateContentControls();
         graphics.enableScissor(layout.panelX(), layout.panelY(), layout.panelRight(), layout.viewportBottom());
         graphics.pose().pushMatrix();
         graphics.pose().translate(0, -scroll);
@@ -308,16 +309,15 @@ public final class PlayerLookupScreen extends Screen {
 
     private void drawCells(GuiGraphicsExtractor graphics, LookupLayout.Row row, Source source,
                            LookupResult result, int mouseX, int mouseY) {
-        OptionalInt hovered = inViewport(mouseY) ? row.cellAt(mouseX, mouseY + scroll) : OptionalInt.empty();
         List<LookupCell> cells = result.section().orElseThrow().cells();
         for (int i = 0; i < cells.size() && i < row.grid().itemCount(); i++) {
-            boolean isHovered = (hovered.isPresent() && hovered.getAsInt() == i)
-                    || cellControls.get(source).get(i).isFocused();
+            ContentControl control = cellControls.get(source).get(i);
+            boolean isHovered = control.isMouseOver(mouseX, mouseY) || control.isFocused();
             drawCell(graphics, cells.get(i), source, row.cellX(i), row.cellY(i), isHovered);
             if (isHovered) {
-                graphics.setTooltipForNextFrame(font, tooltip(cells.get(i), result),
-                        cellControls.get(source).get(i).isFocused() ? row.cellX(i) : mouseX,
-                        cellControls.get(source).get(i).isFocused() ? row.cellY(i) - scroll + cellHeight : mouseY);
+                graphics.setTooltipForNextFrame(font, lines(LookupText.tooltip(cells.get(i), result)),
+                        control.isFocused() ? row.cellX(i) : mouseX,
+                        control.isFocused() ? row.cellY(i) - scroll + cellHeight : mouseY);
             }
         }
     }
@@ -349,26 +349,21 @@ public final class PlayerLookupScreen extends Screen {
                 tier.isPresent() ? Colors.opaque(SiteColors.of(source)) : Colors.DISABLED, false);
     }
 
-    private Component tooltip(LookupCell cell, LookupResult result) {
-        String gamemode = cell.gamemode().displayName();
-        var description = cell.tier()
-                .map(tier -> Component.literal(gamemode + ": " + tier.label()))
-                .orElseGet(() -> Component.translatable("justtiers.lookup.cellUntested",
-                        gamemode));
-        if (!Gamemodes.isRegistered(cell.gamemode())) {
-            description.append("\n").append(Component.translatable("justtiers.lookup.unrecognizedGamemode"));
+    /** A message translated, with any message among its arguments translated first. */
+    private static MutableComponent component(LookupText.Message message) {
+        Object[] args = message.args().stream()
+                .map(arg -> arg instanceof LookupText.Message nested ? component(nested) : arg)
+                .toArray();
+        return Component.translatable(message.key(), args);
+    }
+
+    /** Messages as one component, a line each. */
+    private static Component lines(List<LookupText.Message> messages) {
+        MutableComponent text = component(messages.getFirst());
+        for (LookupText.Message message : messages.subList(1, messages.size())) {
+            text.append("\n").append(component(message));
         }
-        result.freshness().ifPresent(freshness -> {
-            description.append("\n").append(Component.translatable("justtiers.lookup.age", freshness.age().toMinutes()));
-            String key = switch (freshness.status()) {
-                case REFRESH_FAILED -> "justtiers.lookup.cachedUnavailable";
-                case REFRESHING -> "justtiers.lookup.cachedRefreshing";
-                case STALE -> "justtiers.lookup.cachedStale";
-                case FRESH -> null;
-            };
-            if (key != null) description.append("\n").append(Component.translatable(key));
-        });
-        return description;
+        return text;
     }
 
     private void drawFooter(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
@@ -376,7 +371,6 @@ public final class PlayerLookupScreen extends Screen {
         graphics.text(font, Component.translatable("justtiers.lookup.credit"),
                 credit.x(), footerY, Colors.SECONDARY);
 
-        OptionalInt hovered = linkAt(mouseX, mouseY);
         for (int i = 0; i < credit.spans().size(); i++) {
             CreditLine.Span span = credit.spans().get(i);
             Source source = Source.ALL.get(i);
@@ -386,7 +380,7 @@ public final class PlayerLookupScreen extends Screen {
                         footerY, Colors.SECONDARY);
             }
             graphics.text(font, source.displayName(), span.x(), footerY, color);
-            if ((hovered.isPresent() && hovered.getAsInt() == i) || links.get(i).isFocused()) {
+            if (links.get(i).isMouseOver(mouseX, mouseY) || links.get(i).isFocused()) {
                 graphics.horizontalLine(span.x(), span.x() + span.width() - 1,
                         footerY + font.lineHeight - 1, color);
             }
@@ -394,15 +388,6 @@ public final class PlayerLookupScreen extends Screen {
     }
 
     // ---------------------------------------------------------------- input
-
-    /** The site name under the cursor, if the cursor is on the footer line at all. */
-    private OptionalInt linkAt(double mouseX, double mouseY) {
-        if (!inViewport(mouseY) || mouseY + scroll < layout.footerY()
-                || mouseY + scroll >= layout.footerY() + font.lineHeight) {
-            return OptionalInt.empty();
-        }
-        return credit.spanAt(mouseX);
-    }
 
     private boolean inViewport(double mouseY) {
         return mouseY >= layout.panelY() && mouseY < layout.viewportBottom();
@@ -416,68 +401,13 @@ public final class PlayerLookupScreen extends Screen {
         updateContentControls();
     }
 
-    /**
-     * Added straight after the search controls, so Tab reaches the recent names before
-     * the results. Each runs its lookup in place, as editing the name and retrying would.
-     */
-    private void addHistoryButtons() {
-        historyButtons.clear();
-        shownHistory = null;
-        for (int i = 0; i < LookupHistory.CAPACITY; i++) {
-            int slot = i;
-            Button button = addRenderableWidget(Button.builder(Component.empty(),
-                            ignored -> lookUpRecent(slot))
-                    .pos(0, layout.historyY()).size(BUTTON_WIDTH, BUTTON_HEIGHT).build());
-            button.visible = false;
-            historyButtons.add(button);
-        }
-        updateHistory();
-    }
-
-    /** Lays the slots out again whenever the session's history has changed. */
+    /** Lays the recent names out again whenever the session's history has changed. */
     private void updateHistory() {
-        List<String> names = JustTiersClient.lookupHistory().names();
-        if (names.equals(shownHistory)) return;
-
-        String focusedName = focusedHistoryName();
-
-        shownHistory = names;
-        historyStrip = layout.history(font.width(Component.translatable("justtiers.lookup.recent")),
-                names.stream().map(font::width).toList());
-        for (int i = 0; i < historyButtons.size(); i++) {
-            Button button = historyButtons.get(i);
-            button.visible = i < historyStrip.entries().size();
-            if (!button.visible) continue;
-            HistoryStrip.Entry entry = historyStrip.entries().get(i);
-            String name = names.get(i);
-            button.setX(entry.x());
-            button.setWidth(entry.width());
-            button.setMessage(Component.literal(name));
-            button.setTooltip(Tooltip.create(Component.translatable("justtiers.lookup.again", name)));
-        }
-
+        String focusedName = history.nameOn(getFocused());
         // A lookup moves its name to the front: keep focus on that name, not on its old slot.
-        if (focusedName != null) {
+        if (history.show(JustTiersClient.lookupHistory().names()) && focusedName != null) {
             restoreFocus(new LookupFocus.History(focusedName));
         }
-    }
-
-    /** The names the strip's visible slots show, in slot order. */
-    private List<String> visibleHistory() {
-        return shownHistory.subList(0, historyStrip.entries().size());
-    }
-
-    /** The name on the focused recent-lookup button, or null when none is focused. */
-    private String focusedHistoryName() {
-        int slot = historyButtons.indexOf(getFocused());
-        return shownHistory != null && slot >= 0 && slot < shownHistory.size()
-                ? shownHistory.get(slot) : null;
-    }
-
-    private void lookUpRecent(int slot) {
-        if (shownHistory == null || slot >= shownHistory.size()) return;
-        nameField.setValue(shownHistory.get(slot));
-        startLookup();
     }
 
     private void addContentControls() {
@@ -515,8 +445,8 @@ public final class PlayerLookupScreen extends Screen {
                 ContentControl control = controls.get(i);
                 control.active = i < shown;
                 if (control.active) {
-                    control.setMessage(Component.literal(source.displayName() + ": ")
-                            .append(tooltip(section.get().cells().get(i), result)));
+                    control.setMessage(lines(LookupText.cellNarration(source,
+                            section.get().cells().get(i), result)));
                 }
             }
         }
@@ -532,10 +462,16 @@ public final class PlayerLookupScreen extends Screen {
         updateContentControls();
     }
 
+    /** A resize rebuilds every widget too, so it keeps focus the same way. */
+    @Override
+    protected void repositionElements() {
+        relayout();
+    }
+
     /**
-     * Rebuilds the widgets for a new number of cells. Rebuilding drops focus, so the
-     * focused control is recorded by what it is first and found again afterwards, as
-     * {@link LookupFocus#restore} decides.
+     * Rebuilds the widgets for a new screen size or number of cells. Rebuilding drops
+     * focus, so the focused control is recorded by what it is first and found again
+     * afterwards, as {@link LookupFocus#restore} decides.
      */
     private void relayout() {
         Optional<LookupFocus.Key> focused = focusKey();
@@ -550,7 +486,7 @@ public final class PlayerLookupScreen extends Screen {
         if (focused == nameField) return Optional.of(new LookupFocus.Name());
         if (focused == lookupButton) return Optional.of(new LookupFocus.Search());
         if (focused == doneButton) return Optional.of(new LookupFocus.Done());
-        String historyName = focusedHistoryName();
+        String historyName = history.nameOn(focused);
         if (historyName != null) return Optional.of(new LookupFocus.History(historyName));
         for (Source source : Source.ALL) {
             int index = cellControls.getOrDefault(source, List.of()).indexOf(focused);
@@ -562,14 +498,14 @@ public final class PlayerLookupScreen extends Screen {
 
     /** Focuses the widget that now stands for a recorded control. */
     private void restoreFocus(LookupFocus.Key recorded) {
-        LookupFocus.Key key = LookupFocus.restore(recorded, visibleHistory(),
+        LookupFocus.Key key = LookupFocus.restore(recorded, history.visible(),
                 source -> cellControls.get(source).size(), links.size());
         setFocused(switch (key) {
             case LookupFocus.Name ignored -> nameField;
             case LookupFocus.Search ignored -> lookupButton;
             case LookupFocus.Done ignored -> doneButton;
-            case LookupFocus.History history -> historyButtons.get(
-                    LookupFocus.historySlot(history.name(), visibleHistory()).orElseThrow());
+            case LookupFocus.History recent -> history.slot(
+                    LookupFocus.historySlot(recent.name(), history.visible()).orElseThrow());
             case LookupFocus.Cell cell -> cellControls.get(cell.source()).get(cell.index());
             case LookupFocus.Link link -> links.get(link.index());
         });
@@ -612,22 +548,7 @@ public final class PlayerLookupScreen extends Screen {
 
     @Override
     public Component getNarrationMessage() {
-        var message = Component.translatable("justtiers.lookup.header", session.name());
-        Optional<Component> error = session.error();
-        if (error.isPresent()) {
-            return message.append(". ").append(error.get());
-        }
-        for (Source source : Source.ALL) {
-            String key = switch (LookupRow.state(session.result(source).section())) {
-                case PENDING -> "justtiers.lookup.pending";
-                case UNAVAILABLE -> "justtiers.lookup.unavailable";
-                case ANSWERED -> null;
-            };
-            if (key != null) {
-                message.append(". " + source.displayName() + ": ").append(Component.translatable(key));
-            }
-        }
-        return message;
+        return component(LookupText.narration(session.name(), session.error(), session::result));
     }
 
     /** Focusable text content. Links activate; cells are read-only and narrated in full. */

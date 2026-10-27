@@ -25,7 +25,7 @@ class LookupLayoutTest {
     void aSmallerSkinAvoidsScrollingWhenTheWholePanelCanFit() {
         for (int height : List.of(330, 350)) {
             LookupLayout layout = layout(854, height);
-            assertEquals(0, layout.maxScroll(), "screen height " + height);
+            assertEquals(0, layout.scrolling().maxScroll(), "screen height " + height);
             assertTrue(layout.panelY() >= LookupLayout.SEARCH_BOTTOM);
             assertTrue(layout.doneButtonY() + 20 <= height - 8);
         }
@@ -221,15 +221,6 @@ class LookupLayoutTest {
         assertTrue(layout.panelHeight() > 0);
     }
 
-    @Test
-    void theSkinBandIsWhereAFailedLookupSaysWhy() {
-        LookupLayout layout = layout(854, 480);
-
-        assertEquals(layout.skinY() + layout.skinHeight() / 2, layout.skinCenterY());
-        assertTrue(layout.skinCenterY() > layout.skinY());
-        assertTrue(layout.skinCenterY() < layout.tiersY());
-    }
-
     // --- cells inside a row ---
 
     @Test
@@ -245,26 +236,6 @@ class LookupLayoutTest {
         int slack = narrowest.width() - narrowest.grid().contentWidth();
         assertEquals(narrowest.x() + slack / 2, narrowest.cellsLeft());
         assertTrue(narrowest.cellsLeft() > widest.cellsLeft());
-    }
-
-    @Test
-    void aCellIsFoundWhereItWasDrawn() {
-        LookupLayout.Row row = layout(854, 480).rows().getFirst();
-
-        for (int i = 0; i < row.grid().itemCount(); i++) {
-            assertEquals(i, row.cellAt(row.cellX(i) + 1, row.cellY(i) + 1).orElseThrow(),
-                    "cell " + i);
-        }
-    }
-
-    @Test
-    void theGapBetweenTwoCellsIsNoCellAtAll() {
-        LookupLayout.Row row = layout(854, 480).rows().getFirst();
-        int betweenX = row.cellX(0) + metrics(854, 480).cellWidth();
-
-        assertTrue(row.cellAt(betweenX, row.cellY(0) + 1).isEmpty());
-        assertTrue(row.cellAt(row.x() - 1, row.cellY(0) + 1).isEmpty());
-        assertTrue(row.cellAt(row.cellX(0) + 1, row.y() - 1).isEmpty());
     }
 
     @Test
@@ -339,7 +310,7 @@ class LookupLayoutTest {
     @Test
     void scrollingRevealsTheLastDiscoveredCellAndTheFooterAt320x240() {
         LookupLayout layout = LookupLayout.of(withDiscovered(320, 240));
-        assertTrue(layout.maxScroll() > 0);
+        assertTrue(layout.scrolling().maxScroll() > 0);
 
         for (LookupLayout.Row row : layout.rows()) {
             int last = row.grid().itemCount() - 1;
@@ -370,7 +341,7 @@ class LookupLayoutTest {
             assertTrue(layout.doneButtonY() >= layout.viewportBottom(), screen);
             assertTrue(layout.doneButtonY() + LookupLayout.BUTTON_HEIGHT <= size[1] - LookupLayout.SCREEN_MARGIN,
                     screen);
-            assertTrue(layout.maxScroll() > 0, screen);
+            assertTrue(layout.scrolling().maxScroll() > 0, screen);
 
             HistoryStrip strip = layout.history(RECENT_LABEL, widestNames);
             assertFalse(strip.entries().isEmpty(), screen);

@@ -36,6 +36,7 @@ import net.minecraft.world.scores.PlayerTeam;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -97,14 +98,15 @@ public final class ClientSmoke implements ClientModInitializer {
     private void installControlledState() throws Exception {
         List<TierSource> sources = Source.ALL.stream().<TierSource>map(source -> new TierSource() {
             public Source source() { return source; }
-            public CompletableFuture<Map<String, Tier>> fetch(UUID uuid) {
+            public CompletableFuture<Answer> fetchAnswer(UUID uuid) {
                 Tier tier = switch (source) {
                     case PVPTIERS -> new Tier(2, true, false);
                     case PVPHQ -> Tier.parse("MT3").orElseThrow();
                     case SUBTIERS -> new Tier(3, false, false);
                     case NOVATIERS -> new Tier(1, true, true);
                 };
-                return CompletableFuture.completedFuture(Map.of(JustTiersConfig.defaultGamemode(source), tier));
+                return CompletableFuture.completedFuture(new Answer(
+                        Map.of(JustTiersConfig.defaultGamemode(source), tier), Duration.ZERO, false));
             }
         }).toList();
         TierCache cache = new TierCache(sources);
@@ -129,7 +131,7 @@ public final class ClientSmoke implements ClientModInitializer {
         remote.setId(234567);
         remote.setPos(client.player.getX() + 2, client.player.getY(), client.player.getZ());
         client.level.addEntity(remote);
-        for (Source source : Source.ALL) JustTiersClient.cache().load(source, uuid).join();
+        for (Source source : Source.ALL) JustTiersClient.cache().loadAnswer(source, uuid).join();
         PlayerTeam team = client.level.getScoreboard().addPlayerTeam("smoke-formatting");
         team.setPlayerPrefix(Component.literal("[Team] ").withStyle(ChatFormatting.BOLD, ChatFormatting.GOLD));
         client.level.getScoreboard().addPlayerToTeam("SmokePlayer", team);
@@ -182,7 +184,7 @@ public final class ClientSmoke implements ClientModInitializer {
         UUID localUuid = client.player.getUUID();
         try {
             client.player.setUUID(UUID.fromString("12345678-1234-4234-8234-123456789abd"));
-            JustTiersClient.cache().load(Source.PVPTIERS, client.player.getUUID()).join();
+            JustTiersClient.cache().loadAnswer(Source.PVPTIERS, client.player.getUUID()).join();
             check(!client.player.getDisplayName().getString().contains("HT2"), "hide-own excludes ranked local player");
             edit(config -> config.setHideOwnBadge(false));
             check(client.player.getDisplayName().getString().contains("HT2"), "local badge restored");

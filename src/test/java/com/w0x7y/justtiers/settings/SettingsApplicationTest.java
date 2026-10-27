@@ -6,7 +6,6 @@ import com.w0x7y.justtiers.cache.CachePolicy;
 import com.w0x7y.justtiers.cache.TierCache;
 import com.w0x7y.justtiers.config.JustTiersConfig;
 import com.w0x7y.justtiers.tier.Source;
-import com.w0x7y.justtiers.tier.Tier;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

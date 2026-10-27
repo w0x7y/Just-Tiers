@@ -121,8 +121,9 @@ final class RequestQueue<K, V> {
         }
     }
 
+    /** A control-flow signal, so it skips capturing a stack trace. */
     static final class Deferred extends RuntimeException {
-        Deferred(String message) { super(message); }
+        Deferred(String message) { super(message, null, false, false); }
     }
 
     private static final class Work<K, V> {

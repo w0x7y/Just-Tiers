@@ -5,7 +5,7 @@ Date: 2026-08-19. Status: accepted, reviewed 2026-09-17.
 ## Context
 
 TierCache exposes site health, gate status, cached-player count, pending-lookup count and
-players awaiting retry. CacheDiagnostics assembles these into the debug report. Returning
+players awaiting retry. CacheDiagnostics assembles the ones the debug report prints. Returning
 a SiteDiagnostics record straight from TierCache would shorten that one caller, but make
 the cache depend on its reporting consumer.
 
@@ -13,7 +13,7 @@ the cache depend on its reporting consumer.
 
 Keep the five accessors on TierCache. They expose cache state without choosing the format
 of a diagnostic report. Keep assembly in debug/CacheDiagnostics and test it with distinct
-cached, pending and retrying counts so accidentally swapped fields fail a test.
+cached, in-flight, queued and retrying counts so accidentally swapped fields fail a test.
 
 ## Consequences
 

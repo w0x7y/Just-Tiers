@@ -21,10 +21,10 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 
 import java.util.List;
 import java.util.ArrayList;
-import java.util.OptionalInt;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -67,7 +67,6 @@ public final class GamemodeGridScreen extends Screen {
     private ScrollViewport viewport;
     private int scroll;
     private final List<TileButton> tiles = new ArrayList<>();
-    private int hoveredIndex = -1;
 
     public GamemodeGridScreen(Screen parent, Source source, String selectedSlug,
                               Supplier<NametagSettings> baseState, Consumer<String> onPick) {
@@ -104,10 +103,13 @@ public final class GamemodeGridScreen extends Screen {
                 .pos(width / 2 - 50, height - 30).size(100, 20).build());
     }
 
+    /** A resize rebuilds every widget; focus stays on the tile, or Back, that had it. */
     @Override
     protected void repositionElements() {
+        // init adds the same widgets in the same order, so the focused one keeps its index.
+        int focused = children().indexOf(getFocused());
         super.repositionElements();
-        layoutGrid();
+        if (focused >= 0) setFocused(children().get(focused));
     }
 
     private void layoutGrid() {
@@ -145,21 +147,22 @@ public final class GamemodeGridScreen extends Screen {
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics,
                                    int mouseX, int mouseY, float delta) {
-        hoveredIndex = indexAtScreen(mouseX, mouseY).orElse(-1);
         super.extractRenderState(graphics, mouseX, mouseY, delta);
 
         graphics.centeredText(font, title, width / 2, TITLE_Y, Colors.opaque(SiteColors.of(source)));
-        extractPreview(graphics);
+        extractPreview(graphics, mouseX, mouseY);
         graphics.centeredText(font, Component.translatable("justtiers.grid.hint"),
                 width / 2, HINT_Y, HINT_COLOR);
 
-        extractTiles(graphics);
+        extractTiles(graphics, mouseX, mouseY, delta);
     }
 
-    private void extractPreview(GuiGraphicsExtractor graphics) {
+    private void extractPreview(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         int focused = getFocused() instanceof TileButton tile ? tile.index : indexOf(selectedSlug);
-        int candidate = minecraft.getLastInputType().isKeyboard() || hoveredIndex < 0
-                ? focused : hoveredIndex;
+        int hovered = tiles.stream().filter(tile -> tile.isMouseOver(mouseX, mouseY))
+                .mapToInt(tile -> tile.index).findFirst().orElse(-1);
+        int candidate = minecraft.getLastInputType().isKeyboard() || hovered < 0
+                ? focused : hovered;
         String slug = candidate >= 0 ? gamemodes.get(candidate).slug() : selectedSlug;
         NametagSettings state = stateFor(slug);
         Component tag = Nametags.compose(state.previewBadge(System.currentTimeMillis()),
@@ -175,28 +178,29 @@ public final class GamemodeGridScreen extends Screen {
         graphics.pose().popMatrix();
     }
 
-    private void extractTiles(GuiGraphicsExtractor graphics) {
+    private void extractTiles(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
         if (grid.itemCount() == 0 || viewport.viewportHeight() <= 0) {
             return;
         }
+        // The scissor is the viewport, so a tile counts as hovered exactly where
+        // TileButton.isMouseOver takes its clicks.
         graphics.enableScissor(0, originY, width, originY + viewport.viewportHeight());
-        for (int i = 0; i < gamemodes.size(); i++) {
-            tiles.get(i).extractRenderState(graphics,
-                    hoveredIndex == i ? tiles.get(i).getX() + 1 : -1,
-                    hoveredIndex == i ? tiles.get(i).getY() + 1 : -1, 0);
+        for (TileButton tile : tiles) {
+            tile.extractRenderState(graphics, mouseX, mouseY, delta);
         }
         graphics.disableScissor();
     }
 
     private void extractTile(GuiGraphicsExtractor graphics, int index) {
         Gamemode gamemode = gamemodes.get(index);
-        int x = originX + grid.xOf(index);
-        int y = originY + grid.yOf(index) - scroll;
+        TileButton tile = tiles.get(index);
+        int x = tile.getX();
+        int y = tile.getY();
         if (y + TILE < originY || y > originY + viewport.viewportHeight()) {
             return;   // scrolled out of the viewport
         }
 
-        boolean highlighted = tiles.get(index).isHoveredOrFocused();
+        boolean highlighted = tile.isHoveredOrFocused();
         graphics.fill(x, y, x + TILE, y + TILE, highlighted ? TILE_HOVERED : TILE_BACKGROUND);
         if (gamemode.slug().equals(selectedSlug)) {
             // The only color on this screen besides the title: which site you are in.
@@ -216,13 +220,6 @@ public final class GamemodeGridScreen extends Screen {
             graphics.text(font, line, x + (TILE - font.width(line)) / 2, labelY, LABEL_COLOR);
             labelY += font.lineHeight;
         }
-    }
-
-    private OptionalInt indexAtScreen(double mouseX, double mouseY) {
-        if (grid == null || mouseY < originY || mouseY > originY + viewport.viewportHeight()) {
-            return OptionalInt.empty();
-        }
-        return grid.indexAt((int) mouseX - originX, (int) mouseY - originY + scroll);
     }
 
     private void pick(int index) {
@@ -295,6 +292,14 @@ public final class GamemodeGridScreen extends Screen {
         @Override
         protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
             extractTile(graphics, index);
+        }
+
+        /** The outline marks the current selection visually; this says it aloud. */
+        @Override
+        protected MutableComponent createNarrationMessage() {
+            MutableComponent message = super.createNarrationMessage();
+            return gamemodes.get(index).slug().equals(selectedSlug)
+                    ? Component.translatable("justtiers.grid.selected", message) : message;
         }
 
         @Override

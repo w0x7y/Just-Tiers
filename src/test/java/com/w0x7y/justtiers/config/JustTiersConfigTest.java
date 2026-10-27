@@ -1,5 +1,7 @@
 package com.w0x7y.justtiers.config;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.w0x7y.justtiers.render.model.BadgePosition;
 import com.w0x7y.justtiers.render.model.NametagSettings;
 import com.w0x7y.justtiers.render.model.NametagStyle;
@@ -10,6 +12,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -222,10 +226,108 @@ class JustTiersConfigTest {
     }
 
     @Test
-    void loadingCorruptJsonYieldsDefaults(@TempDir Path dir) throws Exception {
-        Path file = dir.resolve("bad.json");
+    void anUnusableFileIsBackedUpBeforeDefaultsCanReplaceIt(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("justtiers.json");
+        Path backup = dir.resolve("justtiers.json.bak");
+        for (String contents : new String[]{"{ this is not json", "[{\"enabled\":false}]"}) {
+            Files.writeString(file, contents);
+            JustTiersConfig loaded = JustTiersConfig.load(file);
+            assertEquals(settingsOf(new JustTiersConfig()), settingsOf(loaded), contents);
+            assertEquals(contents, Files.readString(backup));
+            assertEquals(contents, Files.readString(file));
+        }
+    }
+
+    @Test
+    void aFailedBackupStillLoadsDefaults(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("justtiers.json");
         Files.writeString(file, "{ this is not json");
-        assertEquals(Set.copyOf(Source.ALL), JustTiersConfig.load(file).enabledSources());
+        Files.writeString(Files.createDirectory(dir.resolve("justtiers.json.bak")).resolve("x"), "");
+        assertEquals(settingsOf(new JustTiersConfig()), settingsOf(JustTiersConfig.load(file)));
+    }
+
+    /** Every value differs from its default, so a reset of any of them shows. */
+    private static final String EDITED = """
+            {"enabled":false,"showRetired":false,"enabledSites":{"PVPHQ":false},
+             "selectedGamemodes":{"PVPTIERS":"axe"},"preferSelectedGamemodes":true,
+             "novaRefreshMinutes":90,"showDownloadProgress":false,"tierCacheMinutes":120,
+             "badgePosition":"after","showIcons":false,"showBrackets":false,
+             "hideOwnBadge":true,"palette":"custom","customColors":{"SUBTIERS":"#123456"}}
+            """;
+
+    @Test
+    void aValueOfTheWrongTypeLoadsAsIfMissingAndKeepsEveryOtherSetting(@TempDir Path dir)
+            throws Exception {
+        Path file = dir.resolve("typed.json");
+        Map<String, String> wrong = Map.ofEntries(
+                Map.entry("enabled", "1"),
+                Map.entry("showRetired", "\"maybe\""),
+                Map.entry("enabledSites", "5"),
+                Map.entry("selectedGamemodes", "\"axe\""),
+                Map.entry("preferSelectedGamemodes", "[]"),
+                Map.entry("novaRefreshMinutes", "\"abc\""),
+                Map.entry("showDownloadProgress", "{}"),
+                Map.entry("tierCacheMinutes", "true"),
+                Map.entry("badgePosition", "{}"),
+                Map.entry("showIcons", "0"),
+                Map.entry("showBrackets", "\"yes\""),
+                Map.entry("hideOwnBadge", "null"),
+                Map.entry("palette", "[]"),
+                Map.entry("customColors", "7"));
+        for (var entry : wrong.entrySet()) {
+            JsonObject root = JsonParser.parseString(EDITED).getAsJsonObject();
+            root.remove(entry.getKey());
+            Files.writeString(file, root.toString());
+            List<Object> missing = settingsOf(JustTiersConfig.load(file));
+
+            root.add(entry.getKey(), JsonParser.parseString(entry.getValue()));
+            Files.writeString(file, root.toString());
+            assertEquals(missing, settingsOf(JustTiersConfig.load(file)), entry.getKey());
+        }
+        assertFalse(Files.exists(dir.resolve("typed.json.bak")));
+    }
+
+    @Test
+    void anInvalidMapEntryFallsBackForThatSiteAlone(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("entries.json");
+        Files.writeString(file, """
+                {"enabledSites":{"PVPTIERS":"maybe","PVPHQ":false,"SUBTIERS":1},
+                 "selectedGamemodes":{"PVPTIERS":{},"SUBTIERS":"trident"},
+                 "palette":"custom","customColors":{"PVPTIERS":[],"NOVATIERS":"#ABCDEF"}}
+                """);
+        JustTiersConfig config = JustTiersConfig.load(file);
+
+        assertEquals(Set.of(Source.PVPTIERS, Source.SUBTIERS, Source.NOVATIERS),
+                config.enabledSources());
+        assertEquals("crystal", config.selectedGamemode(Source.PVPTIERS));
+        assertEquals("trident", config.selectedGamemode(Source.SUBTIERS));
+        assertEquals(Source.PVPTIERS.defaultColor(), config.colorOf(Source.PVPTIERS));
+        assertEquals(0xABCDEF, config.colorOf(Source.NOVATIERS));
+    }
+
+    @Test
+    void anOverflowingIntervalClampsToTheMaximum(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("overflow.json");
+        Files.writeString(file, """
+                {"novaRefreshMinutes":1e12,"tierCacheMinutes":99999999999}
+                """);
+        JustTiersConfig config = JustTiersConfig.load(file);
+        assertEquals(1440, config.getNovaRefreshMinutes());
+        assertEquals(1440, config.getTierCacheMinutes());
+
+        Files.writeString(file, """
+                {"novaRefreshMinutes":-1e12,"tierCacheMinutes":-99999999999}
+                """);
+        config = JustTiersConfig.load(file);
+        assertEquals(5, config.getNovaRefreshMinutes());
+        assertEquals(5, config.getTierCacheMinutes());
+    }
+
+    private static List<Object> settingsOf(JustTiersConfig config) {
+        return List.of(config.nametagSettings(), config.isHideOwnBadge(),
+                config.getNovaRefreshMinutes(), config.getTierCacheMinutes(),
+                config.isShowDownloadProgress(), config.getPalette(),
+                Source.ALL.stream().map(config::getCustomColor).toList());
     }
 
     @Test

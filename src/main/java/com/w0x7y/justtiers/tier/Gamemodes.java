@@ -123,17 +123,6 @@ public final class Gamemodes {
     }
 
     /**
-     * The gamemode a stored slug names: the registered one when this build knows it,
-     * otherwise a discovered gamemode with a derived name and no icon. Empty when the
-     * slug could not have come through {@link DiscoveredGamemodes}' sanitizing.
-     * Settings must use {@link #find}, which only answers registered gamemodes.
-     */
-    public static Optional<Gamemode> forSlug(Source source, String slug) {
-        Optional<Gamemode> registered = find(source, slug);
-        return registered.isPresent() ? registered : DiscoveredGamemodes.of(source, slug);
-    }
-
-    /**
      * The discovered gamemodes a site's placements name: slugs this build does not register
      * but would have admitted, ordered by slug and capped at
      * {@link DiscoveredGamemodes#MAX_PER_ANSWER}. Every caller that lists a site's

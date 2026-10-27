@@ -72,19 +72,19 @@ class DiscoveredGamemodesTest {
 
     @Test
     void aDiscoveredGamemodeHasADerivedNameAndNoIcon() {
-        Gamemode gamemode = Gamemodes.forSlug(Source.SUBTIERS, "bed_wars").orElseThrow();
+        Gamemode gamemode = DiscoveredGamemodes.of(Source.SUBTIERS, "bed_wars").orElseThrow();
         assertEquals(new Gamemode(Source.SUBTIERS, "bed_wars", "Bed Wars", Optional.empty()), gamemode);
         assertFalse(Gamemodes.isRegistered(gamemode));
         assertEquals(Optional.empty(), Gamemodes.find(Source.SUBTIERS, "bed_wars"),
                 "settings only ever find registered gamemodes");
-        assertEquals(Optional.empty(), Gamemodes.forSlug(Source.SUBTIERS, "Bed Wars"));
+        assertEquals(Optional.empty(), DiscoveredGamemodes.of(Source.SUBTIERS, "Bed Wars"));
     }
 
     @Test
     void aRegisteredSlugAlwaysResolvesToItsRegistryEntry() {
         for (Gamemode registered : Gamemodes.ALL) {
             assertEquals(Optional.of(registered),
-                    Gamemodes.forSlug(registered.source(), registered.slug()));
+                    Gamemodes.find(registered.source(), registered.slug()));
             assertTrue(Gamemodes.isRegistered(registered));
         }
     }

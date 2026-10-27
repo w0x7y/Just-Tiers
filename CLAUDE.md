@@ -46,6 +46,10 @@ components, commands and events.
 - `render/model/TierView` is the nametag's access to settings and tier answers.
   `render/LiveTierView` reads the live config/cache; model tests provide their own view.
   Badge construction takes the whole `NametagSettings`, not its fields one by one.
+- `render/model/BadgeMemo` rebuilds a nametag badge only when the settings instance or a
+  peeked answer map is a different object, and still peeks every site on every call.
+  `PlayerMixin` keeps one per client player entity. This relies on `nametagSettings()`
+  and cached answer maps staying the same immutable objects until they change.
 - Automatic lookups (nametags and the tier-query API) contact only
   `NametagSettings.automaticLookupSites` and only UUIDs `api/PlayerRef.isAccount` accepts.
   Explicit lookups have their own identity path through `LookupSession`.
@@ -60,12 +64,14 @@ components, commands and events.
 - `config/Palette` owns color rules in ints. Read active colors through
   `JustTiersConfig.colorOf`, not `Source.defaultColor`, when rendering user-facing UI.
 - `gui/layout/` owns geometry. Screens own focus, widgets, scrolling and event routing.
+  Hover asks the same widget `isMouseOver` that takes clicks, so the two cannot disagree.
+  A resize rebuilds widgets; screens restore the focused control afterwards.
   Test viewport bounds with actual registry counts and small GUI dimensions.
 - `lookup/LookupReport.section` builds one site's lookup state. The lookup includes
   retired tiers independently of nametag settings. Pending and unavailable are distinct
   from a valid unranked answer.
 - `lookup/LookupSession` owns online identity preference, remote resolution, concurrent
-  site requests, partial answers and failed-entry eviction for explicit retry.
+  site requests and partial answers. An explicit lookup retries a failed entry itself.
   Read `LookupSession.result` for one coherent `LookupResult`, including the section,
   request settlement and freshness. Captured source revisions prevent later identical
   placements from replacing an earlier answer's age; transient refresh progress follows
@@ -104,13 +110,16 @@ Preserve these distinctions when changing API or cache code:
   placements use refused keys is wholly unrecognized. A NovaTiers player listed only
   under refused keys is rejected, not unranked.
 - The per-player Backoff and per-site SiteGate limit retries independently.
+- HTTP 429, or 503 with a Retry-After header, starts a site cooldown. `api/RetryAfter.cooldown`
+  holds that rule for every source; a 503 without the header is an ordinary failure.
 - Publish a completed result after its bookkeeping is settled. Never infer that joining
   a future is safe merely because an earlier exceptional-state check returned false.
 - Invalidation changes the site's generation. Old requests may update diagnostic history,
   but cannot restore retry delays or gate state cleared by that invalidation.
 - NovaTiers uses a bulk index. Initial loads and refreshes share an in-flight download.
-  `refresh()` reports failure while retaining a previously usable index. Callers must
-  invalidate dependent entries only after a successful refresh.
+  `refresh()` reports failure while retaining a previously usable index. A list with no
+  ranked players fails a refresh once the index has players; an empty first load is valid.
+  Callers must invalidate dependent entries only after a successful refresh.
 - DownloadProgress tokens prevent callbacks from an older download changing a newer
   indicator. Its percentage estimates from the last completed payload size.
 
@@ -137,7 +146,9 @@ invalidation. Saving an unchanged interval must preserve the existing countdown.
 Test these policies with real temporary config files and TierCache, using a controlled
 timer rather than sleeping.
 
-Keep unavailable controls visible with an accurate explanation. Use focusable controls
+Keep unavailable controls visible with an accurate explanation. `gui/state/ControlAvailability`
+gives every config row one `Reason`: the screen grays the row unless it is `AVAILABLE` and
+picks its description from that same reason. Use focusable controls
 for selections and links, and let Enter/Space activate the focused widget. A grid's
 keyboard selection must not intercept Back. Search and exit controls must remain reachable
 at 320 by 240 GUI pixels; scroll the result content when it does not fit.

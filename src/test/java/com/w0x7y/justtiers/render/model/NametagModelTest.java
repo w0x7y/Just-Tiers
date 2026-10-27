@@ -308,7 +308,7 @@ class NametagModelTest {
 
     @Test
     void aDiscoveredGamemodeShowsItsTierWithoutAnIcon() {
-        Gamemode discovered = Gamemodes.forSlug(Source.PVPTIERS, "bed_wars").orElseThrow();
+        Gamemode discovered = Gamemodes.discovered(Source.PVPTIERS, List.of("bed_wars")).getFirst();
         List<Segment> segments = NametagModel.build(List.of(
                 new ResolvedTier(discovered, new Tier(1, true, false)),
                 resolved(Source.SUBTIERS, "bow", new Tier(2, true, false))), NametagStyle.DEFAULT);
@@ -321,7 +321,7 @@ class NametagModelTest {
 
     @Test
     void aDiscoveredGamemodeKeepsItsSiteColor() {
-        Gamemode discovered = Gamemodes.forSlug(Source.NOVATIERS, "quake_pro").orElseThrow();
+        Gamemode discovered = Gamemodes.discovered(Source.NOVATIERS, List.of("quake_pro")).getFirst();
         List<Segment> segments = NametagModel.build(List.of(
                 new ResolvedTier(discovered, new Tier(3, false, true))), NametagStyle.DEFAULT);
 
