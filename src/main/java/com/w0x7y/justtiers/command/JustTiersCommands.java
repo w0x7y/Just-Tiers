@@ -265,11 +265,6 @@ public final class JustTiersCommands {
         return 1;
     }
 
-    /**
-     * Looks an enum argument up by its {@code id()} — the spelling the tab suggestions
-     * offer. The valid values are read off the enum rather than written out here, so
-     * adding a constant cannot leave this message stale.
-     */
     /** Tab suggestions for an enum argument: exactly the ids {@link #setEnum} accepts. */
     private static <E> SuggestionProvider<FabricClientCommandSource> suggestIds(
             E[] values, Function<E, String> id) {

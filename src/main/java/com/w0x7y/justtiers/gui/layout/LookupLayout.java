@@ -242,11 +242,6 @@ public record LookupLayout(int panelX, int panelY, int panelWidth, int panelHeig
         return HistoryStrip.of(x, historyY, right - x, HISTORY_HEIGHT, labelWidth, nameWidths);
     }
 
-    /** How tall the skin is drawn, at the scale that was chosen. */
-    public int skinHeight() {
-        return SkinLayout.HEIGHT * skinScale;
-    }
-
     public int panelRight() {
         return panelX + panelWidth;
     }
@@ -262,10 +257,6 @@ public record LookupLayout(int panelX, int panelY, int panelWidth, int panelHeig
     /** The panel scrolls inside the space between its top and the Done button. */
     public ScrollViewport scrolling() {
         return new ScrollViewport(panelHeight, viewportHeight);
-    }
-
-    public int maxScroll() {
-        return scrolling().maxScroll();
     }
 
     /** Scroll a focused control completely into view, in content coordinates. */

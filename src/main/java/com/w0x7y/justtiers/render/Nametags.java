@@ -44,11 +44,10 @@ public final class Nametags {
     private static MutableComponent toComponent(List<Segment> segments) {
         MutableComponent result = Component.empty();
         for (Segment segment : segments) {
-            // An icon is drawn from Just-Tiers' own font; everything else stays on the
-            // default one, which is the only font that can render words.
+            // An icon segment holds one glyph, drawn from Just-Tiers' own font; everything
+            // else stays on the default one, which is the only font that can render words.
             MutableComponent piece = segment.icon()
-                    ? Component.literal(segment.text()).withStyle(
-                            style -> style.withFont(Icons.FONT))
+                    ? Icons.of(segment.text().charAt(0))
                     : Component.literal(segment.text());
             result.append(piece.withStyle(style -> style.withColor(segment.color())));
         }

@@ -25,7 +25,7 @@ class LookupLayoutTest {
     void aSmallerSkinAvoidsScrollingWhenTheWholePanelCanFit() {
         for (int height : List.of(330, 350)) {
             LookupLayout layout = layout(854, height);
-            assertEquals(0, layout.maxScroll(), "screen height " + height);
+            assertEquals(0, layout.scrolling().maxScroll(), "screen height " + height);
             assertTrue(layout.panelY() >= LookupLayout.SEARCH_BOTTOM);
             assertTrue(layout.doneButtonY() + 20 <= height - 8);
         }
@@ -310,7 +310,7 @@ class LookupLayoutTest {
     @Test
     void scrollingRevealsTheLastDiscoveredCellAndTheFooterAt320x240() {
         LookupLayout layout = LookupLayout.of(withDiscovered(320, 240));
-        assertTrue(layout.maxScroll() > 0);
+        assertTrue(layout.scrolling().maxScroll() > 0);
 
         for (LookupLayout.Row row : layout.rows()) {
             int last = row.grid().itemCount() - 1;
@@ -341,7 +341,7 @@ class LookupLayoutTest {
             assertTrue(layout.doneButtonY() >= layout.viewportBottom(), screen);
             assertTrue(layout.doneButtonY() + LookupLayout.BUTTON_HEIGHT <= size[1] - LookupLayout.SCREEN_MARGIN,
                     screen);
-            assertTrue(layout.maxScroll() > 0, screen);
+            assertTrue(layout.scrolling().maxScroll() > 0, screen);
 
             HistoryStrip strip = layout.history(RECENT_LABEL, widestNames);
             assertFalse(strip.entries().isEmpty(), screen);
