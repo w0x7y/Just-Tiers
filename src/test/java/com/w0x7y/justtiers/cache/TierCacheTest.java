@@ -242,7 +242,7 @@ class TierCacheTest {
         cache.peek(Source.PVPTIERS, PLAYER);
         fake.pending.completeExceptionally(new RuntimeException("site down"));
 
-        // The player left render distance, so no later peek marked the failure retryable.
+        // The failure is still inside its retry delay, so no automatic peek would ask again.
         CompletableFuture<TierCache.CachedAnswer> lookup = cache.loadAnswer(Source.PVPTIERS, PLAYER);
         assertEquals(2, fake.calls.get(), "an explicit lookup must ask the site");
         fake.complete();

@@ -49,7 +49,6 @@ final class SiteRequests {
         volatile long accessedAt;
         volatile long checkedAtNanos;
         volatile boolean forceRefresh;
-        volatile boolean retryable;
         volatile boolean refreshFailed;
         Entry(long generation, long now, Answer answer) {
             this.generation = generation;
@@ -74,10 +73,6 @@ final class SiteRequests {
         Entry entry = entries.get(uuid);
         if (entry != null) {
             entry.accessedAt = clock.getAsLong();
-            if (entry.future.isCompletedExceptionally() && !entry.retryable) {
-                entry.retryable = true;
-                return visibleAnswer(entry);
-            }
             if (!entry.future.isDone() || (!entry.future.isCompletedExceptionally() && !needsRefresh(entry))) {
                 return visibleAnswer(entry);
             }
@@ -106,10 +101,6 @@ final class SiteRequests {
                 existing.accessedAt = clock.getAsLong();
                 if (!existing.future.isDone()) {
                     if (explicit) queue.promote(existing);
-                    return new Request(existing, false);
-                }
-                // An explicit lookup retries a failure that no automatic peek has retried yet.
-                if (!explicit && existing.future.isCompletedExceptionally() && !existing.retryable) {
                     return new Request(existing, false);
                 }
                 if (!existing.future.isCompletedExceptionally() && !needsRefresh(existing)) return new Request(existing, true);
