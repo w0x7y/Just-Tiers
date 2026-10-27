@@ -320,6 +320,19 @@ class TierSourceTest {
     }
 
     @Test
+    void anEmptyRefreshFailsAndRetainsTheLoadedNovaIndex() throws Exception {
+        respond("/users", 200, ONE_USER);
+        NovaTiersSource nova = new NovaTiersSource(client, baseUrl);
+        assertEquals("HT3", nova.fetchAnswer(PLAYER).get().tiers().get("axe").label());
+        respond("/users", 200, "[]");
+        ExecutionException thrown = assertThrows(ExecutionException.class, () -> nova.refresh().get());
+        assertInstanceOf(TierLookupException.class, thrown.getCause());
+        assertEquals("HT3", nova.fetchAnswer(PLAYER).get().tiers().get("axe").label());
+        assertTrue(nova.fetchAnswer(PLAYER).get().refreshFailed());
+        assertEquals(1, nova.indexedPlayerCount());
+    }
+
+    @Test
     void overlappingRefreshesShareTheInitialDownload() throws Exception {
         var entered = new java.util.concurrent.CountDownLatch(1);
         var release = new java.util.concurrent.CountDownLatch(1);

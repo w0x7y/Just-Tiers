@@ -146,6 +146,10 @@ public final class NovaTiersSource implements TierSource {
                     }
                     String body = response.body();
                     NovaParser.ParsedIndex parsed = NovaParser.parseUsersDetailed(body);
+                    // An empty list would mark every indexed player unranked; only a first load may be empty.
+                    if (parsed.users().isEmpty() && indexedPlayerCount() > 0) {
+                        throw new TierLookupException("NovaTiers returned no ranked players");
+                    }
                     JustTiers.LOGGER.info("Indexed {} NovaTiers players, {} rejected players and {} refused gamemode placements",
                             parsed.users().size(), parsed.rejectedPlayers().size(), parsed.unknownGamemodes());
                     return parsed;
