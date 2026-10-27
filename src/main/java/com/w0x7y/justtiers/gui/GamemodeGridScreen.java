@@ -105,10 +105,13 @@ public final class GamemodeGridScreen extends Screen {
                 .pos(width / 2 - 50, height - 30).size(100, 20).build());
     }
 
+    /** A resize rebuilds every widget; focus stays on the tile, or Back, that had it. */
     @Override
     protected void repositionElements() {
+        // init adds the same widgets in the same order, so the focused one keeps its index.
+        int focused = children().indexOf(getFocused());
         super.repositionElements();
-        layoutGrid();
+        if (focused >= 0) setFocused(children().get(focused));
     }
 
     private void layoutGrid() {

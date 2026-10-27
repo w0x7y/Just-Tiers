@@ -474,10 +474,16 @@ public final class PlayerLookupScreen extends Screen {
         updateContentControls();
     }
 
+    /** A resize rebuilds every widget too, so it keeps focus the same way. */
+    @Override
+    protected void repositionElements() {
+        relayout();
+    }
+
     /**
-     * Rebuilds the widgets for a new number of cells. Rebuilding drops focus, so the
-     * focused control is recorded by what it is first and found again afterwards, as
-     * {@link LookupFocus#restore} decides.
+     * Rebuilds the widgets for a new screen size or number of cells. Rebuilding drops
+     * focus, so the focused control is recorded by what it is first and found again
+     * afterwards, as {@link LookupFocus#restore} decides.
      */
     private void relayout() {
         Optional<LookupFocus.Key> focused = focusKey();
