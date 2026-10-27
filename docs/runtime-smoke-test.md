@@ -152,8 +152,10 @@ on PATH or through JAVA_HOME.
 - With keyboard only, Tab to a gamemode picker and activate with Enter and Space. Move across
   tiles with arrows and Tab. Preview must follow focus. Activate a tile, then return and
   activate Back with Enter: Back must not select a gamemode. Escape also cancels the picker.
+  Narration of the currently selected tile must say it is selected.
 - Check disabled descriptions for multiple sites enabled, a disabled site, nametag display off,
-  and custom colors under a preset. They must explain the current restriction.
+  and custom colors under a preset. They must explain the current restriction. With nametag
+  display off, the palette stays available, and so do the color pickers under Custom.
 - Toggle each site individually, then try PvPTiers + PvPHQ and all sites disabled.
   Check the preview and saved nametags. The old mode selector must be absent.
 - With several sites enabled, turn on Prefer selected gamemodes. Every enabled site's picker
