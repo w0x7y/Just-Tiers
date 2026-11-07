@@ -12,3 +12,6 @@ __pycache__/
 *.iml
 
 how-to-upload-to-modrinth.txt
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/
