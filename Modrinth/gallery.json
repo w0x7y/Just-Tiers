@@ -1,23 +1,23 @@
 [
   {
     "file": "Modrinth/gallery/nametags.jpg",
-    "title": "Nametags",
+    "title": "Live nametags",
     "description": "Live tiers from PvPTiers, PvPHQ, SubTiers and NovaTiers on ranked players' nametags. Each enabled site shows its best placement.",
     "featured": true
   },
   {
     "file": "Modrinth/gallery/all-four-sites.jpg",
-    "title": "All four sites",
+    "title": "Four sites on one nametag",
     "description": "One nametag with a placement from each site. The icon shows the gamemode and the color shows the site."
   },
   {
     "file": "Modrinth/gallery/player-lookup.jpg",
-    "title": "Player lookup",
+    "title": "Lookup screen",
     "description": "/justtiers lookup shows every gamemode on every site next to the player's skin. A dash means no placement was reported."
   },
   {
     "file": "Modrinth/gallery/settings.jpg",
-    "title": "Settings",
+    "title": "Settings screen",
     "description": "Turn sites on or off, move the badge and pick colors. The preview uses example tiers and sends no request."
   }
 ]

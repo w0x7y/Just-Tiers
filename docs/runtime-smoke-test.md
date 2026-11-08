@@ -9,6 +9,17 @@ display names in a controlled integrated world and renders the three main screen
 Its fake tier answers and development profile do not substitute for authenticated
 multiplayer or the full manual checklist below.
 
+## November 8 icon replacement check
+
+The 1.2.2 gamemode icons were rendered on Minecraft 26.2 with Java 25.0.4.1, Loader 0.19.3,
+Fabric API 0.157.0+26.2 and YACL 3.9.4+26.2-fabric. A temporary recording mod in a disposable
+instance showed eleven ranked players with live lookups from all four sites, then opened the
+lookup screen for one of them and the settings screen. In 3840x2160 screenshots the nametag
+badges and the settings preview drew the new glyphs with their tier labels in the text font.
+The lookup screen showed every registered gamemode on every site, so all 43 icons rendered.
+Other targets were not launched; their builds package the same textures. This does not
+replace the manual checklist below.
+
 ## September 30 repeatable harness
 
 The optional harness passed on Minecraft 26.2, Java 25.0.4.1, Loader 0.19.3,
