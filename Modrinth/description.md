@@ -1,11 +1,11 @@
 # Just-Tiers
 
 PvP tiers from PvPTiers, PvPHQ, SubTiers and NovaTiers, right in player nametags. Turn on all
-four and every nametag shows each site's best placement side by side. **Currently in beta.**
+four and every nametag shows each site's best placement side by side.
 
-![Nametag showcase](https://cdn.modrinth.com/data/8zkz6d1C/images/195de1f0351ecc64b1d7505f03aa71a3ef173b35.jpeg)
+![Live tiers on real players' nametags](https://raw.githubusercontent.com/w0x7y/Just-Tiers/main/Modrinth/gallery/nametags.jpg)
 
-*Example nametags from an earlier release, before PvPHQ and individual site toggles.*
+*Live tiers on ranked players' nametags in Just-Tiers 1.2.1.*
 
 - **Four tier lists in one mod.** Turn each site on or off on its own.
 - **Every current version.** Builds for Minecraft 1.21.10, 1.21.11, 26.1, 26.1.1, 26.1.2, 26.2 and 26.3.

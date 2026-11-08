@@ -198,7 +198,9 @@ The manual description workflow runs `tools/modrinth_project.py --apply` to sync
 the summary and issues link in `Modrinth/project.json` and the body in `Modrinth/description.md`.
 Without `--apply`, the tool only prints the exact update payload. Live project updates
 are deliberately outside the release job. The same workflow uses `--gallery --apply`
-to update existing gallery captions from `Modrinth/gallery.json`.
+to make the live gallery match the image files listed in `Modrinth/gallery.json`, matched by
+title, and `--release-type --apply` to give the current version's builds the `release_type`
+from `gradle.properties`. It promotes, never demotes, and leaves earlier versions alone.
 `modrinthSyncBody` updates only the body.
 Use the manual Sync Modrinth description workflow when a listing update is requested.
 Release notes use docs/releases/v<version>.md when available, otherwise commit summaries.

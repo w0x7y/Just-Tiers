@@ -11,7 +11,7 @@ from unittest.mock import patch
 from test_minecraft_targets import ROOT
 
 sys.path.insert(0, str(ROOT / "tools"))
-from modrinth_project import gallery_update, project_update, publish, publish_gallery
+from modrinth_project import gallery_images, gallery_plan, project_update, publish, publish_gallery, release_plan
 
 
 class ModrinthProjectTest(unittest.TestCase):
@@ -73,31 +73,73 @@ class ModrinthProjectTest(unittest.TestCase):
             self.assertEqual("PATCH", request.method)
             self.assertEqual(payload, json.loads(request.data))
 
-    def test_gallery_rejects_other_projects_duplicates_and_unrequested_fields(self):
-        image = {"url": "https://cdn.modrinth.com/data/8zkz6d1C/images/example.jpeg",
-                 "title": "Nametag showcase", "description": "An earlier release"}
-        for images in ([image | {"url": "https://example.com/unrelated.png"}],
-                       [image, image], [image | {"featured": True}], []):
-            with self.subTest(images=images):
-                (self.root / "Modrinth/gallery.json").write_text(json.dumps(images))
-                with self.assertRaises(ValueError):
-                    gallery_update("8zkz6d1C", self.root)
+    def write_gallery(self, images, files=("a.jpg", "b.png")):
+        (self.root / "Modrinth/gallery").mkdir(exist_ok=True)
+        for name in files:
+            (self.root / "Modrinth/gallery" / name).write_bytes(b"image")
+        (self.root / "Modrinth/gallery.json").write_text(json.dumps(images))
 
-    def test_gallery_patch_encodes_captions_as_query_parameters(self):
-        image = {"url": "https://cdn.modrinth.com/data/8zkz6d1C/images/example.jpeg",
-                 "title": "Nametag showcase", "description": "Toggles replace All mode & site modes"}
-        (self.root / "Modrinth/gallery.json").write_text(json.dumps([image]))
-        images = gallery_update("8zkz6d1C", self.root)
+    def test_gallery_rejects_missing_files_duplicate_titles_and_unknown_fields(self):
+        a = {"file": "Modrinth/gallery/a.jpg", "title": "Nametags", "description": "Four sites"}
+        b = {"file": "Modrinth/gallery/b.png", "title": "Lookup", "description": "Every gamemode"}
+        for images in ([a | {"file": "Modrinth/gallery/missing.jpg"}], [a | {"file": "gradle.properties"}],
+                       [a, a | {"file": "Modrinth/gallery/b.png"}], [a | {"featured": True}, b | {"featured": True}],
+                       [a | {"url": "https://example.com"}], [a | {"featured": "yes"}], []):
+            with self.subTest(images=images):
+                self.write_gallery(images)
+                with self.assertRaises(ValueError):
+                    gallery_images(self.root)
+        self.write_gallery([a | {"featured": True}, b])
+        self.assertEqual(2, len(gallery_images(self.root)))
+
+    def test_gallery_plan_matches_by_title(self):
+        desired = [{"file": "Modrinth/gallery/a.jpg", "title": "Nametags", "description": "New caption", "featured": True},
+                   {"file": "Modrinth/gallery/b.png", "title": "Lookup", "description": "Every gamemode"}]
+        current = [{"url": "https://cdn/old.jpeg", "title": "Banner", "description": "Earlier release", "featured": True, "ordering": 0},
+                   {"url": "https://cdn/n.jpeg", "title": "Nametags", "description": "Old caption", "featured": False, "ordering": 1}]
+        plan = gallery_plan(current, desired)
+        self.assertEqual(["https://cdn/old.jpeg"], plan["delete"])
+        self.assertEqual([{"file": "Modrinth/gallery/b.png", "title": "Lookup", "description": "Every gamemode",
+                           "featured": False, "ordering": 1}], plan["upload"])
+        self.assertEqual([{"url": "https://cdn/n.jpeg", "title": "Nametags", "description": "New caption",
+                           "featured": True, "ordering": 0}], plan["update"])
+        settled = [{"url": "u1", "title": "Nametags", "description": "New caption", "featured": True, "ordering": 0},
+                   {"url": "u2", "title": "Lookup", "description": "Every gamemode", "featured": False, "ordering": 1}]
+        self.assertEqual({"delete": [], "upload": [], "update": []}, gallery_plan(settled, desired))
+
+    def test_gallery_publish_deletes_then_uploads_bytes_then_patches(self):
+        self.write_gallery([])
+        plan = {"delete": ["https://cdn/old.jpeg"],
+                "upload": [{"file": "Modrinth/gallery/a.jpg", "title": "Nametags", "description": "A & B", "featured": True, "ordering": 0}],
+                "update": [{"url": "https://cdn/n.jpeg", "title": "Lookup", "description": "C", "featured": False, "ordering": 1}]}
         with patch("modrinth_project.urllib.request.urlopen") as network:
             network.return_value.__enter__.return_value.status = 204
-            publish_gallery("8zkz6d1C", images, "test-token")
-            network.assert_called_once()
-            request = network.call_args.args[0]
-            url = urllib.parse.urlparse(request.full_url)
-            self.assertEqual("/v2/project/8zkz6d1C/gallery", url.path)
-            self.assertEqual({key: [value] for key, value in image.items()}, urllib.parse.parse_qs(url.query))
-            self.assertEqual("PATCH", request.method)
-            self.assertIsNone(request.data)
+            publish_gallery("8zkz6d1C", plan, "test-token", self.root)
+            requests = [call.args[0] for call in network.call_args_list]
+        self.assertEqual(["DELETE", "POST", "PATCH"], [r.method for r in requests])
+        upload = urllib.parse.urlparse(requests[1].full_url)
+        self.assertEqual("/v2/project/8zkz6d1C/gallery", upload.path)
+        self.assertEqual({"ext": ["jpg"], "featured": ["true"], "title": ["Nametags"], "description": ["A & B"], "ordering": ["0"]},
+                         urllib.parse.parse_qs(upload.query))
+        self.assertEqual(b"image", requests[1].data)
+        self.assertEqual("image/jpeg", requests[1].get_header("Content-type"))
+        self.assertEqual(["https://cdn/n.jpeg"], urllib.parse.parse_qs(urllib.parse.urlparse(requests[2].full_url).query)["url"])
+
+    def test_gallery_publish_needs_a_token_before_any_request(self):
+        with patch("modrinth_project.urllib.request.urlopen") as network:
+            with self.assertRaisesRegex(ValueError, "MODRINTH_TOKEN"):
+                publish_gallery("8zkz6d1C", {"delete": ["u"], "upload": [], "update": []}, "")
+            network.assert_not_called()
+
+    def test_release_plan_promotes_only_the_current_version(self):
+        versions = [{"id": "a", "version_number": "1.2.1+mc26.2", "version_type": "beta",
+                     "changelog": "## Just-Tiers 1.2.1 beta\n\nFixes. Not beta software anymore."},
+                    {"id": "b", "version_number": "1.2.1+mc26.3", "version_type": "release", "changelog": "## Just-Tiers 1.2.1"},
+                    {"id": "c", "version_number": "1.2.0+mc26.2", "version_type": "beta", "changelog": "## Just-Tiers 1.2.0 beta"},
+                    {"id": "d", "version_number": "1.2.10+mc26.2", "version_type": "beta", "changelog": ""}]
+        self.assertEqual([{"id": "a", "version_type": "release", "changelog": "## Just-Tiers 1.2.1\n\nFixes. Not beta software anymore."}],
+                         release_plan(versions, "1.2.1", "release"))
+        self.assertEqual([], release_plan(versions, "1.2.1", "beta"))
 
 
 if __name__ == "__main__":
