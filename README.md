@@ -4,7 +4,7 @@
 
 Just-Tiers is a client-side Fabric mod that adds competitive PvP tiers to Minecraft
 nametags using [PvPTiers](https://pvptiers.com), [PvPHQ](https://pvphq.com),
-[SubTiers](https://subtiers.net) and [NovaTiers](https://novatiers.com). The mod is in beta.
+[SubTiers](https://subtiers.net) and [NovaTiers](https://novatiers.com).
 
 Version 1.2.1 keeps your other settings when one config value is invalid, gives every
 network request a deadline, rebuilds nametag badges only when they change and keeps
@@ -358,10 +358,12 @@ rerunning; the GitHub step updates an existing release. The listing body in
 live listing body and is deliberately absent from release automation. The project summary
 is stored in [Modrinth/project.json](Modrinth/project.json). Run the manual
 [Sync Modrinth description workflow](.github/workflows/modrinth-description.yml) when a
-listing update is intended; it synchronizes the summary, Markdown body and existing
-gallery captions from [Modrinth/gallery.json](Modrinth/gallery.json).
+listing update is intended. It synchronizes the summary, issues link and Markdown body,
+replaces the gallery with the images listed in [Modrinth/gallery.json](Modrinth/gallery.json),
+and gives the current version's Modrinth builds the `release_type` from `gradle.properties`.
 Preview the exact project update locally with `python3 tools/modrinth_project.py`.
-Add `--gallery` to preview gallery caption updates.
+Add `--gallery` or `--release-type` to preview those changes. Gallery images are matched by
+title, so give a replaced image a new title to upload it again.
 Tagged release notes come from `docs/releases/v<version>.md`
 when present, otherwise from commits since the previous tag.
 
