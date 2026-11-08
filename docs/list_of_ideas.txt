@@ -1,18 +1,15 @@
-Just-Tiers backlog, reviewed 2026-10-14
+Just-Tiers backlog, reviewed 2026-11-08
 
 Future work, not supported features
 
 1. Tab-list badges and chat integration. Current PlayerMixin only decorates world
    nametags. Each additional rendering path needs its own compatibility design, and
    a full tab list must fit within the per-site request queue limits.
-2. Capture current configuration and lookup screenshots after the runtime checklist.
-   The Modrinth description already includes a real nametag image; old placeholder
-   screenshot comments were removed from the README.
-3. Crosshair lookup keybind or a no-argument lookup command. The existing lookup screen
+2. Crosshair lookup keybind or a no-argument lookup command. The existing lookup screen
    now supports editing a name and retrying without leaving it.
-4. A minimum displayed tier, so busy lobbies can hide low placements from nametags.
-5. Several placements per site on one nametag, such as a player's top two gamemodes.
-6. Revisit the deferred lobby scan proposal. Its August design is archived, not shipped.
+3. A minimum displayed tier, so busy lobbies can hide low placements from nametags.
+4. Several placements per site on one nametag, such as a player's top two gamemodes.
+5. Revisit the deferred lobby scan proposal. Its August design is archived, not shipped.
    A new design should avoid summing tiers across sites into one score.
 
 Already implemented
@@ -30,5 +27,9 @@ Already implemented
 - Pull-request/main build checks, wrapper validation, workflow lint and tagged releases
   to GitHub and Modrinth, with a separate Modrinth dry-run workflow.
 - Resource contracts for icon mappings, textures and English translation keys.
+- Original gamemode icons for all four sites, replacing TierTagger's (1.2.2).
+- Modrinth gallery screenshots of live nametags, the lookup screen and settings, kept in
+  Modrinth/gallery and synced with the listing copy, issues link and release type.
+- Regular releases: release_type=release since 1.2.1 left beta.
 - Keyboard-accessible pickers and player lookup, scrolling results, and visible save
   and refresh failures. Runtime validation remains in docs/runtime-smoke-test.md.

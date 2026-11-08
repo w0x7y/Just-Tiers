@@ -5,7 +5,7 @@ four and every nametag shows each site's best placement side by side.
 
 ![Live tiers on real players' nametags](https://raw.githubusercontent.com/w0x7y/Just-Tiers/main/Modrinth/gallery/nametags.jpg)
 
-*Live tiers on ranked players' nametags in Just-Tiers 1.2.1.*
+*Live tiers on ranked players' nametags in Just-Tiers 1.2.2.*
 
 - **Four tier lists in one mod.** Turn each site on or off on its own.
 - **Every current version.** Builds for Minecraft 1.21.10, 1.21.11, 26.1, 26.1.1, 26.1.2, 26.2 and 26.3.
@@ -82,16 +82,14 @@ The [README](https://github.com/w0x7y/Just-Tiers#readme) lists all 43 supported 
 configuration field. A gamemode a site adds later still shows its placements, with a name taken from
 the site and no icon, but you can't select it for nametags until a mod update adds it.
 
-## New in 1.2.1
+## New in 1.2.2
 
-One invalid value in the config file now falls back on its own instead of resetting every
-setting, and a file that is not valid JSON is backed up before defaults load. Every network
-request has a deadline, so a stalled server can no longer hold a request slot. Nametag
-badges are rebuilt only when settings or answers change. An empty NovaTiers refresh no
-longer turns every NovaTiers player unranked, and `/justtiers lookup` retries a site whose
-nametag request failed. Keyboard focus survives window resizes, and the narrator announces
-the selected gamemode tile.
-[Full release notes](https://github.com/w0x7y/Just-Tiers/blob/main/docs/releases/v1.2.1.md).
+Every gamemode icon is new original pixel art, replacing the icons earlier versions took
+from TierTagger. Gamemodes that play the same way share one icon across sites, and the
+badge color still shows which site a tier is from. Nothing else changes from 1.2.1.
+[Full release notes](https://github.com/w0x7y/Just-Tiers/blob/main/docs/releases/v1.2.2.md),
+and the [1.2.1 notes](https://github.com/w0x7y/Just-Tiers/blob/main/docs/releases/v1.2.1.md)
+for the reliability fixes before it.
 
 ## Network use
 
@@ -141,11 +139,11 @@ mod is waiting before probing a site that repeatedly failed. Diagnostics remain 
 ## Credits and licensing
 
 Just-Tiers is maintained by Idan Gilboa under the [MIT license](https://github.com/w0x7y/Just-Tiers/blob/main/LICENSE).
-Gamemode icons in versions after 1.2.1 are original project artwork under MIT. Versions up to 1.2.1
+Since 1.2.2, every gamemode icon is original project artwork under MIT. Versions up to 1.2.1
 use PvPTiers, PvPHQ and SubTiers icon textures from [TierTagger](https://github.com/mctiers-dev/TierTagger)
 by uku and netiyiy. See [NOTICE](https://github.com/w0x7y/Just-Tiers/blob/main/NOTICE).
 
-Code and documentation include AI-assisted work reviewed by the maintainer.
+Code, documentation and the gamemode icons include AI-assisted work reviewed by the maintainer.
 
 Thanks to PvPTiers, PvPHQ, SubTiers and NovaTiers for their leaderboards and public APIs. Just-Tiers is
 unofficial and is not affiliated with these services, Mojang or Microsoft.

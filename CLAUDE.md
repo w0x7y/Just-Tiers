@@ -177,6 +177,9 @@ Registering a previously discovered slug needs no data migration.
 Run the generator, then `./gradlew check`; the resource contract checks glyph identities,
 provider counts and readable packaged textures. The generator binds existing artwork.
 The old NovaTiers artwork generator was removed because it overwrote the current artwork.
+Icon textures are original project artwork under MIT (see NOTICE). Do not add textures
+copied from other mods, the tier sites or Minecraft; versions up to 1.2.1 shipped
+TierTagger's icons, which were licensed to TierTagger alone.
 
 ## Documentation and releases
 

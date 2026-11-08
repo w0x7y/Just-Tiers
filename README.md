@@ -6,10 +6,9 @@ Just-Tiers is a client-side Fabric mod that adds competitive PvP tiers to Minecr
 nametags using [PvPTiers](https://pvptiers.com), [PvPHQ](https://pvphq.com),
 [SubTiers](https://subtiers.net) and [NovaTiers](https://novatiers.com).
 
-Version 1.2.1 keeps your other settings when one config value is invalid, gives every
-network request a deadline, rebuilds nametag badges only when they change and keeps
-keyboard focus through window resizes. Builds cover every stable Minecraft version from
-1.21.10 through 26.3. See the [release notes](docs/releases/v1.2.1.md).
+Version 1.2.2 replaces every gamemode icon with original pixel art and otherwise matches
+1.2.1. Builds cover every stable Minecraft version from 1.21.10 through 26.3. See the
+[release notes](docs/releases/v1.2.2.md).
 
 ## What it shows
 
@@ -386,9 +385,9 @@ when recoloring, using `Segment.withColor` or `Badge.recolor`.
 ## Credits and licensing
 
 Just-Tiers is maintained by Idan Gilboa and released under [MIT](LICENSE). Every gamemode icon is
-original project artwork under MIT. Versions up to 1.2.1 shipped PvPTiers, PvPHQ and SubTiers icons
-from [TierTagger](https://github.com/mctiers-dev/TierTagger); see [NOTICE](NOTICE). Code and documentation
-include AI-assisted work reviewed by the maintainer.
+original project artwork under MIT since 1.2.2. Versions up to 1.2.1 shipped PvPTiers, PvPHQ and SubTiers icons
+from [TierTagger](https://github.com/mctiers-dev/TierTagger); see [NOTICE](NOTICE). Code, documentation
+and the gamemode icons include AI-assisted work reviewed by the maintainer.
 
 Thanks to PvPTiers, PvPHQ, SubTiers and NovaTiers for their leaderboards and public APIs.
 This project is unofficial and is not affiliated with those sites, Mojang or Microsoft.
