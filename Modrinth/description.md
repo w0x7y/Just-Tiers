@@ -141,12 +141,11 @@ mod is waiting before probing a site that repeatedly failed. Diagnostics remain 
 ## Credits and licensing
 
 Just-Tiers is maintained by Idan Gilboa under the [MIT license](https://github.com/w0x7y/Just-Tiers/blob/main/LICENSE).
-PvPTiers, PvPHQ and SubTiers icon textures come from [TierTagger](https://github.com/mctiers-dev/TierTagger)
-by uku and netiyiy and retain MPL-2.0 licensing. NovaTiers icons and the reused PvPHQ Spear icon are original project artwork
-under MIT. See [NOTICE](https://github.com/w0x7y/Just-Tiers/blob/main/NOTICE).
+Gamemode icons in versions after 1.2.1 are original project artwork under MIT. Versions up to 1.2.1
+use PvPTiers, PvPHQ and SubTiers icon textures from [TierTagger](https://github.com/mctiers-dev/TierTagger)
+by uku and netiyiy. See [NOTICE](https://github.com/w0x7y/Just-Tiers/blob/main/NOTICE).
 
-Code and documentation include AI-assisted work reviewed by the maintainer. The project's
-AI-content disclosure does not replace the third-party artwork attribution above.
+Code and documentation include AI-assisted work reviewed by the maintainer.
 
 Thanks to PvPTiers, PvPHQ, SubTiers and NovaTiers for their leaderboards and public APIs. Just-Tiers is
 unofficial and is not affiliated with these services, Mojang or Microsoft.
