@@ -385,11 +385,10 @@ when recoloring, using `Segment.withColor` or `Badge.recolor`.
 
 ## Credits and licensing
 
-Just-Tiers is maintained by Idan Gilboa and released under [MIT](LICENSE). PvPTiers, PvPHQ and SubTiers
-icon textures come from [TierTagger](https://github.com/mctiers-dev/TierTagger) by uku and netiyiy
-and retain their MPL-2.0 license. NovaTiers icons and the reused PvPHQ Spear icon are original project artwork under MIT.
-See [NOTICE](NOTICE) for asset attribution. Code and documentation include AI-assisted work
-reviewed by the maintainer; that does not change the third-party artwork credits.
+Just-Tiers is maintained by Idan Gilboa and released under [MIT](LICENSE). Every gamemode icon is
+original project artwork under MIT. Versions up to 1.2.1 shipped PvPTiers, PvPHQ and SubTiers icons
+from [TierTagger](https://github.com/mctiers-dev/TierTagger); see [NOTICE](NOTICE). Code and documentation
+include AI-assisted work reviewed by the maintainer.
 
 Thanks to PvPTiers, PvPHQ, SubTiers and NovaTiers for their leaderboards and public APIs.
 This project is unofficial and is not affiliated with those sites, Mojang or Microsoft.
