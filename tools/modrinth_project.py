@@ -21,15 +21,21 @@ def project_update(root: Path = ROOT) -> tuple[str, dict[str, str]]:
     if not project_id.isalnum():
         raise ValueError("modrinth_id must be a project ID or alphanumeric slug")
     metadata = json.loads((root / "Modrinth/project.json").read_text(encoding="utf-8"))
-    if not isinstance(metadata, dict) or set(metadata) != {"description"}:
-        raise ValueError("Modrinth/project.json must contain only the project description")
+    if not isinstance(metadata, dict) or "description" not in metadata or not set(metadata) <= {"description", "issues_url"}:
+        raise ValueError("Modrinth/project.json must contain the project description and optionally issues_url")
     description = metadata["description"]
     if not isinstance(description, str) or not 3 <= len(description) <= 255:
         raise ValueError("The Modrinth project description must be 3 to 255 characters")
     body = (root / "Modrinth/description.md").read_text(encoding="utf-8")
     if not body.strip():
         raise ValueError("The Modrinth project body must not be empty")
-    return project_id, {"description": description, "body": body}
+    payload = {"description": description, "body": body}
+    if "issues_url" in metadata:
+        issues = metadata["issues_url"]
+        if not isinstance(issues, str) or urllib.parse.urlsplit(issues).scheme != "https" or not urllib.parse.urlsplit(issues).netloc:
+            raise ValueError("The Modrinth issues_url must be an https URL")
+        payload["issues_url"] = issues
+    return project_id, payload
 
 
 def gallery_update(project_id: str, root: Path = ROOT) -> list[dict[str, str]]:
@@ -95,7 +101,7 @@ def main() -> None:
                 print(f"Updated Modrinth project {project_id}: {len(gallery)} gallery captions")
             else:
                 publish(project_id, payload, token)
-                print(f"Updated Modrinth project {project_id}: summary and Markdown body")
+                print(f"Updated Modrinth project {project_id}: {', '.join(payload)}")
         else:
             print(json.dumps(gallery if gallery is not None else payload, ensure_ascii=False, indent=2))
     except urllib.error.HTTPError as error:
