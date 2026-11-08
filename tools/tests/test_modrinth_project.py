@@ -33,9 +33,19 @@ class ModrinthProjectTest(unittest.TestCase):
         self.assertEqual(self.body.read_text(), payload["body"])
         self.assertEqual("Four independently selectable tier sites", payload["description"])
 
+    def test_issues_url_is_sent_only_when_listed_and_must_be_https(self):
+        issues = "https://github.com/w0x7y/Just-Tiers/issues"
+        self.metadata.write_text(json.dumps({"description": "Valid copy", "issues_url": issues}))
+        self.assertEqual(issues, project_update(self.root)[1]["issues_url"])
+        for url in ("http://github.com/w0x7y/Just-Tiers/issues", "github.com/issues", "https://", 7):
+            with self.subTest(url=url):
+                self.metadata.write_text(json.dumps({"description": "Valid copy", "issues_url": url}))
+                with self.assertRaises(ValueError):
+                    project_update(self.root)
+
     def test_invalid_copy_is_rejected_before_publication(self):
         for metadata in ({"description": "x"}, {"description": "x" * 256},
-                         {"description": "Valid copy", "status": "archived"}, []):
+                         {"description": "Valid copy", "status": "archived"}, {"issues_url": "https://example.com"}, []):
             with self.subTest(metadata=metadata):
                 self.metadata.write_text(json.dumps(metadata))
                 with self.assertRaises(ValueError):

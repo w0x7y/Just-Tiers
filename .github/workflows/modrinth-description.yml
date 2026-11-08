@@ -24,7 +24,7 @@ jobs:
         run: |
           python3 tools/modrinth_project.py > /dev/null
           python3 tools/modrinth_project.py --gallery > /dev/null
-      - name: Update the project summary and Markdown body
+      - name: Update the project summary, issues link and Markdown body
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
         run: python3 tools/modrinth_project.py --apply

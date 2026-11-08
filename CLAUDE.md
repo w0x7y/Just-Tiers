@@ -195,7 +195,7 @@ the GitHub JAR first, then uploads to Modrinth. Alpha/beta release_type values m
 prereleases; release marks a regular release. Dry-run publishing is available through the
 manual workflow or `MODRINTH_TOKEN=... ./gradlew modrinth -Pmodrinth_dry_run=true`.
 The manual description workflow runs `tools/modrinth_project.py --apply` to synchronize
-the summary in `Modrinth/project.json` and the body in `Modrinth/description.md`.
+the summary and issues link in `Modrinth/project.json` and the body in `Modrinth/description.md`.
 Without `--apply`, the tool only prints the exact update payload. Live project updates
 are deliberately outside the release job. The same workflow uses `--gallery --apply`
 to update existing gallery captions from `Modrinth/gallery.json`.
