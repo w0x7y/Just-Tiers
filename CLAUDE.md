@@ -3,7 +3,8 @@
 Just-Tiers is a client-side Fabric mod with per-version builds. Read `gradle/targets/`
 for supported Minecraft versions, compatibility strategies and dependency pins, and `gradle.properties` for the
 default target and mod version. Fabric API and YACL are required; ModMenu is optional.
-Read `README.md` for current commands and behavior.
+Read `README.md` for current commands and behavior, and `docs/how-it-works.md` for the
+exact nametag, lookup, config and network rules.
 Read `CONTEXT.md` for the domain terms used in source and tests.
 
 ## Build and verification
@@ -183,7 +184,8 @@ TierTagger's icons, which were licensed to TierTagger alone.
 
 ## Documentation and releases
 
-Keep README, the Modrinth description and player-facing copy aligned with actual behavior.
+Keep README, docs/how-it-works.md, the Modrinth description and player-facing copy aligned
+with actual behavior. Release and listing steps for people live in docs/releasing.md.
 Network documentation must include Mojang profile/skin traffic, manual retry exceptions and
 NovaTiers downloads continuing while nametag display is disabled. Avoid claims that a cache
 interval is an absolute request cap or that a palette works for every visual condition.
