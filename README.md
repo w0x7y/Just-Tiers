@@ -2,148 +2,110 @@
 
 [![Build](https://github.com/w0x7y/Just-Tiers/actions/workflows/build.yml/badge.svg)](https://github.com/w0x7y/Just-Tiers/actions/workflows/build.yml)
 
-Just-Tiers is a client-side Fabric mod that adds competitive PvP tiers to Minecraft
-nametags using [PvPTiers](https://pvptiers.com), [PvPHQ](https://pvphq.com),
-[SubTiers](https://subtiers.net) and [NovaTiers](https://novatiers.com).
+See players' PvP tiers from [PvPTiers](https://pvptiers.com), [PvPHQ](https://pvphq.com),
+[SubTiers](https://subtiers.net) and [NovaTiers](https://novatiers.com) right on their nametags.
+Just-Tiers is a client-side Fabric mod, so there's nothing to install on the server.
 
-Version 1.2.2 replaces every gamemode icon with original pixel art and otherwise matches
-1.2.1. Builds cover every stable Minecraft version from 1.21.10 through 26.3. See the
-[release notes](docs/releases/v1.2.2.md).
+![Live tiers on ranked players' nametags](Modrinth/gallery/nametags.jpg)
 
-## What it shows
+The latest version is 1.2.2, which brings new original gamemode icons
+([release notes](docs/releases/v1.2.2.md)). It runs on Minecraft 1.21.10 through 26.3.
 
-Toggle each leaderboard individually. All four sites are enabled by default. With
-several enabled, each site's best tier appears side by side. With just one enabled,
-the mod prefers your selected gamemode and falls back to that player's best tier
-on the same site. Turn on Prefer selected gamemodes to apply that rule to every
-enabled site, so each shows its selected gamemode or falls back to its best tier.
-Icons identify the gamemode; colors identify the leaderboard.
-A gamemode the mod does not recognize yet shows its tier without an icon.
+## What you get
 
-Tiers run from LT5 through HT5, LT4, HT4, LT3, HT3, LT2, HT2 and LT1 to HT1. Retired
-placements have an R prefix, such as RHT1. PvPHQ also reports middle divisions,
-such as MT3, which rank between HT3 and LT3. Inactive PvPHQ placements remain current tiers. They compete by rank unless you hide retired
-tiers, in which case the mod falls back to active placements. Peak tiers are ignored.
-
-A nametag fills in as sites answer. Network requests run asynchronously; a missing answer
-leaves that site's part of the badge absent. The tab list and chat are unchanged.
-
-Enabled sites appear in PvPTiers, PvPHQ, SubTiers, NovaTiers order. Disable all site
-toggles to show no nametag tiers. Explicit player lookups still include every site.
+- **Tiers on nametags.** Each site's tier sits side by side. The icon shows the gamemode and the
+  color shows the site.
+- **Player lookup.** `/justtiers lookup <player>` shows a player's skin and every gamemode on all
+  four sites.
+- **Your setup.** Turn sites on or off, pick a gamemode per site, and move or restyle the badge.
+- **No analytics.** The mod only talks to the tier sites and Mojang. MIT licensed.
 
 ## Install
 
-Use the Just-Tiers JAR labeled for your exact Minecraft version, with Fabric Loader
-0.19 or newer and matching versions of [Fabric API](https://modrinth.com/mod/fabric-api)
-and [YetAnotherConfigLib](https://modrinth.com/mod/yacl).
-[ModMenu](https://modrinth.com/mod/modmenu) is optional.
-Minecraft 26.3 requires Fabric Loader 0.19.5 or newer.
+1. Install [Fabric Loader](https://fabricmc.net/use/) 0.19 or newer.
+2. Put the Just-Tiers JAR for your exact Minecraft version in your `mods` folder, along with
+   [Fabric API](https://modrinth.com/mod/fabric-api) and
+   [YetAnotherConfigLib](https://modrinth.com/mod/yacl) (YACL) for the same version.
+3. Optionally add [ModMenu](https://modrinth.com/mod/modmenu) for a settings button in the mod list.
 
-| Minecraft | Java | Minimum YACL |
-|---|---|---|
-| 1.21.10, 1.21.11 | 21 | 3.8.2 for your exact game version |
-| 26.1, 26.1.1, 26.1.2 | 25 | 3.9.4 for 26.1 |
-| 26.2 | 25 | 3.9.4 for 26.2 |
-| 26.3 | 25 | 3.9.7 for 26.3 |
+| Minecraft | Java | Fabric Loader | YACL |
+|---|---|---|---|
+| 1.21.10, 1.21.11 | 21 | 0.19+ | 3.8.2+ for your version |
+| 26.1, 26.1.1, 26.1.2 | 25 | 0.19+ | 3.9.4+ for 26.1 |
+| 26.2 | 25 | 0.19+ | 3.9.4+ for 26.2 |
+| 26.3 | 25 | 0.19.5+ | 3.9.7+ for 26.3 |
 
-Put one Just-Tiers mod JAR and its required dependencies in the instance's `mods` folder.
-Use the JAR without `-sources` or `-dev` in its filename. Nothing needs installing on the
-server. Each JAR declares its exact Minecraft target. Dependency pins are in
+Use the JAR without `-sources` or `-dev` in its name. Exact dependency pins are in
 [gradle/targets](gradle/targets).
+
+## How badges work
+
+All four sites are on by default, and each shows the player's best tier. With only one site on,
+the badge shows your chosen gamemode for that site instead, or the player's best tier there if
+they aren't ranked in it. Turn on **Prefer selected gamemodes** to use your chosen gamemode on
+every site.
+
+Tiers go from LT5 up to HT1. Retired tiers have an R in front, like RHT1, and you can hide them.
+PvPHQ's middle tiers, like MT3, sit between HT3 and LT3. A gamemode the mod doesn't know yet still
+shows its tier, just without an icon. Badges fill in as each site answers, and the tab list and
+chat stay as they are.
+
+## Looking players up
+
+`/justtiers lookup Notch` opens a screen with the player's skin and a row for each site. It always
+shows all four sites and retired tiers, whatever your nametag settings.
+
+- A dash means the site reported no placement. It doesn't say whether the player was ever tested.
+- A site that is still loading or unavailable says so instead of looking unranked.
+- Tooltips show how old each answer is, and cached tiers stay visible while refreshing.
+- Change the name or retry right on the screen. It works with the keyboard and scrolls in small
+  windows.
+- Your last eight lookups appear as buttons and in tab completion. They are cleared when you
+  restart the game.
 
 ## Commands
 
-All commands are client-side. `/justtiers lookup` completes names from the server's tab list
-and from this session's recent lookups.
+Every command runs on your client.
 
-| Command | Action |
+| Command | What it does |
 |---|---|
-| `/justtiers` | Show current settings, per-site gamemodes and NovaTiers index size |
-| `/justtiers gui` | Open configuration |
-| `/justtiers lookup <player>` | Open a screen with all four sites' placements |
-| `/justtiers toggle` | Toggle nametag tiers |
-| `/justtiers retired` | Toggle retired tiers in nametags |
-| `/justtiers site <site> [true\|false]` | Toggle a site or explicitly enable/disable it; sites are `pvptiers`, `pvphq`, `subtiers`, `novatiers` |
-| `/justtiers gamemode <slug>` | Choose a gamemode for the only enabled site |
-| `/justtiers gamemode <site> <slug>` | Choose a gamemode for a named site |
-| `/justtiers preferselected` | Toggle preferring each enabled site's selected gamemode |
-| `/justtiers badge <before\|after>` | Move the badge before or after the name |
-| `/justtiers icons` | Toggle gamemode icons in nametags |
-| `/justtiers brackets` | Toggle badge brackets |
-| `/justtiers ownbadge` | Toggle hiding your own badge |
+| `/justtiers` | Show your settings, gamemodes and the NovaTiers index size |
+| `/justtiers gui` | Open the settings |
+| `/justtiers lookup <player>` | Look up a player on all four sites |
+| `/justtiers toggle` | Turn nametag tiers on or off |
+| `/justtiers site <site> [true\|false]` | Toggle `pvptiers`, `pvphq`, `subtiers` or `novatiers` |
+| `/justtiers gamemode [site] <slug>` | Choose a site's gamemode; skip the site when only one is on |
+| `/justtiers preferselected` | Toggle Prefer selected gamemodes |
+| `/justtiers retired` | Show or hide retired tiers on nametags |
+| `/justtiers badge <before\|after>` | Put the badge before or after the name |
+| `/justtiers icons` | Show or hide gamemode icons |
+| `/justtiers brackets` | Show or hide badge brackets |
+| `/justtiers ownbadge` | Show or hide your own badge |
 | `/justtiers palette <palette>` | Choose `default`, `colorblind`, `high_contrast` or `custom` |
-| `/justtiers refresh` | Recheck cached lookups and request a fresh NovaTiers list |
-| `/justtiers debug` | Print diagnostics and copy them to the clipboard |
+| `/justtiers refresh` | Recheck cached tiers and download a fresh NovaTiers list |
+| `/justtiers debug` | Print a diagnostic report and copy it to the clipboard |
 
-## Looking a player up
+## Settings
 
-`/justtiers lookup Notch` opens a screen with the player's skin and one row per leaderboard.
-Every known gamemode has a cell. A dash means no placement was reported for that gamemode;
-it does not establish whether the player was ever tested. A placement in a gamemode the mod
-does not recognize yet gets an extra cell after the known ones, marked with the first letter
-of its name. Its tooltip shows a name derived from the site's identifier and says the mod
-does not recognize that gamemode yet. A waiting or unavailable site
-has its own message and is never presented as a row of unranked placements.
-
-The lookup includes retired tiers and all sites regardless of your nametag settings.
-Rows update independently. Cached placements stay visible during refresh; cell tooltips show
-the answer age and distinguish checking for updates from an unavailable refresh. Edit the name or retry on the screen; you do not need to close
-it and type the command again. Smaller windows scroll the results while the search and
-Done controls remain available. Cells and leaderboard links can receive keyboard focus.
-Hover or focus a cell for its gamemode name. Links use Minecraft's browser confirmation.
-
-Recent lookups appear as buttons under the search field, most recent first. Click one, or
-focus it and press Enter or Space, to look that player up again on the same screen. The
-history keeps up to eight names that resolved to a player; a name that could not be found
-is not added. Smaller windows show fewer of the names, and very short windows leave the row
-out so the results keep room to scroll. The same names are offered by
-`/justtiers lookup` tab completion. History is kept in memory for the current game session
-only. It is never saved to disk and is empty after restarting Minecraft.
-
-Online players with account UUIDs resolve locally. Other names, including offline-mode
-server identities, are checked through Mojang. A successful name lookup is remembered
-for the session. If the profile or skin service fails, the screen keeps a default skin
-and the tier lookup can still complete.
-
-## Configuration screen
-
-Open it with `/justtiers gui`, ModMenu, or the unbound-by-default Just-Tiers keybind under
-Options > Controls. Display, Data and About categories keep related settings together.
-Unavailable controls stay visible and explain why they cannot currently be changed.
-
-The live preview uses invented HT1 tiers and makes no leaderboard request. It alternates
-with RHT1 every five seconds while retired tiers are enabled. With several sites enabled,
-it uses fixed example gamemodes for those sites, or your selections while Prefer selected
-gamemodes is on. Gamemode pickers are available for every enabled site when that option
-is on, and for the only enabled site otherwise. It previews pending changes, including
-badge position, icons, brackets, colors and hiding your own badge.
-
-A gamemode picker opens with a click or keyboard activation. Arrow keys move between tiles;
-Enter or Space selects the focused tile. Hovering or focusing a tile previews it. The narrator
-announces which tile is the current selection. Back or Escape returns without selecting.
-Selection stays pending until you save the parent screen.
-
-Save writes settings; Cancel discards pending edits and Undo restores saved values. A failed save
-reports the problem and preserves the previously saved file and active settings. A failed
-settings command warns that its change applies only to the current session; it does not claim
-to have saved. Refresh is an immediate data action, separate from saving settings.
+Open the settings with `/justtiers gui`, ModMenu, or a keybind you can set under Options > Controls.
+A live preview shows your changes using example tiers and doesn't contact any site. Save keeps your
+changes, Cancel throws them away and Undo goes back to your saved settings. If saving fails, your
+old settings stay in place and you see an error. A command that can't save warns that its change
+lasts only for this session.
 
 | Palette | PvPTiers | PvPHQ | SubTiers | NovaTiers |
 |---|---|---|---|---|
 | Default | `#FFFF55` yellow | `#D2D2D2` gray | `#55FFFF` cyan | `#AA55FF` purple |
 | Color vision alternative | `#E69F00` orange | `#CC79A7` pink | `#56B4E9` sky blue | `#FFFFFF` white |
 | High contrast | `#FFFFFF` white | `#FF55FF` magenta | `#FFAA00` amber | `#00FFFF` cyan |
-| Custom | Your selected color | Your selected color | Your selected color | Your selected color |
+| Custom | Your color | Your color | Your color | Your color |
 
-Alternative palettes offer different hue and brightness contrasts; their suitability depends
-on the player and background. Custom color controls are available in the Custom palette.
-The chosen colors reach nametags, lookup rows, previews, pickers and the NovaTiers progress bar.
-The palette controls stay available while nametag display is off.
-Icon artwork keeps its original colors.
+The alternative palettes change hue and brightness contrast. How well they work depends on your
+eyes and the background. Icons keep their own colors.
 
-## Config file
+### Config file
 
-Settings are stored in `config/justtiers.json` inside the Minecraft instance. Defaults are:
+Settings live in `config/justtiers.json` in your Minecraft instance. These are the defaults:
 
 ```json
 {
@@ -174,220 +136,106 @@ Settings are stored in `config/justtiers.json` inside the Minecraft instance. De
 }
 ```
 
-Older `displayMode` settings migrate to site toggles. MCTiers gamemodes and custom
-colors move to PvPTiers, with `vanilla` becoming `crystal` and `nethop` becoming
-`neth_pot`. The old single-site selections keep just that site enabled; `all` enables
-all four. Explicit `enabledSites` settings take precedence over the old mode.
-
-Enum values are saved in lowercase and read case-insensitively. Missing settings receive
-defaults. A setting with an unknown or wrongly typed value, such as `"enabled": 1`, falls
-back to its default and the rest of the file is kept. In `enabledSites`,
-`selectedGamemodes` and `customColors` this happens per site. Out-of-range intervals are
-clamped when loading, so both accept 5 to 1440 minutes. Custom colors use per-site
-`#RRGGBB` strings. If the file is not valid JSON or does not hold a JSON object, Just-Tiers
-copies it to `justtiers.json.bak` before loading defaults. Changing the interval on Save
-updates the running scheduler or cache policy without restarting Minecraft.
+Both intervals accept 5 to 1440 minutes, and custom colors use `#RRGGBB` per site. A missing or
+invalid value falls back to its default without touching the rest of the file. A file that isn't
+valid JSON is copied to `justtiers.json.bak` before the defaults load. Settings from older versions
+move over on their own, including MCTiers settings, which become PvPTiers settings. The exact
+loading rules are in [How it works](docs/how-it-works.md#config-file).
 
 ## Supported gamemodes
 
-Sites are independent competitions. The slugs below are accepted by `/justtiers gamemode`
-and stored in the config file.
+Each site runs its own competition. Use these slugs with `/justtiers gamemode` and in the config file.
 
-When a site reports a gamemode that is not listed here, its placements still appear. The name
-comes from the site's identifier, so `bed_wars` becomes Bed Wars, and there is no icon. These
-placements compete for the player's best tier, but you cannot select such a gamemode for
-nametags or with `/justtiers gamemode` until a mod update adds it. An identifier must be 1 to
-32 lowercase letters, digits, `_` or `-`; placements under other identifiers are ignored. One
-site's answer for a player contributes at most 16 unrecognized gamemodes.
-
-| Leaderboard | Gamemodes |
+| Site | Gamemodes |
 |---|---|
 | **PvPTiers** (8) | Axe (`axe`), Crystal (`crystal`), Mace (`mace`), Netherite Pot (`neth_pot`), Pot (`pot`), SMP (`smp`), Sword (`sword`), UHC (`uhc`) |
 | **PvPHQ** (11) | Axe (`axe`), Cart (`cart`), Diamond SMP (`diamond_smp`), Mace (`mace`), Netherite Pot (`netherite_pot`), Pot (`pot`), SMP (`smp`), Spear (`spear_mace`), Sword (`sword`), UHC (`uhc`), Vanilla (`vanilla`) |
 | **SubTiers** (12) | Bed (`bed`), Bow (`bow`), Creeper (`creeper`), DeBuff (`debuff`), Diamond SMP (`dia_smp`), Diamond Vanilla (`dia_crystal`), Elytra (`elytra`), Manhunt (`manhunt`), Minecart (`minecart`), OG Vanilla (`og_vanilla`), Speed (`speed`), Trident (`trident`) |
 | **NovaTiers** (12) | Axe (`axe`), Diamond Cart (`diamondcart`), Diamond OP (`diamondop`), Elytra (`elytra`), Elytra Spear (`elytraspear`), Modern SMP (`modernsmp`), Pufferfish (`pufferfish`), SMP (`smp`), Spear Mace (`spearmace`), Spleef (`spleef`), UHC (`uhc`), Vanilla (`vanilla`) |
 
-## Requests, caching and privacy
+If a site adds a new gamemode, its tiers still show up, named after the site's identifier
+(`bed_wars` becomes Bed Wars) and without an icon. You can pick it for nametags once a mod update
+adds it.
 
-The mod uses public leaderboard APIs and Minecraft's profile/skin loading facilities.
-There is no mod analytics endpoint. Remote services receive ordinary connection metadata,
-including your IP address, in addition to the request data below.
+## Privacy and network use
 
-| Service | Request data and purpose |
-|---|---|
-| `pvptiers.com/api/profile/<uuid>` | Compact account UUID for an enabled visible player's nametag or an explicit lookup |
-| `pvphq.com/api/v1/players/<uuid>` | Dashed account UUID for the same purpose |
-| `subtiers.net/api/v2/…` | The same for SubTiers |
-| `novatiers.com/users` | Bulk leaderboard download, without a per-player identifier in the request |
-| `api.mojang.com/users/profiles/minecraft/<name>` | Typed name when the tab list cannot provide a usable account UUID |
-| Mojang profile/session services and Minecraft skin texture hosts | Account profile and skin requests made through Minecraft while displaying a looked-up player's skin |
+Just-Tiers has no analytics. It only contacts:
 
-The mod's own API requests use a versioned Just-Tiers User-Agent. Minecraft controls its
-profile and skin requests and can cache skin data on disk. The mod writes its settings
-file and diagnostic logs; `/justtiers debug` also replaces your clipboard with its report.
-It does not send chat, inventory or the server address to the leaderboard APIs.
+- **PvPTiers, PvPHQ and SubTiers**, sending the account UUID of a player on screen or one you look up.
+- **NovaTiers**, downloading its whole list in one request with no player ID in it.
+- **Mojang**, to turn a typed name into a UUID when the tab list can't, and through Minecraft to
+  load skins on the lookup screen.
 
-Disabling nametag tiers stops automatic per-player nametag lookups. Each site toggle
-also stops nametag lookups for that site. Explicit lookup screens
-still work, and NovaTiers' startup, scheduled and requested downloads remain independent of
-that switch. Hiding the progress bar changes only the indicator, not the downloads.
-Another installed mod that uses the [tier-query API](docs/api.md) makes automatic lookups
-too, so the same switches apply: it gets no answer and causes no request for a site
-while that site, or nametag tiers, are turned off. Like nametags, it never sends a UUID
-that is not an online-mode account, such as an offline-mode player or a server NPC.
+These services see ordinary connection details such as your IP address. Chat, inventory and the
+server address are never sent. Offline-mode players and server NPCs are never looked up
+automatically.
 
-PvPTiers, PvPHQ and SubTiers answers, including valid unranked answers, expire after an hour by default.
-Repeated requests for one player share the pending result. Expired successful answers stay
-visible while a replacement loads, for up to six additional hours beyond the configured cache
-interval. A valid replacement with no placements removes the old badge. Manual refresh keeps
-previous answers while rechecking them. Manual refresh, failed requests and explicit retries
-can cause requests before the usual interval, so it is not a rate-limit guarantee.
-NovaTiers is indexed in memory and refreshed every 30 minutes by default; its payload size varies.
+Turning off nametag tiers, or a single site, stops automatic lookups for it, including lookups from
+other mods that use the [tier-query API](docs/api.md). The lookup screen still works, and the
+NovaTiers list still downloads at startup, on its schedule and when you refresh. Answers are cached
+for an hour by default and the NovaTiers list refreshes every 30 minutes. Manual refresh and retries
+can make requests sooner, so the cache interval isn't a strict limit.
 
-HTTP 404 from PvPTiers, PvPHQ or SubTiers is a valid unranked answer. Unexpected statuses, transport
-errors and malformed successful responses are failures, not unranked results. So is a response
-whose only placements use identifiers the mod refuses. A player or Mojang request that has
-not finished after 20 seconds fails like a transport error, and so does a NovaTiers download
-after two minutes. Failed requests
-back off per player, with jitter; eight consecutive site failures pause new requests and then
-allow a recovery probe. Each site permits four active player requests and 128 waiting
-requests. Explicit lookups
-take priority over queued nametag work and can displace waiting background requests. Queue
-pressure defers work without counting as a remote site failure. HTTP 429 and HTTP 503 with
-Retry-After pause requests to that site for the requested delay, capped at 24 hours; malformed
-hints use 60 seconds. NovaTiers bulk downloads obey the same cooldown rules. Manual refresh
-resets player retry and circuit state but preserves server cooldowns and diagnostic history.
-A failed NovaTiers refresh preserves the last usable index. Reading it does not reset its
-original age: the player cache refuses a bulk snapshot older than the cache interval plus
-six hours. A refresh that lists no ranked players counts as failed once the index has players.
-Identifiable players with malformed or conflicting bulk records are unavailable,
-not unranked; the parser reports aggregate rejection counts while retaining valid players.
-Older requests cannot replace a newer index or reinstate retry state cleared by a refresh.
-
-Each site retains at most 4096 player entries and 4096 retry records. New entries can evict
-the least recently accessed completed entries. Once per 1200 client ticks, maintenance removes
-idle expired answers and old retry records even if those players never appear again. In-flight
-work is retained until completion; idle entries have a 24-hour retention limit.
-
-The first NovaTiers download in a session shows a moving bar and bytes received. Later downloads
-estimate progress from the last completed payload size. That size can change, so the percentage
-is an estimate and stops below 100% until completion. A failure shows a brief unavailable message.
-
-## For mod developers
-
-Other Fabric client mods can read Just-Tiers' answers through `JustTiersQuery` in the
-`com.w0x7y.justtiers.query` package. Each site's answer is disabled, pending, unavailable,
-unranked or ranked, and placements carry the displayed label and a sortable rank. Reads
-never block, but a read can start the same lookup a nametag would, and it obeys the same
-nametag and site toggles. See [the API guide](docs/api.md) for dependency setup, threading
-and network consequences.
+Failed or broken responses never show as unranked. Retries back off, and a site that keeps failing
+is paused for a while. [How it works](docs/how-it-works.md) has every rule, timeout and limit.
 
 ## Reporting a bug
 
-Run `/justtiers debug` and paste the copied report into a GitHub issue, together with reproduction
-steps, game/mod versions and relevant logs or screenshots. It includes version numbers, cache
-counts, active and queued requests, retry state, server cooldowns, latency and the last error for each site. `PAUSED` means a site's circuit
-breaker is waiting before allowing another probe. The report stays in English for bug reports.
-A green build cannot establish that a Minecraft screen or mixin works in a running game.
+Run `/justtiers debug` and paste the copied report into a
+[GitHub issue](https://github.com/w0x7y/Just-Tiers/issues), with steps to reproduce, your game and
+mod versions, and any logs or screenshots. `PAUSED` in the report means a site failed repeatedly
+and the mod is waiting before trying it again. The report is always in English.
 
-## Building and testing
+## For mod developers
 
-Install JDK 25 and make `java` available on PATH or set `JAVA_HOME` before running the wrapper.
-Gradle's toolchain resolver can provision a compiler after Gradle starts; it cannot start the
-wrapper on a machine with no Java runtime.
+Other Fabric client mods can read Just-Tiers' answers through `JustTiersQuery` in
+`com.w0x7y.justtiers.query`. Each site's answer is disabled, pending, unavailable, unranked or
+ranked. Reads never block, but a read can start the same lookup a nametag would and obeys the same
+toggles. See [the API guide](docs/api.md) for setup, threading and network details.
+
+## Building from source
+
+You need JDK 25 on your PATH or in `JAVA_HOME`. Gradle downloads any other compiler a target needs,
+such as Java 21 for 1.21.10 and 1.21.11.
 
 ```bash
 git clone https://github.com/w0x7y/Just-Tiers.git
 cd Just-Tiers
 ./gradlew build
-./gradlew test
 ./gradlew runClient
-# Build or run another target:
+# Another target:
 ./gradlew build -Pminecraft_version=1.21.10
-./gradlew runClient -Pminecraft_version=26.1.2
 ```
 
-On Windows use `gradlew.bat`. `build` runs checks and packages the mod in
-`build/<minecraft-version>/libs/`. The default target remains 26.2. Supported targets are
-1.21.10, 1.21.11, 26.1, 26.1.1, 26.1.2, 26.2 and 26.3. Gradle provisions the target's compiler,
-including Java 21 for 1.21.10 and 1.21.11. Each target has separate generated sources and build outputs.
+On Windows use `gradlew.bat`. The default target is 26.2, and JARs land in
+`build/<minecraft-version>/libs/`. Development and sources JARs there aren't installable mods.
+`build` runs every test, including resource checks for icons and translations, but it doesn't
+launch Minecraft.
 
-The 1.21.10 and 1.21.11 builds use Mojang mappings and Loom's `remapJar`; 26.x builds are unobfuscated.
-Use the normal JAR in the target's `libs` folder. Development JARs and sources JARs are not
-installable mods. See [the compatibility guide](docs/minecraft-compatibility.md) for how
-API differences are handled and how to verify every target.
+For changes to the game client, run the [runtime smoke checklist](docs/runtime-smoke-test.md).
+More guides:
 
-Tests cover parsing, caching, retries, persistence, tier selection, badge composition,
-progress state, lookup reports and screen geometry. Resource contract tests also verify the
-registry's glyph-to-texture mapping and referenced English translation keys. They run through
-`test`, `check` and `build`. Workflow syntax is checked by actionlint in CI.
-
-Optional [verification tools](docs/verification-tools.md) provide `./gradlew badgeBenchmark`
-and `./gradlew runSmokeClient -PclientSmoke=true -Pminecraft_version=26.2`. The smoke harness
-uses a disposable integrated world and controlled players to exercise the real mixin and screens;
-it is excluded from installable and sources JARs. It does not replace authenticated multiplayer checks.
-
-Run the [runtime smoke checklist](docs/runtime-smoke-test.md) for changes affecting the game
-client. It covers keyboard navigation, small windows, Save/Cancel, fonts and failure recovery.
-
-### CI and releases
-
-The [Build workflow](.github/workflows/build.yml) validates the wrapper, lints workflows, runs
-`build` on Linux and Windows for pull requests and main pushes, and uploads JARs and test
-reports from each platform. Reports are retained for 14 days.
-These checks do not launch Minecraft.
-
-To release, update `mod_version` in `gradle.properties`, verify the build and runtime checklist,
-then push a matching `v<version>` tag. The release workflow rejects a mismatched tag, builds,
-requires workflow lint, creates the GitHub release first, and then uploads to Modrinth. GitHub receives the mod JAR
-without the sources JAR. `release_type=alpha` or `beta` creates a GitHub prerelease and the
-matching Modrinth version type; `release` creates a regular GitHub release.
-
-Publishing needs a repository `MODRINTH_TOKEN` secret with permission to create versions.
-The manual Modrinth dry-run workflow checks payload construction without uploading. Locally:
-
-```bash
-MODRINTH_TOKEN=... ./gradlew modrinth -Pmodrinth_dry_run=true
-```
-
-The dry run contacts Modrinth and cannot guarantee that a later upload will be accepted.
-If Modrinth rejects an upload, the GitHub release remains available. Correct the cause before
-rerunning; the GitHub step updates an existing release. The listing body in
-[Modrinth/description.md](Modrinth/description.md) is separate. `modrinthSyncBody` overwrites the
-live listing body and is deliberately absent from release automation. The project summary
-is stored in [Modrinth/project.json](Modrinth/project.json). Run the manual
-[Sync Modrinth description workflow](.github/workflows/modrinth-description.yml) when a
-listing update is intended. It synchronizes the summary, issues link and Markdown body,
-replaces the gallery with the images listed in [Modrinth/gallery.json](Modrinth/gallery.json),
-and gives the current version's Modrinth builds the `release_type` from `gradle.properties`.
-Preview the exact project update locally with `python3 tools/modrinth_project.py`.
-Add `--gallery` or `--release-type` to preview those changes. Gallery images are matched by
-title, so give a replaced image a new title to upload it again.
-Tagged release notes come from `docs/releases/v<version>.md`
-when present, otherwise from commits since the previous tag.
+- [Minecraft compatibility](docs/minecraft-compatibility.md): how each target builds and how to verify all of them.
+- [Verification tools](docs/verification-tools.md): the badge benchmark and the smoke-test client.
+- [CI and releases](docs/releasing.md): build checks, tagging a release and syncing the Modrinth listing.
 
 ## Contributing
 
-Run `./gradlew build` before opening a pull request. Keep decisions and state transitions free
-of Minecraft types where practical; keep the game integration thin. See [CLAUDE.md](CLAUDE.md)
-for the module boundaries and [docs/adr](docs/adr) for retained architectural decisions.
-Older plans in `docs/superpowers` are archived design history, not implementation instructions.
+Run `./gradlew build` before opening a pull request. Keep game logic free of Minecraft types where
+you can, and keep the Minecraft integration thin. [CLAUDE.md](CLAUDE.md) describes the module
+boundaries and [docs/adr](docs/adr) records past decisions. Plans in `docs/superpowers` are archived
+history, not instructions.
 
-To add a gamemode, update `tier/Gamemodes.java`, `tools/gen_font_provider.py` and the matching
-texture, then run `python3 tools/gen_font_provider.py` followed by `./gradlew check`.
-The generator binds existing artwork to glyphs; it does not generate artwork. Until a gamemode
-is registered, the mod shows it with a derived name and no icon.
-
-Icons use the private `justtiers:icons` font. Apply it only to the glyph component, with labels
-as separate siblings, so text does not inherit an icon-only font. Preserve `Segment.icon`
-when recoloring, using `Segment.withColor` or `Badge.recolor`.
+To add a gamemode, register it in `tier/Gamemodes.java`, add it and its texture to
+`tools/gen_font_provider.py`, then run `python3 tools/gen_font_provider.py` and `./gradlew check`.
+The generator only binds existing artwork. New icons must be original work.
 
 ## Credits and licensing
 
-Just-Tiers is maintained by Idan Gilboa and released under [MIT](LICENSE). Every gamemode icon is
-original project artwork under MIT since 1.2.2. Versions up to 1.2.1 shipped PvPTiers, PvPHQ and SubTiers icons
-from [TierTagger](https://github.com/mctiers-dev/TierTagger); see [NOTICE](NOTICE). Code, documentation
-and the gamemode icons include AI-assisted work reviewed by the maintainer.
+Just-Tiers is made by Idan Gilboa and released under [MIT](LICENSE). Since 1.2.2, every gamemode icon
+is original project artwork under MIT. Versions up to 1.2.1 shipped PvPTiers, PvPHQ and SubTiers icons
+from [TierTagger](https://github.com/mctiers-dev/TierTagger); see [NOTICE](NOTICE). Code,
+documentation and the gamemode icons include AI-assisted work reviewed by the maintainer.
 
 Thanks to PvPTiers, PvPHQ, SubTiers and NovaTiers for their leaderboards and public APIs.
-This project is unofficial and is not affiliated with those sites, Mojang or Microsoft.
+Just-Tiers is unofficial and isn't affiliated with those sites, Mojang or Microsoft.
