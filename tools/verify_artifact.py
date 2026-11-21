@@ -31,6 +31,7 @@ def verify_jar(path: Path, target: Target, mod_version: str) -> None:
         mixins = json.loads(jar.read("justtiers.mixins.json"))
         require(mixins["compatibilityLevel"] == f"JAVA_{java}", f"{path}: wrong mixin Java compatibility")
         require(mixins["required"] is True and "PlayerMixin" in mixins["client"], f"{path}: missing required PlayerMixin")
+        require("BitmapProviderMixin" in mixins["client"], f"{path}: missing required BitmapProviderMixin")
         classes = [name for name in jar.namelist() if name.endswith(".class")]
         require(bool(classes), f"{path}: empty mod JAR")
         for name in classes:
@@ -39,13 +40,23 @@ def verify_jar(path: Path, target: Target, mod_version: str) -> None:
             major = struct.unpack(">H", bytecode[6:8])[0]
             require(major == java + 44, f"{name}: class version {major}, expected Java {java}")
         mixin = jar.read("com/w0x7y/justtiers/mixin/PlayerMixin.class")
+        bitmap_mixin = jar.read("com/w0x7y/justtiers/mixin/BitmapProviderMixin.class")
         # Inspect actual bytecode independently of the source conversion or Gradle task chosen.
         namespaces = {
-            "intermediary": (b"net/minecraft/class_1657", b"method_5476"),
-            "official": (b"net/minecraft/world/entity/player/Player", b"getDisplayName"),
+            "intermediary": (
+                (b"net/minecraft/class_1657", b"method_5476"),
+                (b"net/minecraft/class_386$class_387", b"method_2039",
+                 b"Lnet/minecraft/class_3300;open(Lnet/minecraft/class_2960;)Ljava/io/InputStream;"),
+            ),
+            "official": (
+                (b"net/minecraft/world/entity/player/Player", b"getDisplayName"),
+                (b"net/minecraft/client/gui/font/providers/BitmapProvider$Definition", b"load",
+                 b"Lnet/minecraft/server/packs/resources/ResourceManager;open(Lnet/minecraft/resources/Identifier;)Ljava/io/InputStream;"),
+            ),
         }
-        player, method = namespaces[target.mapping_strategy]
-        require(player in mixin and method in mixin, f"{path}: wrong mixin mapping namespace")
+        player_tokens, bitmap_tokens = namespaces[target.mapping_strategy]
+        require(all(token in mixin for token in player_tokens), f"{path}: wrong PlayerMixin mapping namespace")
+        require(all(token in bitmap_mixin for token in bitmap_tokens), f"{path}: wrong BitmapProviderMixin mapping namespace")
 
 
 def verify(minecraft: str, root: Path = ROOT) -> Path:

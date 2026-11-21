@@ -2,14 +2,17 @@ Just-Tiers
 Copyright (c) 2026 Idan Gilboa
 Licensed under the MIT License (see LICENSE).
 
-All assets the mod ships, including every gamemode icon under
-src/main/resources/assets/justtiers/textures/, are original work licensed
-under the MIT License.
+All assets the mod ships are original work licensed under the MIT License.
+Gamemode icons reference built-in Minecraft texture identifiers directly or
+composite them in memory at runtime from the player's active resource packs
+(with programmatic pixel-text fallbacks when a texture does not exist on an
+older Minecraft version); no Minecraft or third-party textures are packaged.
 
 Versions up to and including 1.2.1 shipped PvPTiers, PvPHQ and SubTiers
 icon textures taken from TierTagger (https://github.com/mctiers-dev/TierTagger),
-which were licensed separately. Later versions replace them with the original
-icons above.
+which were licensed separately. Version 1.2.2 replaced them with original
+project artwork, and 1.2.3 switched to the built-in Minecraft texture
+references and runtime composites described above.
 
 PvPTiers, PvPHQ, SubTiers and NovaTiers are the property of their respective owners.
 Just-Tiers is an unofficial client and is not affiliated with or endorsed by

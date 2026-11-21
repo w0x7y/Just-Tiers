@@ -9,6 +9,20 @@ display names in a controlled integrated world and renders the three main screen
 Its fake tier answers and development profile do not substitute for authenticated
 multiplayer or the full manual checklist below.
 
+## November 21 runtime composite icon smoke check
+
+Just-Tiers 1.2.3 passed the Minecraft 26.2 repeatable smoke harness (`./gradlew runSmokeClient -PclientSmoke=true`)
+with Java 25.0.4.1, Fabric Loader 0.19.3, Fabric API 0.157.0+26.2 and YACL 3.9.4+26.2-fabric on a
+local X11/Wayland display. All 32 assertions passed and the run ended with `JUSTTIERS_SMOKE_SUCCESS`.
+`justtiers:icons` loaded with `BitmapProviderMixin` and `CompositeIcons` active and logged no font,
+texture or mixin warnings or errors. Config, gamemode-grid and invalid-name lookup screens
+initialized at 320x240, 427x240 and 480x270 GUI pixels and rendered for 40 ticks at 480x270.
+All seven targets (1.21.10 through 26.3) passed `./gradlew build` and `tools/verify_artifact.py`
+(including bytecode namespace checks for both `PlayerMixin` and `BitmapProviderMixin`).
+Limits remain: controlled integrated world and fake tier answers, no authenticated multiplayer,
+ModMenu, authenticated skins, spoken narration, live recovery, non-26.2 client launches or visual
+glyph inspection.
+
 ## November 8 icon replacement check
 
 The 1.2.2 gamemode icons were rendered on Minecraft 26.2 with Java 25.0.4.1, Loader 0.19.3,

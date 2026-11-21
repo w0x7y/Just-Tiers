@@ -6,6 +6,10 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.w0x7y.justtiers.config.Palette;
 import com.w0x7y.justtiers.render.model.BadgePosition;
+import com.w0x7y.justtiers.render.model.PixelArt;
+import com.w0x7y.justtiers.render.model.PixelArt.CompositeIcon;
+import com.w0x7y.justtiers.render.model.PixelArt.Grid;
+import com.w0x7y.justtiers.render.model.PixelArt.TextureRef;
 import com.w0x7y.justtiers.tier.Gamemode;
 import com.w0x7y.justtiers.tier.Gamemodes;
 
@@ -13,6 +17,8 @@ import org.junit.jupiter.api.Test;
 
 import javax.imageio.ImageIO;
 
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -23,6 +29,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -64,15 +71,85 @@ class ResourceContractTest {
             assertEquals(8, provider.get("ascent").getAsInt());
         }
         assertEquals(Gamemodes.ALL.size(), glyphs.size(), "extra or missing font providers");
+        Set<String> packagedTextures = new HashSet<>();
+        Set<CompositeIcon> usedComposites = new HashSet<>();
         for (Gamemode mode : Gamemodes.ALL) {
-            String texture = mode.source().name().toLowerCase(Locale.ROOT) + "/" + mode.slug() + ".png";
-            assertEquals("justtiers:" + texture, glyphs.get(String.valueOf(mode.icon().orElseThrow())),
-                    mode.source() + "/" + mode.slug());
-            try (InputStream in = resource("assets/justtiers/textures/" + texture)) {
-                var png = ImageIO.read(in);
-                assertNotNull(png, "unreadable PNG: " + texture);
-                assertTrue(png.getWidth() > 0 && png.getHeight() > 0, texture);
+            String file = glyphs.get(String.valueOf(mode.icon().orElseThrow()));
+            assertNotNull(file, mode.source() + "/" + mode.slug());
+            if (file.startsWith("minecraft:")) {
+                assertReadablePng("assets/minecraft/textures/" + file.substring("minecraft:".length()), file);
+            } else {
+                assertTrue(file.startsWith("justtiers:"), "unexpected namespace: " + file);
+                String relative = file.substring("justtiers:".length());
+                Optional<CompositeIcon> composite = CompositeIcon.fromFontPath(relative);
+                if (composite.isPresent()) {
+                    usedComposites.add(composite.get());
+                } else {
+                    String expectedCustom = mode.source().name().toLowerCase(Locale.ROOT)
+                            + "/" + mode.slug() + ".png";
+                    assertEquals(expectedCustom, relative, mode.source() + "/" + mode.slug());
+                    packagedTextures.add(relative);
+                    assertReadablePng("assets/justtiers/textures/" + relative, file);
+                }
             }
+        }
+        assertEquals(Set.of(CompositeIcon.values()), usedComposites, "unused composite icon recipe");
+        for (CompositeIcon composite : usedComposites) {
+            boolean allSourcesPresent = true;
+            for (TextureRef source : composite.primarySources()) {
+                if (loadClasspathGrid(source).isEmpty()) {
+                    allSourcesPresent = false;
+                }
+            }
+            if (composite == CompositeIcon.POT || composite == CompositeIcon.DEBUFF
+                    || composite == CompositeIcon.SPEED) {
+                assertTrue(allSourcesPresent, "missing vanilla potion source texture for " + composite);
+            }
+            Grid composed = composite.compose(ResourceContractTest::loadClasspathGrid);
+            if (allSourcesPresent) {
+                assertNotEquals(PixelArt.textBadge(composite.fallbackLabel()), composed,
+                        "expected composite icon instead of text fallback for " + composite);
+            } else {
+                assertEquals(PixelArt.textBadge(composite.fallbackLabel()), composed,
+                        "expected text fallback when a source texture is absent for " + composite);
+            }
+            var png = ImageIO.read(new ByteArrayInputStream(PixelArt.encodePng(composed)));
+            assertNotNull(png, "unreadable composite PNG: " + composite);
+            assertTrue(png.getWidth() > 0 && png.getHeight() > 0, composite.fontPath());
+        }
+
+        Path texturesRoot = Path.of("src/main/resources/assets/justtiers/textures");
+        if (Files.isDirectory(texturesRoot)) {
+            try (var files = Files.walk(texturesRoot)) {
+                for (Path file : files.filter(path -> path.toString().endsWith(".png")).toList()) {
+                    String relative = texturesRoot.relativize(file).toString().replace('\\', '/');
+                    assertTrue(packagedTextures.contains(relative),
+                            "unreferenced gamemode texture: " + relative);
+                }
+            }
+        }
+    }
+
+    private static void assertReadablePng(String resourcePath, String label) throws IOException {
+        try (InputStream in = resource(resourcePath)) {
+            var png = ImageIO.read(in);
+            assertNotNull(png, "unreadable PNG: " + label);
+            assertTrue(png.getWidth() > 0 && png.getHeight() > 0, label);
+        }
+    }
+
+    private static Optional<Grid> loadClasspathGrid(TextureRef ref) throws IOException {
+        String path = "/assets/" + ref.namespace() + "/textures/" + ref.path();
+        try (InputStream in = ResourceContractTest.class.getResourceAsStream(path)) {
+            if (in == null) {
+                return Optional.empty();
+            }
+            BufferedImage image = ImageIO.read(in);
+            assertNotNull(image, "unreadable PNG: " + path);
+            int w = image.getWidth();
+            int h = image.getHeight();
+            int[] argb = image.getRGB(0, 0, w, h, null, 0, w);
+            return Optional.of(new Grid(w, h, argb));
         }
     }
 

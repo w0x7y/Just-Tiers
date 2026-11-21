@@ -20,6 +20,21 @@ tiers. Peak tiers are ignored.
 A nametag fills in as sites answer. Requests run in the background, and a site without an answer
 yet is left out of the badge. The tab list and chat are unchanged.
 
+### Gamemode icons
+
+Gamemode glyphs live in a private `justtiers:icons` bitmap font so they cannot collide with
+`minecraft:default` or resource packs. Most gamemodes point directly at built-in `minecraft:`
+texture identifiers. Five icons (`pot`, `debuff`, `speed`, `spear_mace`/`spearmace` and
+`elytraspear`) are composited in memory at font-load time from the active resource packs, combining
+tinted potion layers or weapon and elytra sprites unless a resource pack explicitly provides
+`assets/justtiers/textures/composite/<name>.png`.
+
+Because every icon resolves through Minecraft's resource manager, active texture packs restyle them
+automatically. When a composite recipe's vanilla source texture does not exist on an older Minecraft
+target, such as `netherite_spear.png` on 1.21.10, the mod generates a 12x12 two-letter pixel-text
+fallback (`SM`, `ES`) in memory. No gamemode PNGs are packaged in the JAR, and icons keep their own
+colors under every tier palette.
+
 ### Unrecognized gamemodes
 
 When a site reports a gamemode the mod doesn't list, its placements still appear. The name comes

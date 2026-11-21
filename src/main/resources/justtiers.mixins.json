@@ -3,6 +3,6 @@
   "minVersion": "0.8",
   "package": "com.w0x7y.justtiers.mixin",
   "compatibilityLevel": "JAVA_${java}",
-  "client": ["PlayerMixin"],
+  "client": ["BitmapProviderMixin", "PlayerMixin"],
   "injectors": { "defaultRequire": 1 }
 }

@@ -29,9 +29,15 @@ class ArtifactVerificationTest(unittest.TestCase):
             "depends": {"minecraft": "27.1", "java": ">=25", "fabricloader": ">=0.19.5",
                         "yet_another_config_lib_v3": ">=3.9.7"},
         }
-        self.mixins = {"compatibilityLevel": "JAVA_25", "required": True, "client": ["PlayerMixin"]}
+        self.mixins = {
+            "compatibilityLevel": "JAVA_25", "required": True,
+            "client": ["BitmapProviderMixin", "PlayerMixin"],
+        }
         self.class_bytes = struct.pack(">IHH", 0xCAFEBABE, 0, 69) + (
             b"net/minecraft/world/entity/player/Player\x00getDisplayName")
+        self.bitmap_class_bytes = struct.pack(">IHH", 0xCAFEBABE, 0, 69) + (
+            b"net/minecraft/client/gui/font/providers/BitmapProvider$Definition\x00load\x00"
+            b"Lnet/minecraft/server/packs/resources/ResourceManager;open(Lnet/minecraft/resources/Identifier;)Ljava/io/InputStream;")
 
     def package(self):
         path = self.libs / "just-tiers-2.0.0+mc27.1.jar"
@@ -39,6 +45,7 @@ class ArtifactVerificationTest(unittest.TestCase):
             jar.writestr("fabric.mod.json", json.dumps(self.metadata))
             jar.writestr("justtiers.mixins.json", json.dumps(self.mixins))
             jar.writestr("com/w0x7y/justtiers/mixin/PlayerMixin.class", self.class_bytes)
+            jar.writestr("com/w0x7y/justtiers/mixin/BitmapProviderMixin.class", self.bitmap_class_bytes)
         return path
 
     def verify(self):
@@ -62,6 +69,9 @@ class ArtifactVerificationTest(unittest.TestCase):
         profile = PROFILE.replace("mapping_strategy=official", "mapping_strategy=intermediary")
         (self.root / "gradle/targets/27.1.properties").write_text(profile)
         self.class_bytes = struct.pack(">IHH", 0xCAFEBABE, 0, 69) + b"net/minecraft/class_1657\x00method_5476"
+        self.bitmap_class_bytes = struct.pack(">IHH", 0xCAFEBABE, 0, 69) + (
+            b"net/minecraft/class_386$class_387\x00method_2039\x00"
+            b"Lnet/minecraft/class_3300;open(Lnet/minecraft/class_2960;)Ljava/io/InputStream;")
         self.package()
         result = self.verify()
         self.assertEqual(0, result.returncode, result.stderr)
@@ -71,6 +81,7 @@ class ArtifactVerificationTest(unittest.TestCase):
         self.metadata["depends"]["java"] = ">=21"
         self.mixins["compatibilityLevel"] = "JAVA_21"
         self.class_bytes = self.class_bytes[:6] + struct.pack(">H", 65) + self.class_bytes[8:]
+        self.bitmap_class_bytes = self.bitmap_class_bytes[:6] + struct.pack(">H", 65) + self.bitmap_class_bytes[8:]
         self.package()
         result = self.verify()
         self.assertEqual(0, result.returncode, result.stderr)
@@ -109,6 +120,14 @@ class ArtifactVerificationTest(unittest.TestCase):
                 result = self.verify()
                 self.assertNotEqual(0, result.returncode)
                 self.assertIn(name, result.stderr)
+        self.class_bytes = original
+        original_bitmap = self.bitmap_class_bytes
+        self.bitmap_class_bytes = original_bitmap.replace(b"load", b"method_2039")
+        self.package()
+        result = self.verify()
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("BitmapProviderMixin", result.stderr)
+        self.bitmap_class_bytes = original_bitmap
 
     def test_missing_or_ambiguous_installable_jar_is_rejected(self):
         self.assertNotEqual(0, self.verify().returncode)

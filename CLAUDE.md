@@ -173,14 +173,18 @@ include them after registered gamemodes. Settings, pickers and `/justtiers gamem
 stay registry-only through `Gamemodes.find`. Use `Icons.of(Gamemode)` so an absent glyph
 never reaches the icon font, and do not invent a placeholder codepoint.
 
-Adding a gamemode updates the Java registry, tools/gen_font_provider.py and its texture.
+Adding a gamemode updates the Java registry and `tools/gen_font_provider.py` (mapping to a
+built-in `minecraft:` texture identifier or a runtime composite in `render/model/PixelArt` /
+`render/CompositeIcons` hooked via `BitmapProviderMixin`).
 Registering a previously discovered slug needs no data migration.
 Run the generator, then `./gradlew check`; the resource contract checks glyph identities,
-provider counts and readable packaged textures. The generator binds existing artwork.
-The old NovaTiers artwork generator was removed because it overwrote the current artwork.
-Icon textures are original project artwork under MIT (see NOTICE). Do not add textures
-copied from other mods, the tier sites or Minecraft; versions up to 1.2.1 shipped
-TierTagger's icons, which were licensed to TierTagger alone.
+provider counts, readable textures (`minecraft:` references and runtime composite recipes)
+and no unreferenced files under `assets/justtiers/textures/`.
+When a composite recipe's vanilla source texture is absent on an older Minecraft target
+(such as `netherite_spear.png` on `1.21.10`), `PixelArt.textBadge` renders a 2-letter
+pixel-text fallback (`SM`, `ES`, etc.) in memory so no custom gamemode PNGs need to be shipped.
+Do not add textures copied from other mods, the tier sites or Minecraft; versions up to 1.2.1
+shipped TierTagger's icons, which were licensed to TierTagger alone.
 
 ## Documentation and releases
 

@@ -90,7 +90,7 @@ python3 -m unittest discover -s tools/tests -v
 ```
 
 The artifact check verifies the full mod version, packaged dependency constraints, Java class versions and
-the nametag mixin's class and method names. This catches an unremapped 1.21.x JAR even
+both mixins' class and method names. This catches an unremapped 1.21.x JAR even
 when the model tests pass. Its bytecode checks inspect the JAR independently of Gradle
 and the source conversion. Negative tests feed mismatched metadata, wrong class
 versions and incorrect namespaces to the verifier, including under Python's optimized

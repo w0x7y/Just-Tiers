@@ -2,7 +2,7 @@
   "providers": [
     {
       "type": "bitmap",
-      "file": "justtiers:pvptiers/axe.png",
+      "file": "minecraft:item/diamond_axe.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -11,7 +11,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:pvptiers/crystal.png",
+      "file": "minecraft:item/end_crystal.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -20,7 +20,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:pvptiers/mace.png",
+      "file": "minecraft:item/mace.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -29,7 +29,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:pvptiers/neth_pot.png",
+      "file": "minecraft:item/netherite_helmet.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -38,7 +38,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:pvptiers/pot.png",
+      "file": "justtiers:composite/pot.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -47,7 +47,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:pvptiers/smp.png",
+      "file": "minecraft:item/ender_pearl.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -56,7 +56,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:pvptiers/sword.png",
+      "file": "minecraft:item/diamond_sword.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -65,7 +65,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:pvptiers/uhc.png",
+      "file": "minecraft:gui/sprites/hud/heart/full.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -74,7 +74,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:pvphq/axe.png",
+      "file": "minecraft:item/diamond_axe.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -83,7 +83,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:pvphq/cart.png",
+      "file": "minecraft:item/tnt_minecart.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -92,7 +92,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:pvphq/diamond_smp.png",
+      "file": "minecraft:item/diamond_chestplate.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -101,7 +101,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:pvphq/mace.png",
+      "file": "minecraft:item/mace.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -110,7 +110,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:pvphq/netherite_pot.png",
+      "file": "minecraft:item/netherite_helmet.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -119,7 +119,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:pvphq/pot.png",
+      "file": "justtiers:composite/pot.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -128,7 +128,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:pvphq/smp.png",
+      "file": "minecraft:item/ender_pearl.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -137,7 +137,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:pvphq/spear_mace.png",
+      "file": "justtiers:composite/spear_mace.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -146,7 +146,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:pvphq/sword.png",
+      "file": "minecraft:item/diamond_sword.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -155,7 +155,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:pvphq/uhc.png",
+      "file": "minecraft:gui/sprites/hud/heart/full.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -164,7 +164,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:pvphq/vanilla.png",
+      "file": "minecraft:item/end_crystal.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -173,7 +173,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:subtiers/bed.png",
+      "file": "minecraft:block/red_wool.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -182,7 +182,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:subtiers/bow.png",
+      "file": "minecraft:item/bow.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -191,7 +191,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:subtiers/creeper.png",
+      "file": "minecraft:item/creeper_spawn_egg.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -200,7 +200,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:subtiers/debuff.png",
+      "file": "justtiers:composite/debuff.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -209,7 +209,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:subtiers/dia_crystal.png",
+      "file": "minecraft:item/diamond.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -218,7 +218,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:subtiers/dia_smp.png",
+      "file": "minecraft:item/diamond_chestplate.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -227,7 +227,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:subtiers/elytra.png",
+      "file": "minecraft:item/elytra.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -236,7 +236,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:subtiers/manhunt.png",
+      "file": "minecraft:item/compass_19.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -245,7 +245,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:subtiers/minecart.png",
+      "file": "minecraft:item/tnt_minecart.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -254,7 +254,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:subtiers/og_vanilla.png",
+      "file": "minecraft:item/golden_apple.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -263,7 +263,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:subtiers/speed.png",
+      "file": "justtiers:composite/speed.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -272,7 +272,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:subtiers/trident.png",
+      "file": "minecraft:item/trident.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -281,7 +281,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:novatiers/axe.png",
+      "file": "minecraft:item/diamond_axe.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -290,7 +290,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:novatiers/diamondcart.png",
+      "file": "minecraft:item/minecart.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -299,7 +299,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:novatiers/diamondop.png",
+      "file": "minecraft:item/diamond_helmet.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -308,7 +308,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:novatiers/elytra.png",
+      "file": "minecraft:item/elytra.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -317,7 +317,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:novatiers/elytraspear.png",
+      "file": "justtiers:composite/elytra_spear.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -326,7 +326,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:novatiers/modernsmp.png",
+      "file": "minecraft:item/netherite_chestplate.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -335,7 +335,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:novatiers/pufferfish.png",
+      "file": "minecraft:item/pufferfish.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -344,7 +344,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:novatiers/smp.png",
+      "file": "minecraft:item/ender_pearl.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -353,7 +353,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:novatiers/spearmace.png",
+      "file": "justtiers:composite/spear_mace.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -362,7 +362,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:novatiers/spleef.png",
+      "file": "minecraft:item/diamond_shovel.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -371,7 +371,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:novatiers/uhc.png",
+      "file": "minecraft:gui/sprites/hud/heart/full.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -380,7 +380,7 @@
     },
     {
       "type": "bitmap",
-      "file": "justtiers:novatiers/vanilla.png",
+      "file": "minecraft:item/end_crystal.png",
       "ascent": 8,
       "height": 8,
       "chars": [

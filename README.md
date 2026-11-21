@@ -8,8 +8,9 @@ Just-Tiers is a client-side Fabric mod, so there's nothing to install on the ser
 
 ![Live tiers on ranked players' nametags](Modrinth/gallery/nametags.jpg)
 
-The latest version is 1.2.2, which brings new original gamemode icons
-([release notes](docs/releases/v1.2.2.md)). It runs on Minecraft 1.21.10 through 26.3.
+The latest version is 1.2.3, which switches gamemode icons to Minecraft's built-in item textures
+and runtime composites so they follow your active resource packs
+([release notes](docs/releases/v1.2.3.md)). It runs on Minecraft 1.21.10 through 26.3.
 
 ## What you get
 
@@ -46,9 +47,11 @@ they aren't ranked in it. Turn on **Prefer selected gamemodes** to use your chos
 every site.
 
 Tiers go from LT5 up to HT1. Retired tiers have an R in front, like RHT1, and you can hide them.
-PvPHQ's middle tiers, like MT3, sit between HT3 and LT3. A gamemode the mod doesn't know yet still
-shows its tier, just without an icon. Badges fill in as each site answers, and the tab list and
-chat stay as they are.
+PvPHQ's middle tiers, like MT3, sit between HT3 and LT3. Gamemode icons use Minecraft's built-in
+textures and runtime composites, so they follow your active resource packs. On older Minecraft
+versions missing a source item texture, such as the spear on 1.21.10, affected composite icons fall
+back to a two-letter badge. A gamemode the mod doesn't know yet still shows its tier, just without
+an icon. Badges fill in as each site answers, and the tab list and chat stay as they are.
 
 ## Looking players up
 
@@ -226,16 +229,20 @@ you can, and keep the Minecraft integration thin. [CLAUDE.md](CLAUDE.md) describ
 boundaries and [docs/adr](docs/adr) records past decisions. Plans in `docs/superpowers` are archived
 history, not instructions.
 
-To add a gamemode, register it in `tier/Gamemodes.java`, add it and its texture to
-`tools/gen_font_provider.py`, then run `python3 tools/gen_font_provider.py` and `./gradlew check`.
-The generator only binds existing artwork. New icons must be original work.
+To add a gamemode, register it in `tier/Gamemodes.java`, map it in `tools/gen_font_provider.py`
+to a built-in `minecraft:` texture identifier (or add a runtime composite in
+`render/model/PixelArt.java` and `render/CompositeIcons.java`), then run
+`python3 tools/gen_font_provider.py` and `./gradlew check`. Do not ship textures copied from
+Minecraft, other mods or the tier sites.
 
 ## Credits and licensing
 
-Just-Tiers is made by Idan Gilboa and released under [MIT](LICENSE). Since 1.2.2, every gamemode icon
-is original project artwork under MIT. Versions up to 1.2.1 shipped PvPTiers, PvPHQ and SubTiers icons
-from [TierTagger](https://github.com/mctiers-dev/TierTagger); see [NOTICE](NOTICE). Code,
-documentation and the gamemode icons include AI-assisted work reviewed by the maintainer.
+Just-Tiers is made by Idan Gilboa and released under [MIT](LICENSE). Since 1.2.3, gamemode icons
+reference Minecraft's built-in textures or composite them in memory from your active resource packs,
+so the mod packages no gamemode PNGs. Version 1.2.2 shipped original project pixel art, and versions
+up to 1.2.1 shipped PvPTiers, PvPHQ and SubTiers icons from
+[TierTagger](https://github.com/mctiers-dev/TierTagger); see [NOTICE](NOTICE). Code and
+documentation include AI-assisted work reviewed by the maintainer.
 
 Thanks to PvPTiers, PvPHQ, SubTiers and NovaTiers for their leaderboards and public APIs.
 Just-Tiers is unofficial and isn't affiliated with those sites, Mojang or Microsoft.

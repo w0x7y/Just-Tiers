@@ -6,7 +6,8 @@ See players' PvP tiers from PvPTiers, PvPHQ, SubTiers and NovaTiers right on the
 
 - **Four sites, one badge.** Show all of them or just the ones you like.
 - **Look anyone up.** See every gamemode a player is ranked in, on every site.
-- **Make it yours.** Pick gamemodes, colors and where the badge goes.
+- **Make it yours.** Pick gamemodes, colors and where the badge goes. Icons use Minecraft's
+  built-in textures and runtime composites, so they follow your active resource packs.
 - **Client-side.** Nothing to install on the server.
 - **Open source, no analytics.** Releases are built by public
   [GitHub Actions](https://github.com/w0x7y/Just-Tiers/actions/workflows/release.yml).
@@ -52,8 +53,10 @@ Run `/justtiers debug` and paste the copied report into a
 ## Credits
 
 Made by Idan Gilboa under the [MIT license](https://github.com/w0x7y/Just-Tiers/blob/main/LICENSE).
-Icons are original since 1.2.2. Versions up to 1.2.1 use icons from
-[TierTagger](https://github.com/mctiers-dev/TierTagger) by uku and netiyiy
-([NOTICE](https://github.com/w0x7y/Just-Tiers/blob/main/NOTICE)). Code, documentation and the
-gamemode icons include AI-assisted work reviewed by the maintainer. Not affiliated with the tier
-sites, Mojang or Microsoft.
+Since 1.2.3, gamemode icons use Minecraft's built-in textures or runtime composites from your
+active resource packs (with pixel-text fallbacks on older versions missing a source texture), so no
+gamemode PNGs are packaged. Version 1.2.2 used original project pixel art, and versions up to 1.2.1
+used icons from [TierTagger](https://github.com/mctiers-dev/TierTagger) by uku and netiyiy
+([NOTICE](https://github.com/w0x7y/Just-Tiers/blob/main/NOTICE)). Code and documentation include
+AI-assisted work reviewed by the maintainer. Not affiliated with the tier sites, Mojang or
+Microsoft.
