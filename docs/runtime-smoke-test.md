@@ -19,9 +19,13 @@ texture or mixin warnings or errors. Config, gamemode-grid and invalid-name look
 initialized at 320x240, 427x240 and 480x270 GUI pixels and rendered for 40 ticks at 480x270.
 All seven targets (1.21.10 through 26.3) passed `./gradlew build` and `tools/verify_artifact.py`
 (including bytecode namespace checks for both `PlayerMixin` and `BitmapProviderMixin`).
-Limits remain: controlled integrated world and fake tier answers, no authenticated multiplayer,
-ModMenu, authenticated skins, spoken narration, live recovery, non-26.2 client launches or visual
-glyph inspection.
+A disposable 26.2 client capture at 3840x2160 also rendered live nametags for eleven ranked
+players, the lookup screen showing all 43 registered gamemodes (including all five runtime
+composites: `pot`, `debuff`, `speed`, `spear_mace`/`spearmace` and `elytraspear`), and the
+settings preview, with zero missing-glyph boxes or lookup errors.
+Limits remain: controlled integrated world and fake tier answers for the smoke harness, no
+authenticated multiplayer, ModMenu, authenticated skins, spoken narration, live recovery or
+non-26.2 client launches.
 
 ## November 8 icon replacement check
 
